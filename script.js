@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-08T22:35:56EDT
-//    Summary: Updated the tooltip for the 'Rev AR%' summary metric as requested.
+//    Timestamp: 2025-05-08T23:02:22EDT
+//    Summary: Modified 'Elite Score %' calculation in updateSummary to exclude stores where SUB_CHANNEL is 'Verizon COR'. Updated tooltip.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Configuration ---
@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const qtdGapValue = document.getElementById('qtdGapValue');
     const quarterlyRevenueTargetValue = document.getElementById('quarterlyRevenueTargetValue');
     const percentQuarterlyStoreTargetValue = document.getElementById('percentQuarterlyStoreTargetValue');
-    const revARValue = document.getElementById('revARValue'); // This is the element we'll update
+    const revARValue = document.getElementById('revARValue');
     const unitsWithDFValue = document.getElementById('unitsWithDFValue');
     const unitTargetValue = document.getElementById('unitTargetValue');
     const unitAchievementValue = document.getElementById('unitAchievementValue');
@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const repSkillAchValue = document.getElementById('repSkillAchValue');
     const vPmrAchValue = document.getElementById('vPmrAchValue');
     const postTrainingScoreValue = document.getElementById('postTrainingScoreValue');
-    const eliteValue = document.getElementById('eliteValue');
+    const eliteValue = document.getElementById('eliteValue'); // This is the element for Elite Score %
     const percentQuarterlyTerritoryTargetP = document.getElementById('percentQuarterlyTerritoryTargetP');
     const territoryRevPercentP = document.getElementById('territoryRevPercentP');
     const districtRevPercentP = document.getElementById('districtRevPercentP');
@@ -102,6 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const regionRevPercentValue = document.getElementById('regionRevPercentValue');
 
     // Table Elements
+    // ... (rest of DOM elements are the same)
     const attachRateTableBody = document.getElementById('attachRateTableBody');
     const attachRateTableFooter = document.getElementById('attachRateTableFooter');
     const attachTableStatus = document.getElementById('attachTableStatus');
@@ -157,12 +158,16 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const safeGet = (obj, path, defaultValue = 'N/A') => {
         const value = obj ? obj[path] : undefined;
+        // Ensure that not just null/undefined, but also empty strings are treated as "no value" for defaultValue.
         return (value !== undefined && value !== null && String(value).trim() !== '') ? value : defaultValue;
     };
     const isValidForAverage = (value) => {
+         // Check if value is not null, undefined, or an empty/whitespace string
          if (value === null || value === undefined || String(value).trim() === '') return false;
+         // Then, check if it can be parsed as a number (after removing common currency/percent symbols)
          return !isNaN(parseNumber(String(value).replace('%','')));
     };
+    // ... (rest of helper functions are the same)
     const getUniqueValues = (data, column) => {
         const values = new Set(data.map(item => safeGet(item, column, '')).filter(val => String(val).trim() !== ''));
         return ['ALL', ...Array.from(values).sort()];
@@ -183,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!selectElement) return;
         selectElement.innerHTML = '';
         options.forEach(optionValue => {
-             if (optionValue === 'ALL') return;
+             if (optionValue === 'ALL') return; // 'ALL' is not an option for multi-select content itself
              const option = document.createElement('option');
              option.value = optionValue;
              option.textContent = optionValue;
@@ -201,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (loadingIndicator) loadingIndicator.style.display = displayStyle;
             if (excelFileInput) excelFileInput.disabled = isLoading;
         }
-    };
+    };    
 
     // --- Core Functions ---
     const handleFile = async (event) => {
@@ -255,6 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const populateFilters = (data) => {
+        // ... (same as before)
         setOptions(regionFilter, getUniqueValues(data, 'REGION'));
         setOptions(districtFilter, getUniqueValues(data, 'DISTRICT'));
         setMultiSelectOptions(territoryFilter, getUniqueValues(data, 'Q2 Territory').slice(1));
@@ -279,6 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const addDependencyFilterListeners = () => {
+        // ... (same as before)
         const handler = updateStoreFilterOptionsBasedOnHierarchy;
         const filtersToListen = [regionFilter, districtFilter, territoryFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter];
         
@@ -297,6 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
      const updateStoreFilterOptionsBasedOnHierarchy = () => {
+        // ... (same as before)
         if (rawData.length === 0) return;
 
         const selectedRegion = regionFilter?.value;
@@ -352,6 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const setStoreFilterOptions = (optionsToShow, disable = true) => {
+        // ... (same as before)
         if (!storeFilter) return;
         const currentSearchTerm = storeSearch?.value || '';
         storeFilter.innerHTML = '';
@@ -370,6 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const filterStoreOptions = () => {
+        // ... (same as before)
         if (!storeFilter || !storeSearch) return;
         const searchTerm = storeSearch.value.toLowerCase();
         const filteredOptions = storeOptions.filter(opt => opt.text.toLowerCase().includes(searchTerm));
@@ -392,6 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const applyFilters = () => {
+        // ... (same as before)
         showLoading(true, true);
         if (resultsArea) resultsArea.style.display = 'none';
 
@@ -461,8 +472,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, 10);
     };
-
+    
     const resetFilters = () => {
+        // ... (same as before)
          const allOptionHTML = '<option value="ALL">-- Load File First --</option>';
          [regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(sel => { 
              if (sel) { 
@@ -504,6 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
      const resetUI = () => {
+        // ... (same as before)
          resetFilters(); 
          if (filterArea) filterArea.style.display = 'none';
          if (resultsArea) resultsArea.style.display = 'none';
@@ -544,29 +557,40 @@ document.addEventListener('DOMContentLoaded', () => {
         let sumRepSkill = 0, countRepSkill = 0;
         let sumPmr = 0, countPmr = 0;
         let sumPostTraining = 0, countPostTraining = 0;
-        let sumElite = 0, countElite = 0;
+        let sumElite = 0, countElite = 0; // Variables for Elite score average
 
         data.forEach(row => {
             let valStr;
+            const subChannel = safeGet(row, 'SUB_CHANNEL', null); // Get SUB_CHANNEL for Elite exclusion
+
             valStr = safeGet(row, 'Retail Mode Connectivity', null); 
             if (isValidForAverage(valStr)) { sumConnectivity += parsePercent(valStr); countConnectivity++; }
+            
             valStr = safeGet(row, 'Rep Skill Ach', null); 
             if (isValidForAverage(valStr)) { sumRepSkill += parsePercent(valStr); countRepSkill++; }
+            
             valStr = safeGet(row, '(V)PMR Ach', null); 
             if (isValidForAverage(valStr)) { sumPmr += parsePercent(valStr); countPmr++; }
+            
             valStr = safeGet(row, 'Post Training Score', null); 
             if (isValidForAverage(valStr)) { sumPostTraining += parseNumber(valStr); countPostTraining++; }
-            valStr = safeGet(row, 'Elite', null); 
-            if (isValidForAverage(valStr)) { sumElite += parsePercent(valStr); countElite++; }
+            
+            // Elite Score Calculation - with exclusion
+            if (subChannel !== "Verizon COR") { // Check if sub-channel is NOT "Verizon COR"
+                valStr = safeGet(row, 'Elite', null); 
+                if (isValidForAverage(valStr)) { 
+                    sumElite += parsePercent(valStr); // Assumes 'Elite' is a percentage
+                    countElite++; 
+                }
+            }
         });
 
         const calculatedRevAR = sumQtdTarget === 0 ? NaN : sumRevenue / sumQtdTarget;
-
         const avgConnectivity = countConnectivity > 0 ? sumConnectivity / countConnectivity : NaN;
         const avgRepSkill = countRepSkill > 0 ? sumRepSkill / countRepSkill : NaN;
         const avgPmr = countPmr > 0 ? sumPmr / countPmr : NaN;
         const avgPostTraining = countPostTraining > 0 ? sumPostTraining / countPostTraining : NaN;
-        const avgElite = countElite > 0 ? sumElite / countElite : NaN;
+        const avgElite = countElite > 0 ? sumElite / countElite : NaN; // Calculate average Elite score
 
         const overallPercentStoreTarget = sumQuarterlyTarget !== 0 ? sumRevenue / sumQuarterlyTarget : NaN;
         const overallUnitAchievement = sumUnitTarget !== 0 ? sumUnits / sumUnitTarget : NaN;
@@ -582,7 +606,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (revARValue) { 
             revARValue.textContent = formatPercent(calculatedRevAR);
-            // Updated title as per Senpai's request
             revARValue.title = "Rev AR% for selected stores with data"; 
         }
 
@@ -593,12 +616,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (repSkillAchValue) { repSkillAchValue.textContent = formatPercent(avgRepSkill); repSkillAchValue.title = `Average 'Rep Skill Ach' across ${countRepSkill} stores with data`; }
         if (vPmrAchValue) { vPmrAchValue.textContent = formatPercent(avgPmr); vPmrAchValue.title = `Average '(V)PMR Ach' across ${countPmr} stores with data`; }
         if (postTrainingScoreValue) { postTrainingScoreValue.textContent = isNaN(avgPostTraining) ? 'N/A' : avgPostTraining.toFixed(1); postTrainingScoreValue.title = `Average 'Post Training Score' across ${countPostTraining} stores with data`; }
-        if (eliteValue) { eliteValue.textContent = formatPercent(avgElite); eliteValue.title = `Average 'Elite' score % across ${countElite} stores with data`; }
+        
+        // Update Elite Score DOM element and its title
+        if (eliteValue) { 
+            eliteValue.textContent = formatPercent(avgElite); 
+            eliteValue.title = `Average 'Elite' score % across ${countElite} stores with data (excluding Verizon COR sub-channel)`;
+        }
         
         updateContextualSummary(data);
     };
 
     const updateContextualSummary = (data) => {
+        // ... (same as before)
         [percentQuarterlyTerritoryTargetP, territoryRevPercentP, districtRevPercentP, regionRevPercentP].forEach(p => {if (p) p.style.display = 'none'});
         if (data.length === 0) return;
 
@@ -641,6 +670,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateCharts = (data) => {
+        // ... (same as before)
         if (mainChartInstance) {
             mainChartInstance.destroy();
             mainChartInstance = null;
@@ -728,6 +758,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateAttachRateTable = (data) => {
+        // ... (same as before)
         if (!attachRateTableBody || !attachRateTableFooter) return;
         attachRateTableBody.innerHTML = '';
         attachRateTableFooter.innerHTML = '';
@@ -845,6 +876,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const handleSort = (event) => {
+        // ... (same as before)
          const headerCell = event.target.closest('th');
          if (!headerCell?.classList.contains('sortable')) return;
          const sortKey = headerCell.dataset.sort;
@@ -860,6 +892,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateSortArrows = () => {
+        // ... (same as before)
         if (!attachRateTable) return;
         attachRateTable.querySelectorAll('th.sortable .sort-arrow').forEach(arrow => {
             arrow.className = 'sort-arrow';
@@ -872,6 +905,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const showStoreDetails = (storeData) => {
+        // ... (same as before)
         if (!storeDetailsContent || !storeDetailsSection || !closeStoreDetailsButton) return;
 
         const addressParts = [
@@ -917,6 +951,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const hideStoreDetails = () => {
+        // ... (same as before)
         if (!storeDetailsContent || !storeDetailsSection || !closeStoreDetailsButton) return;
         storeDetailsContent.innerHTML = 'Select a store from the table or chart for details, or apply filters resulting in a single store.';
         storeDetailsSection.style.display = 'none';
@@ -925,6 +960,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
      const highlightTableRow = (storeName) => {
+        // ... (same as before)
          if (selectedStoreRow) {
              selectedStoreRow.classList.remove('selected-row');
              selectedStoreRow = null;
@@ -943,6 +979,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const exportData = () => {
+        // ... (same as before)
         if (filteredData.length === 0) {
             alert("No filtered data to export.");
             return;
@@ -991,6 +1028,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const generateEmailBody = () => {
+        // ... (same as before, tooltip note on Rev AR% line is already helpful)
         if (filteredData.length === 0) return "No data available based on current filters.";
         let body = "FSM Dashboard Summary:\n";
         body += "---------------------------------\n";
@@ -1001,8 +1039,6 @@ document.addEventListener('DOMContentLoaded', () => {
         body += `- Total Revenue (incl. DF): ${revenueWithDFValue?.textContent || 'N/A'}\n`;
         body += `- QTD Revenue Target: ${qtdRevenueTargetValue?.textContent || 'N/A'}\n`;
         body += `- QTD Gap: ${qtdGapValue?.textContent || 'N/A'}\n`;
-        // The revARValue.title is set in updateSummary, textContent will show the value.
-        // Adding context to the email body about the Rev AR% calculation here for clarity.
         body += `- Rev AR%: ${revARValue?.textContent || 'N/A'} (Calculated as: Total Revenue w/DF / Total QTD Revenue Target)\n`;
         body += `- % Store Quarterly Target: ${percentQuarterlyStoreTargetValue?.textContent || 'N/A'}\n`;
         body += `- Total Units (incl. DF): ${unitsWithDFValue?.textContent || 'N/A'}\n`;
@@ -1013,7 +1049,9 @@ document.addEventListener('DOMContentLoaded', () => {
         body += `- Rep Skill Ach: ${repSkillAchValue?.textContent || 'N/A'}\n`;
         body += `- (V)PMR Ach: ${vPmrAchValue?.textContent || 'N/A'}\n`;
         body += `- Post Training Score: ${postTrainingScoreValue?.textContent || 'N/A'}\n`;
-        body += `- Elite Score %: ${eliteValue?.textContent || 'N/A'}\n\n`;
+        // The eliteValue.title is updated by JS, its textContent will show the value.
+        // Adding context to email for Elite Score % calculation.
+        body += `- Elite Score %: ${eliteValue?.textContent || 'N/A'} (Excludes Verizon COR sub-channel)\n\n`;
         body += "*Averages calculated only using stores with valid data for each metric.\n\n";
 
          const sortedForEmail = [...filteredData].sort((a, b) => {
@@ -1038,6 +1076,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const getFilterSummary = () => {
+        // ... (same as before)
         let summary = [];
         if (regionFilter?.value !== 'ALL') summary.push(`Region: ${regionFilter.value}`);
         if (districtFilter?.value !== 'ALL') summary.push(`District: ${districtFilter.value}`);
@@ -1055,6 +1094,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const handleShareEmail = () => {
+        // ... (same as before)
         if (!emailRecipientInput || !shareStatus) return;
         const recipient = emailRecipientInput.value;
         if (!recipient || !/\S+@\S+\.\S+/.test(recipient)) {
@@ -1079,18 +1119,21 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
      const selectAllOptions = (selectElement) => {
+        // ... (same as before)
          if (!selectElement) return;
          Array.from(selectElement.options).forEach(option => option.selected = true);
          if (selectElement === territoryFilter) updateStoreFilterOptionsBasedOnHierarchy();
     };
 
      const deselectAllOptions = (selectElement) => {
+        // ... (same as before)
          if (!selectElement) return;
          selectElement.selectedIndex = -1;
          if (selectElement === territoryFilter) updateStoreFilterOptionsBasedOnHierarchy();
     };
 
     // --- Event Listeners ---
+    // ... (same as before)
     excelFileInput?.addEventListener('change', handleFile);
     applyFiltersButton?.addEventListener('click', applyFilters);
     storeSearch?.addEventListener('input', filterStoreOptions);
