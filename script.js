@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-08T21:15:26EDT
-//    Summary: Corrected Google Maps URL format in showStoreDetails. Verified flag filter ID logic. Added minor comments.
+//    Timestamp: 2025-05-08T22:17:56EDT
+//    Summary: Modified 'Rev AR%' calculation in updateSummary to be sum of 'Revenue w/DF' / sum of 'QTD Revenue Target'.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Configuration ---
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- DOM Elements ---
     const excelFileInput = document.getElementById('excelFile');
-    const statusDiv = document.getElementById('status'); // Reference to the moved status element
+    const statusDiv = document.getElementById('status');
     const loadingIndicator = document.getElementById('loadingIndicator');
     const filterLoadingIndicator = document.getElementById('filterLoadingIndicator');
     const filterArea = document.getElementById('filterArea');
@@ -48,10 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const storeFilter = document.getElementById('storeFilter');
     const storeSearch = document.getElementById('storeSearch');
 
-    // FLAG FILTER CHECKBOX MAPPING - This looks correct based on current HTML
     const flagFiltersCheckboxes = FLAG_HEADERS.reduce((acc, header) => {
         let expectedId = '';
-        // Manually map headers to their specific HTML IDs
         switch (header) {
             case 'SUPER STORE':       expectedId = 'superStoreFilter'; break;
             case 'GOLDEN RHINO':      expectedId = 'goldenRhinoFilter'; break;
@@ -61,12 +59,11 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'EV ROUTE':          expectedId = 'evRouteFilter'; break;
             default:
                 console.warn(`Unknown flag header encountered during mapping: ${header}`);
-                return acc; // Skip unknown headers
+                return acc;
         }
-
         const element = document.getElementById(expectedId);
         if (element) {
-            acc[header] = element; // Store the element reference using the original header name as key
+            acc[header] = element;
         } else {
             console.warn(`Flag filter checkbox not found for ID: ${expectedId} (Header: ${header}) upon initial mapping. Check HTML.`);
         }
@@ -84,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const qtdGapValue = document.getElementById('qtdGapValue');
     const quarterlyRevenueTargetValue = document.getElementById('quarterlyRevenueTargetValue');
     const percentQuarterlyStoreTargetValue = document.getElementById('percentQuarterlyStoreTargetValue');
-    const revARValue = document.getElementById('revARValue');
+    const revARValue = document.getElementById('revARValue'); // This is the element we'll update
     const unitsWithDFValue = document.getElementById('unitsWithDFValue');
     const unitTargetValue = document.getElementById('unitTargetValue');
     const unitAchievementValue = document.getElementById('unitAchievementValue');
@@ -95,7 +92,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const vPmrAchValue = document.getElementById('vPmrAchValue');
     const postTrainingScoreValue = document.getElementById('postTrainingScoreValue');
     const eliteValue = document.getElementById('eliteValue');
-    // Contextual Summary Elements & Paragraphs
     const percentQuarterlyTerritoryTargetP = document.getElementById('percentQuarterlyTerritoryTargetP');
     const territoryRevPercentP = document.getElementById('territoryRevPercentP');
     const districtRevPercentP = document.getElementById('districtRevPercentP');
@@ -105,7 +101,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const districtRevPercentValue = document.getElementById('districtRevPercentValue');
     const regionRevPercentValue = document.getElementById('regionRevPercentValue');
 
-
     // Table Elements
     const attachRateTableBody = document.getElementById('attachRateTableBody');
     const attachRateTableFooter = document.getElementById('attachRateTableFooter');
@@ -114,8 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportCsvButton = document.getElementById('exportCsvButton');
 
     // Chart Elements
-    const mainChartCanvas = document.getElementById('mainChartCanvas')?.getContext('2d'); // Added optional chaining for safety
-    // const secondaryChartCanvas = document.getElementById('secondaryChartCanvas'); // Placeholder
+    const mainChartCanvas = document.getElementById('mainChartCanvas')?.getContext('2d');
 
     // Store Details Elements
     const storeDetailsSection = document.getElementById('storeDetailsSection');
@@ -129,11 +123,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Global State ---
     let rawData = [];
-    let filteredData = []; // Data after *all* filters (including store) are applied
+    let filteredData = [];
     let mainChartInstance = null;
-    // let secondaryChartInstance = null; // Placeholder
-    let storeOptions = []; // Holds the *currently available* store options {value, text} based on other filters
-    let allPossibleStores = []; // Holds *all* store options {value, text} from the initial file load
+    let storeOptions = [];
+    let allPossibleStores = [];
     let currentSort = { column: 'Store', ascending: true };
     let selectedStoreRow = null;
 
@@ -154,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const parsePercent = (value) => {
          if (value === null || value === undefined || String(value).trim() === '') return NaN;
-         if (typeof value === 'number') return value; // Assume it's already decimal (e.g., 0.25 for 25%)
+         if (typeof value === 'number') return value;
          if (typeof value === 'string') {
             const numStr = value.replace('%', '');
             const num = parseFloat(numStr);
@@ -211,19 +204,17 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Core Functions ---
-
     const handleFile = async (event) => {
         const file = event.target.files[0];
         if (!file) {
             if (statusDiv) statusDiv.textContent = 'No file selected.';
             return;
         }
-
         if (statusDiv) statusDiv.textContent = 'Reading file...';
         showLoading(true);
         if (filterArea) filterArea.style.display = 'none';
         if (resultsArea) resultsArea.style.display = 'none';
-        resetFilters();
+        resetUI(); // Full reset before loading new file data
 
         try {
             const data = await file.arrayBuffer();
@@ -254,9 +245,9 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error processing file:', error);
             if (statusDiv) statusDiv.textContent = `Error: ${error.message}`;
             rawData = [];
-            allPossibleStores = [];
+            allPossibleStores = []; // Ensure cleared on error
             filteredData = [];
-            resetUI();
+            resetUI(); // Call resetUI again to ensure clean state after error
         } finally {
             showLoading(false);
             if (excelFileInput) excelFileInput.value = '';
@@ -266,7 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const populateFilters = (data) => {
         setOptions(regionFilter, getUniqueValues(data, 'REGION'));
         setOptions(districtFilter, getUniqueValues(data, 'DISTRICT'));
-        setMultiSelectOptions(territoryFilter, getUniqueValues(data, 'Q2 Territory').slice(1)); // Exclude 'ALL'
+        setMultiSelectOptions(territoryFilter, getUniqueValues(data, 'Q2 Territory').slice(1));
         setOptions(fsmFilter, getUniqueValues(data, 'FSM NAME'));
         setOptions(channelFilter, getUniqueValues(data, 'CHANNEL'));
         setOptions(subchannelFilter, getUniqueValues(data, 'SUB_CHANNEL'));
@@ -317,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedDealer = dealerFilter?.value;
         const selectedFlags = {};
         Object.entries(flagFiltersCheckboxes).forEach(([key, input]) => {
-             if (input?.checked) { // Added optional chaining for input
+             if (input?.checked) {
                  selectedFlags[key] = true;
              }
          });
@@ -346,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const previouslySelectedStores = storeFilter ? new Set(Array.from(storeFilter.selectedOptions).map(opt => opt.value)) : new Set();
 
         setStoreFilterOptions(storeOptions, false);
-        filterStoreOptions(); // Apply search term to the newly populated list
+        filterStoreOptions(); 
 
         if (storeFilter) {
             Array.from(storeFilter.options).forEach(option => {
@@ -400,12 +391,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (storeDeselectAll) storeDeselectAll.disabled = storeFilter.disabled || filteredOptions.length === 0;
     };
 
-
     const applyFilters = () => {
         showLoading(true, true);
         if (resultsArea) resultsArea.style.display = 'none';
 
-        setTimeout(() => { // Allow UI to update with loading indicator
+        setTimeout(() => {
             try {
                 const selectedRegion = regionFilter?.value;
                 const selectedDistrict = districtFilter?.value;
@@ -417,7 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const selectedStores = storeFilter ? Array.from(storeFilter.selectedOptions).map(opt => opt.value) : [];
                 const selectedFlags = {};
                  Object.entries(flagFiltersCheckboxes).forEach(([key, input]) => {
-                     if (input?.checked) { // Added optional chaining for input
+                     if (input?.checked) {
                          selectedFlags[key] = true;
                      }
                  });
@@ -473,19 +463,28 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const resetFilters = () => {
-         const allOption = '<option value="ALL">-- Load File First --</option>';
+         const allOptionHTML = '<option value="ALL">-- Load File First --</option>';
          [regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(sel => { 
-             if (sel) { sel.value = 'ALL'; sel.disabled = true; if(sel.innerHTML.trim() === '') sel.innerHTML = allOption;}
+             if (sel) { 
+                sel.innerHTML = allOptionHTML; // Reset options first
+                sel.value = 'ALL'; 
+                sel.disabled = true;
+            }
          });
-         if (territoryFilter) { territoryFilter.selectedIndex = -1; territoryFilter.disabled = true; if(territoryFilter.innerHTML.trim() === '') territoryFilter.innerHTML = allOption.replace('-- Load File First --', '-- Select Territories --');}
+         if (territoryFilter) { 
+            territoryFilter.innerHTML = '<option value="ALL">-- Load File First --</option>'; // Reset options
+            territoryFilter.selectedIndex = -1; 
+            territoryFilter.disabled = true; 
+        }
          if (storeFilter) {
-             storeFilter.innerHTML = allOption.replace('-- Load File First --', '-- Select Stores --');
+             storeFilter.innerHTML = '<option value="ALL">-- Load File First --</option>'; // Reset options
              storeFilter.selectedIndex = -1;
              storeFilter.disabled = true;
          }
          if (storeSearch) { storeSearch.value = ''; storeSearch.disabled = true; }
+         
          storeOptions = []; 
-         // allPossibleStores = []; // Should not clear allPossibleStores on reset, only on new file load
+         // allPossibleStores is cleared in resetUI, which is called before new file load.
 
          Object.values(flagFiltersCheckboxes).forEach(input => { if(input) {input.checked = false; input.disabled = true;} });
 
@@ -514,9 +513,11 @@ document.addEventListener('DOMContentLoaded', () => {
          if (attachRateTableFooter) attachRateTableFooter.innerHTML = '';
          if (attachTableStatus) attachTableStatus.textContent = '';
          hideStoreDetails();
-         updateSummary([]); // Clears summary fields
+         updateSummary([]); 
          if(statusDiv) statusDiv.textContent = 'No file selected.';
-         allPossibleStores = []; // Clear all stores when UI is fully reset (e.g. for new file)
+         allPossibleStores = []; // Clear all stores when UI is fully reset
+         rawData = []; // Clear raw data
+         filteredData = []; // Clear filtered data
      };
 
     const updateSummary = (data) => {
@@ -540,7 +541,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const sumVisits = data.reduce((sum, row) => sum + parseNumber(safeGet(row, 'Visit count', 0)), 0);
         const sumTrainings = data.reduce((sum, row) => sum + parseNumber(safeGet(row, 'Trainings', 0)), 0);
 
-        let sumRevAR = 0, countRevAR = 0;
+        // Variables for other averages (excluding Rev AR%)
         let sumConnectivity = 0, countConnectivity = 0;
         let sumRepSkill = 0, countRepSkill = 0;
         let sumPmr = 0, countPmr = 0;
@@ -548,16 +549,28 @@ document.addEventListener('DOMContentLoaded', () => {
         let sumElite = 0, countElite = 0;
 
         data.forEach(row => {
-            let valStr;
-            valStr = safeGet(row, 'Rev AR%', null); if (isValidForAverage(valStr)) { sumRevAR += parsePercent(valStr); countRevAR++; }
-            valStr = safeGet(row, 'Retail Mode Connectivity', null); if (isValidForAverage(valStr)) { sumConnectivity += parsePercent(valStr); countConnectivity++; }
-            valStr = safeGet(row, 'Rep Skill Ach', null); if (isValidForAverage(valStr)) { sumRepSkill += parsePercent(valStr); countRepSkill++; }
-            valStr = safeGet(row, '(V)PMR Ach', null); if (isValidForAverage(valStr)) { sumPmr += parsePercent(valStr); countPmr++; }
-            valStr = safeGet(row, 'Post Training Score', null); if (isValidForAverage(valStr)) { sumPostTraining += parseNumber(valStr); countPostTraining++; }
-            valStr = safeGet(row, 'Elite', null); if (isValidForAverage(valStr)) { sumElite += parsePercent(valStr); countElite++; }
+            let valStr; // Use a consistent variable name for the string value from safeGet
+            // Retail Mode Connectivity
+            valStr = safeGet(row, 'Retail Mode Connectivity', null); 
+            if (isValidForAverage(valStr)) { sumConnectivity += parsePercent(valStr); countConnectivity++; }
+            // Rep Skill Ach
+            valStr = safeGet(row, 'Rep Skill Ach', null); 
+            if (isValidForAverage(valStr)) { sumRepSkill += parsePercent(valStr); countRepSkill++; }
+            // (V)PMR Ach
+            valStr = safeGet(row, '(V)PMR Ach', null); 
+            if (isValidForAverage(valStr)) { sumPmr += parsePercent(valStr); countPmr++; }
+            // Post Training Score
+            valStr = safeGet(row, 'Post Training Score', null); 
+            if (isValidForAverage(valStr)) { sumPostTraining += parseNumber(valStr); countPostTraining++; }
+            // Elite
+            valStr = safeGet(row, 'Elite', null); 
+            if (isValidForAverage(valStr)) { sumElite += parsePercent(valStr); countElite++; }
         });
 
-        const avgRevAR = countRevAR > 0 ? sumRevAR / countRevAR : NaN;
+        // NEW CALCULATION for Rev AR% based on sums
+        const calculatedRevAR = sumQtdTarget === 0 ? NaN : sumRevenue / sumQtdTarget;
+
+        // Calculate other averages
         const avgConnectivity = countConnectivity > 0 ? sumConnectivity / countConnectivity : NaN;
         const avgRepSkill = countRepSkill > 0 ? sumRepSkill / countRepSkill : NaN;
         const avgPmr = countPmr > 0 ? sumPmr / countPmr : NaN;
@@ -567,6 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const overallPercentStoreTarget = sumQuarterlyTarget !== 0 ? sumRevenue / sumQuarterlyTarget : NaN;
         const overallUnitAchievement = sumUnitTarget !== 0 ? sumUnits / sumUnitTarget : NaN;
 
+        // Update DOM Elements for sums
         if (revenueWithDFValue) { revenueWithDFValue.textContent = formatCurrency(sumRevenue); revenueWithDFValue.title = `Sum of 'Revenue w/DF' for ${totalCount} filtered stores`; }
         if (qtdRevenueTargetValue) { qtdRevenueTargetValue.textContent = formatCurrency(sumQtdTarget); qtdRevenueTargetValue.title = `Sum of 'QTD Revenue Target' for ${totalCount} filtered stores`; }
         if (qtdGapValue) { qtdGapValue.textContent = formatCurrency(sumRevenue - sumQtdTarget); qtdGapValue.title = `Calculated Gap (Total Revenue - QTD Target) for ${totalCount} filtered stores`; }
@@ -576,10 +590,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (visitCountValue) { visitCountValue.textContent = formatNumber(sumVisits); visitCountValue.title = `Sum of 'Visit count' for ${totalCount} filtered stores`; }
         if (trainingCountValue) { trainingCountValue.textContent = formatNumber(sumTrainings); trainingCountValue.title = `Sum of 'Trainings' for ${totalCount} filtered stores`; }
 
+        // Update DOM Element for NEW Rev AR%
+        if (revARValue) { 
+            revARValue.textContent = formatPercent(calculatedRevAR);
+            revARValue.title = `Overall Rev AR% (Total 'Revenue w/DF' / Total 'QTD Revenue Target')`;
+        }
+
+        // Update DOM Elements for other overall percentages and averages
         if (percentQuarterlyStoreTargetValue) { percentQuarterlyStoreTargetValue.textContent = formatPercent(overallPercentStoreTarget); percentQuarterlyStoreTargetValue.title = `Overall % Quarterly Target (Total Revenue / Total Quarterly Target)`; }
         if (unitAchievementValue) { unitAchievementValue.textContent = formatPercent(overallUnitAchievement); unitAchievementValue.title = `Overall Unit Achievement % (Total Units / Total Unit Target)`; }
-
-        if (revARValue) { revARValue.textContent = formatPercent(avgRevAR); revARValue.title = `Average 'Rev AR%' across ${countRevAR} stores with data`; }
+        
         if (retailModeConnectivityValue) { retailModeConnectivityValue.textContent = formatPercent(avgConnectivity); retailModeConnectivityValue.title = `Average 'Retail Mode Connectivity' across ${countConnectivity} stores with data`; }
         if (repSkillAchValue) { repSkillAchValue.textContent = formatPercent(avgRepSkill); repSkillAchValue.title = `Average 'Rep Skill Ach' across ${countRepSkill} stores with data`; }
         if (vPmrAchValue) { vPmrAchValue.textContent = formatPercent(avgPmr); vPmrAchValue.title = `Average '(V)PMR Ach' across ${countPmr} stores with data`; }
@@ -602,7 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
             data.forEach(row => {
                 const valStr = safeGet(row, column, null);
                 if (isValidForAverage(valStr)) {
-                    sum += parsePercent(valStr); // Assuming these are percentages that need parsing
+                    sum += parsePercent(valStr);
                     count++;
                 }
             });
@@ -636,14 +656,14 @@ document.addEventListener('DOMContentLoaded', () => {
             mainChartInstance.destroy();
             mainChartInstance = null;
         }
-        if (!mainChartCanvas || data.length === 0) return; // Ensure canvas context exists
+        if (!mainChartCanvas || data.length === 0) return;
 
         const sortedData = [...data].sort((a, b) => parseNumber(safeGet(b, 'Revenue w/DF', 0)) - parseNumber(safeGet(a, 'Revenue w/DF', 0)));
         const chartData = sortedData.slice(0, TOP_N_CHART);
 
         const labels = chartData.map(row => safeGet(row, 'Store', 'Unknown Store'));
         const revenueDataSet = chartData.map(row => parseNumber(safeGet(row, 'Revenue w/DF', 0)));
-        const targetDataSet = chartData.map(row => parseNumber(safeGet(row, 'QTD Revenue Target', 0))); // Using QTD Target for chart line
+        const targetDataSet = chartData.map(row => parseNumber(safeGet(row, 'QTD Revenue Target', 0)));
 
         const backgroundColors = chartData.map((_, index) => revenueDataSet[index] >= targetDataSet[index] ? 'rgba(75, 192, 192, 0.6)' : 'rgba(255, 99, 132, 0.6)');
         const borderColors = chartData.map((_, index) => revenueDataSet[index] >= targetDataSet[index] ? 'rgba(75, 192, 192, 1)' : 'rgba(255, 99, 132, 1)');
@@ -661,7 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         borderWidth: 1
                     },
                     {
-                        label: 'QTD Revenue Target', // Changed label to match data
+                        label: 'QTD Revenue Target',
                         data: targetDataSet,
                         type: 'line',
                         borderColor: 'rgba(255, 206, 86, 1)',
@@ -690,9 +710,9 @@ document.addEventListener('DOMContentLoaded', () => {
                                 if (label) label += ': ';
                                 if (context.parsed.y !== null) {
                                     label += formatCurrency(context.parsed.y);
-                                    if (context.dataset.type !== 'line' && chartData[context.dataIndex]) { // For bars
+                                    if (context.dataset.type !== 'line' && chartData[context.dataIndex]) {
                                         const storeData = chartData[context.dataIndex];
-                                        const percentQtrTarget = parsePercent(safeGet(storeData, '% Quarterly Revenue Target', 0)); // Use '% Quarterly Revenue Target'
+                                        const percentQtrTarget = parsePercent(safeGet(storeData, '% Quarterly Revenue Target', 0));
                                         if (!isNaN(percentQtrTarget)) {
                                             label += ` (${formatPercent(percentQtrTarget)} of Qtr Target)`;
                                         }
@@ -745,7 +765,7 @@ document.addEventListener('DOMContentLoaded', () => {
              } else {
                  valA = String(valA).toLowerCase();
                  valB = String(valB).toLowerCase();
-                 return currentSort.ascending ? valA.localeCompare(valB) : valB.localeCompare(valB);
+                 return currentSort.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
              }
          });
 
@@ -759,7 +779,7 @@ document.addEventListener('DOMContentLoaded', () => {
              data.forEach(row => {
                  const valStr = safeGet(row, key, null);
                  if (isValidForAverage(valStr)) {
-                     sum += parsePercent(valStr); // All these metrics are percentages
+                     sum += parsePercent(valStr);
                      count++;
                  }
              });
@@ -769,7 +789,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sortedData.forEach(row => {
             const tr = document.createElement('tr');
             const storeName = safeGet(row, 'Store', null);
-            if (storeName && String(storeName).trim() !== '') { // Ensure storeName is valid
+            if (storeName && String(storeName).trim() !== '') {
                  tr.dataset.storeName = storeName;
                  tr.onclick = () => {
                      showStoreDetails(row);
@@ -792,18 +812,20 @@ document.addEventListener('DOMContentLoaded', () => {
                      const td = document.createElement('td');
                      const rawValue = safeGet(row, col.key, null);
                      const isPercentCol = col.key.includes('Attach Rate') || col.key.includes('% Target');
-                     const numericValue = isPercentCol ? parsePercent(rawValue) : (col.key === 'Store' ? rawValue : parseNumber(rawValue));
+                     // For numericValue, ensure 'Store' remains a string, others are parsed.
+                     const numericValue = (col.key === 'Store') ? rawValue : (isPercentCol ? parsePercent(rawValue) : parseNumber(rawValue));
 
                      let formattedValue;
                      if (rawValue === null || (col.key !== 'Store' && isNaN(numericValue)) || String(rawValue).trim() === '') {
                          formattedValue = 'N/A';
                      } else {
+                         // Use col.format if it exists (for percentages), otherwise use the numericValue (which could be a string for 'Store')
                          formattedValue = typeof col.format === 'function' ? col.format(numericValue) : numericValue;
                      }
                      td.textContent = formattedValue;
                      td.title = `${col.key}: ${formattedValue}`;
 
-                     if (col.highlight && !isNaN(averages[col.key]) && !isNaN(numericValue) && numericValue !== null) {
+                     if (col.highlight && !isNaN(averages[col.key]) && typeof numericValue === 'number' && !isNaN(numericValue)) {
                           td.classList.toggle('highlight-green', numericValue >= averages[col.key]);
                           td.classList.toggle('highlight-red', numericValue < averages[col.key]);
                       }
@@ -821,7 +843,7 @@ document.addEventListener('DOMContentLoaded', () => {
             avgLabelCell.style.textAlign = "right";
             avgLabelCell.style.fontWeight = "bold";
 
-            averageMetrics.forEach(key => { // Iterate in the same order as columns
+            averageMetrics.forEach(key => {
                  const td = footerRow.insertCell();
                  const avgValue = averages[key];
                  td.textContent = formatPercent(avgValue);
@@ -847,19 +869,20 @@ document.addEventListener('DOMContentLoaded', () => {
              currentSort.column = sortKey;
              currentSort.ascending = true;
          }
-         updateAttachRateTable(filteredData); // Re-sort and re-render table with current filteredData
+         updateAttachRateTable(filteredData);
     };
 
     const updateSortArrows = () => {
         if (!attachRateTable) return;
         attachRateTable.querySelectorAll('th.sortable .sort-arrow').forEach(arrow => {
-            arrow.className = 'sort-arrow'; // Reset classes
-            arrow.textContent = '';
+            arrow.className = 'sort-arrow';
+            arrow.textContent = ''; // Clear text if using CSS ::after for arrows
         });
         const currentHeaderArrow = attachRateTable.querySelector(`th[data-sort="${currentSort.column}"] .sort-arrow`);
         if (currentHeaderArrow) {
             currentHeaderArrow.classList.add(currentSort.ascending ? 'asc' : 'desc');
-            // No need to set textContent for arrow character if using ::after pseudo-elements in CSS for arrows
+            // CSS ::after will add the arrow character. If not using ::after, uncomment below:
+            // currentHeaderArrow.textContent = currentSort.ascending ? ' ▲' : ' ▼';
         }
     };
 
@@ -869,20 +892,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const addressParts = [
             safeGet(storeData, 'ADDRESS1', null), safeGet(storeData, 'CITY', null),
             safeGet(storeData, 'STATE', null), safeGet(storeData, 'ZIPCODE', null)
-        ].filter(part => part && String(part).trim() !== ''); // Ensure parts are valid
+        ].filter(part => part && String(part).trim() !== '');
         const addressString = addressParts.length > 0 ? addressParts.join(', ') : 'N/A';
 
-        const latitude = parseNumber(safeGet(storeData, 'LATITUDE_ORG', NaN)); // Ensure numeric
-        const longitude = parseNumber(safeGet(storeData, 'LONGITUDE_ORG', NaN)); // Ensure numeric
+        const latitude = parseNumber(safeGet(storeData, 'LATITUDE_ORG', NaN));
+        const longitude = parseNumber(safeGet(storeData, 'LONGITUDE_ORG', NaN));
         let mapsLinkHtml = `<p style="color: #aaa; font-style: italic;">(Map coordinates not available)</p>`;
         if (!isNaN(latitude) && !isNaN(longitude)) {
-            // Corrected and safer Google Maps URL
             const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
             mapsLinkHtml = `<p><a href="${mapsUrl}" target="_blank" title="Open in Google Maps">View on Google Maps</a></p>`;
         }
 
         let flagSummaryHtml = FLAG_HEADERS.map(flag => {
-            const flagValue = safeGet(storeData, flag, 'NO'); // Default to 'NO' if not present
+            const flagValue = safeGet(storeData, flag, 'NO');
             const isTrue = (flagValue === true || String(flagValue).toUpperCase() === 'YES' || String(flagValue) === 'Y' || flagValue === 1 || String(flagValue) === '1');
             return `<span title="${flag.replace(/_/g, ' ')}" data-flag="${isTrue}">${flag.replace(/_/g, ' ')} ${isTrue ? '✔' : '✘'}</span>`;
         }).join(' | ');
@@ -920,11 +942,10 @@ document.addEventListener('DOMContentLoaded', () => {
      const highlightTableRow = (storeName) => {
          if (selectedStoreRow) {
              selectedStoreRow.classList.remove('selected-row');
-             selectedStoreRow = null; // Clear previous selection
+             selectedStoreRow = null;
          }
         if (storeName && attachRateTableBody) {
              try {
-                 // CSS.escape is important for store names with special characters
                  selectedStoreRow = attachRateTableBody.querySelector(`tr[data-store-name="${CSS.escape(storeName)}"]`);
                  if (selectedStoreRow) {
                      selectedStoreRow.classList.add('selected-row');
@@ -943,29 +964,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         try {
             if (!attachRateTable) throw new Error("Attach rate table not found for headers.");
-            // Get headers from table, more robustly
             const headers = Array.from(attachRateTable.querySelectorAll('thead th'))
                                  .map(th => th.dataset.sort || th.textContent.replace(/ [▲▼]$/, '').trim());
 
              const dataToExport = filteredData.map(row => {
-                return headers.map(headerKey => { // Use headerKey that matches data keys
-                    let value = safeGet(row, headerKey, ''); // Use the key from dataset.sort which should match data keys
-
+                return headers.map(headerKey => {
+                    let value = safeGet(row, headerKey, '');
                     const isPercentLike = headerKey.includes('%') || headerKey.includes('Rate') || headerKey.includes('Ach') || headerKey.includes('Connectivity') || headerKey.includes('Elite');
 
                     if (isPercentLike) {
-                         const numVal = parsePercent(value); // value here is already from safeGet
-                         return isNaN(numVal) ? '' : numVal; // Export as decimal
+                         const numVal = parsePercent(value);
+                         return isNaN(numVal) ? '' : numVal;
                      } else {
-                         // For non-percentage, if it's a number, export as number, otherwise as string (quoted if needed)
                          const numVal = parseNumber(value);
-                         if (!isNaN(numVal) && typeof value !== 'boolean' && String(value).trim() !== '') { // Ensure it's a valid number and not just whitespace parsed to 0
+                         if (!isNaN(numVal) && typeof value !== 'boolean' && String(value).trim() !== '') {
                              return numVal;
                          }
                          if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
                              return `"${value.replace(/"/g, '""')}"`;
                          }
-                         return value; // Return as is if simple string or other
+                         return value;
                      }
                 });
              });
@@ -998,8 +1016,9 @@ document.addEventListener('DOMContentLoaded', () => {
         body += `- Total Revenue (incl. DF): ${revenueWithDFValue?.textContent || 'N/A'}\n`;
         body += `- QTD Revenue Target: ${qtdRevenueTargetValue?.textContent || 'N/A'}\n`;
         body += `- QTD Gap: ${qtdGapValue?.textContent || 'N/A'}\n`;
+        // Note: The revARValue.textContent will now reflect the new calculation method.
+        body += `- Rev AR%: ${revARValue?.textContent || 'N/A'} (Overall: Total Revenue / Total QTD Target)\n`;
         body += `- % Store Quarterly Target: ${percentQuarterlyStoreTargetValue?.textContent || 'N/A'}\n`;
-        body += `- Rev AR%: ${revARValue?.textContent || 'N/A'}\n`;
         body += `- Total Units (incl. DF): ${unitsWithDFValue?.textContent || 'N/A'}\n`;
         body += `- Unit Achievement %: ${unitAchievementValue?.textContent || 'N/A'}\n`;
         body += `- Total Visits: ${visitCountValue?.textContent || 'N/A'}\n`;
@@ -1011,7 +1030,7 @@ document.addEventListener('DOMContentLoaded', () => {
         body += `- Elite Score %: ${eliteValue?.textContent || 'N/A'}\n\n`;
         body += "*Averages calculated only using stores with valid data for each metric.\n\n";
 
-         const sortedForEmail = [...filteredData].sort((a, b) => { /* Using currentSort from global scope */
+         const sortedForEmail = [...filteredData].sort((a, b) => {
              let valA = safeGet(a, currentSort.column, null); let valB = safeGet(b, currentSort.column, null);
              if (valA === null && valB === null) return 0; if (valA === null) return currentSort.ascending ? -1 : 1; if (valB === null) return currentSort.ascending ? 1 : -1;
              const isPercentCol = currentSort.column.includes('Attach Rate') || currentSort.column.includes('%') || currentSort.column.includes('Target');
@@ -1052,7 +1071,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleShareEmail = () => {
         if (!emailRecipientInput || !shareStatus) return;
         const recipient = emailRecipientInput.value;
-        if (!recipient || !/\S+@\S+\.\S+/.test(recipient)) { // Basic email validation
+        if (!recipient || !/\S+@\S+\.\S+/.test(recipient)) {
             shareStatus.textContent = "Please enter a valid recipient email address.";
             return;
         }
@@ -1060,9 +1079,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const subject = `FSM Dashboard Summary - ${new Date().toLocaleDateString()}`;
             const bodyContent = generateEmailBody();
             const mailtoLink = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyContent)}`;
-             if (mailtoLink.length > 2000) { // Common mailto length limit
+             if (mailtoLink.length > 2000) {
                  shareStatus.textContent = "Generated email body is too long for a mailto link. Try applying more filters or copy the content manually.";
-                 console.warn("Mailto link length exceeds 2000 characters:", mailtoLink.length, "Consider alternative sharing for very large summaries.");
+                 console.warn("Mailto link length exceeds 2000 characters:", mailtoLink.length);
                  return;
              }
             window.location.href = mailtoLink;
@@ -1076,7 +1095,6 @@ document.addEventListener('DOMContentLoaded', () => {
      const selectAllOptions = (selectElement) => {
          if (!selectElement) return;
          Array.from(selectElement.options).forEach(option => option.selected = true);
-         // Trigger change for dependent filters if necessary (e.g., for territory affecting store list)
          if (selectElement === territoryFilter) updateStoreFilterOptionsBasedOnHierarchy();
     };
 
@@ -1096,13 +1114,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     territorySelectAll?.addEventListener('click', () => selectAllOptions(territoryFilter));
     territoryDeselectAll?.addEventListener('click', () => deselectAllOptions(territoryFilter));
-    storeSelectAll?.addEventListener('click', () => selectAllOptions(storeFilter)); // No hierarchy update needed for store itself
+    storeSelectAll?.addEventListener('click', () => selectAllOptions(storeFilter));
     storeDeselectAll?.addEventListener('click', () => deselectAllOptions(storeFilter));
 
     attachRateTable?.querySelector('thead')?.addEventListener('click', handleSort);
 
     // --- Initial Setup ---
-    resetUI(); // Ensure clean state on load
+    resetUI();
     if (!mainChartCanvas) console.warn("Main chart canvas context not found on load. Chart will not render.");
 
 }); // End DOMContentLoaded
