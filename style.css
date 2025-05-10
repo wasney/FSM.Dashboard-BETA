@@ -1,6 +1,6 @@
 /*
-    Timestamp: 2025-05-09T09:01:05EDT
-    Summary: Added styling for the Excel template download link and its container.
+    Timestamp: 2025-05-09T06:54:45EDT
+    Summary: Added styles for 'filter-actions-container' and 'reset-filters-button'. Adjusted 'apply-filters-button' for flex layout.
 */
 
 :root {
@@ -42,7 +42,7 @@
     --highlight-red-text: #ffb0b0;
     --spinner-main-color: #99ccff;
     --spinner-track-color: rgba(153, 204, 255, 0.3);
-    --link-color: #77b6ff; /* Using secondary accent for general links for now */
+    --link-color: var(--heading-color); /* Consistent with primary accent */
     --close-button-bg: #555;
     --close-button-text: #eee;
     --close-button-hover-bg: #777;
@@ -92,7 +92,7 @@ body.light-theme {
     --highlight-red-text: #721c24;
     --spinner-main-color: #007bff;
     --spinner-track-color: rgba(0, 123, 255, 0.2);
-    --link-color: #0056b3; /* Darker blue for links in light theme */
+    --link-color: #007bff;
     --close-button-bg: #e0e0e0;
     --close-button-text: #333;
     --close-button-hover-bg: #c0c0c0;
@@ -173,23 +173,6 @@ h3 { margin-top: 0; margin-bottom: 1rem; color: var(--heading-color); font-weigh
 .spinner-small { border: 3px solid var(--spinner-track-color); border-radius: 50%; border-top: 3px solid var(--spinner-main-color); width: 16px; height: 16px; animation: spin 1s linear infinite; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* --- Template Download Link --- */
-.template-download-link-container {
-    text-align: center; 
-    margin-top: 1rem; 
-    margin-bottom: 0.5rem; 
-}
-.template-download-link {
-    color: var(--link-color); 
-    text-decoration: underline;
-    font-size: 0.9em;
-}
-.template-download-link:hover,
-.template-download-link:focus {
-    color: var(--heading-color); /* Use a slightly different hover, like main heading */
-    text-decoration: none; 
-}
-
 /* --- Filter Controls --- */
 #filterArea { max-width: 1200px; }
 .filter-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem 1.5rem; margin-bottom: 1.5rem; }
@@ -215,12 +198,60 @@ h3 { margin-top: 0; margin-bottom: 1rem; color: var(--heading-color); font-weigh
 .flag-toggles label:has(input:disabled) { cursor: not-allowed; color: var(--disabled-text); }
 
 /* --- Filter Action Buttons --- */
-.filter-actions-container { display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap; }
-.apply-filters-button { max-width: 250px; padding: 0.7rem 1rem; background-color: var(--button-primary-bg); color: var(--button-primary-text); border: none; border-radius: 0.25rem; font-weight: 600; font-size: 1rem; cursor: pointer; transition: background-color 0.2s ease; flex-grow: 0; flex-shrink: 0;}
-.apply-filters-button:hover:not(:disabled) { background-color: var(--button-primary-hover-bg); }
-.reset-filters-button { max-width: 250px; padding: 0.7rem 1rem; background-color: var(--button-bg); color: var(--button-text); border: 1px solid var(--button-border); border-radius: 0.25rem; font-weight: 500; font-size: 1rem; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease; flex-grow: 0; flex-shrink: 0; }
-.reset-filters-button:hover:not(:disabled) { background-color: var(--button-hover-bg); color: var(--button-hover-text); border-color: var(--button-hover-bg); }
-.reset-filters-button:disabled { background-color: var(--disabled-bg) !important; color: var(--disabled-text) !important; border-color: var(--disabled-border) !important; cursor: not-allowed !important; opacity: 0.6; }
+.filter-actions-container {
+    display: flex;
+    justify-content: center; 
+    align-items: center;
+    gap: 1rem; 
+    margin-top: 1.5rem; 
+    flex-wrap: wrap; 
+}
+
+.apply-filters-button {
+    max-width: 250px; 
+    padding: 0.7rem 1rem;
+    background-color: var(--button-primary-bg);
+    color: var(--button-primary-text);
+    border: none;
+    border-radius: 0.25rem;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    flex-grow: 0; 
+    flex-shrink: 0;
+}
+.apply-filters-button:hover:not(:disabled) { 
+    background-color: var(--button-primary-hover-bg); 
+}
+
+.reset-filters-button {
+    max-width: 250px;
+    padding: 0.7rem 1rem;
+    background-color: var(--button-bg); 
+    color: var(--button-text);
+    border: 1px solid var(--button-border);
+    border-radius: 0.25rem;
+    font-weight: 500; 
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+.reset-filters-button:hover:not(:disabled) {
+    background-color: var(--button-hover-bg);
+    color: var(--button-hover-text);
+    border-color: var(--button-hover-bg);
+}
+.reset-filters-button:disabled {
+    background-color: var(--disabled-bg) !important;
+    color: var(--disabled-text) !important;
+    border-color: var(--disabled-border) !important;
+    cursor: not-allowed !important;
+    opacity: 0.6;
+}
+
 
 /* --- Results Area --- */
 .results-container { margin-top: 1.5rem; }
@@ -252,7 +283,7 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
 #top5Table, #bottom5Table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.85rem; }
 #top5Table th, #top5Table td, #bottom5Table th, #bottom5Table td { border: 1px solid var(--table-cell-border); padding: 0.5rem 0.75rem; text-align: left; white-space: nowrap; color: var(--table-cell-text); }
 #top5Table th, #bottom5Table th { background-color: var(--table-header-bg); font-weight: 600; color: var(--table-header-text); text-transform: capitalize; font-size: 0.8rem; }
-#top5Table tbody tr, #bottom5Table tbody tr { cursor: pointer; background-color: var(--table-row-bg); }
+#top5Table tbody tr, #bottom5Table tbody tr { cursor: pointer; background-color: var(--table-row-bg); /* Ensure explicit bg for theme */ }
 #top5Table tbody tr:hover, #bottom5Table tbody tr:hover { background-color: var(--table-row-hover-bg); }
 #top5Table td:not(:first-child), #bottom5Table td:not(:first-child) { text-align: right; }
 
