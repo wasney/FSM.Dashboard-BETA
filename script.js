@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-24T12:21:10EDT
-//    Summary: Added 'Territory' column to 'Focus Points' opportunity tables.
+//    Timestamp: 2025-05-24T12:40:52EDT
+//    Summary: Attach rate table now only shows stores with all valid numerical attach rate values.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -31,6 +31,10 @@ document.addEventListener('DOMContentLoaded', () => {
         '%Quarterly Territory Rev Target', 'Region Rev%', 'District Rev%', 'Territory Rev%'
     ]; 
     const FLAG_HEADERS = ['SUPER STORE', 'GOLDEN RHINO', 'GCE', 'AI_Zone', 'Hispanic_Market', 'EV ROUTE'];
+    const ATTACH_RATE_COLUMNS = [
+        'Tablet Attach Rate', 'PC Attach Rate', 'NC Attach Rate', 
+        'TWS Attach Rate', 'WW Attach Rate', 'ME Attach Rate', 'NCME Attach Rate'
+    ];
     const CURRENCY_FORMAT = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
     const PERCENT_FORMAT = new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
     const NUMBER_FORMAT = new Intl.NumberFormat('en-US');
@@ -275,7 +279,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setOptions(regionFilter, getUniqueValues(data, 'REGION')); setOptions(districtFilter, getUniqueValues(data, 'DISTRICT')); setMultiSelectOptions(territoryFilter, getUniqueValues(data, 'Q2 Territory').slice(1));
         setOptions(fsmFilter, getUniqueValues(data, 'FSM NAME')); setOptions(channelFilter, getUniqueValues(data, 'CHANNEL')); setOptions(subchannelFilter, getUniqueValues(data, 'SUB_CHANNEL')); setOptions(dealerFilter, getUniqueValues(data, 'DEALER_NAME'));
         Object.values(flagFiltersCheckboxes).forEach(input => { if(input) input.disabled = false; });
-        // Enable Focus Point Filters
         if(focusEliteFilter) focusEliteFilter.disabled = false;
         if(focusConnectivityFilter) focusConnectivityFilter.disabled = false;
         if(focusRepSkillFilter) focusRepSkillFilter.disabled = false;
@@ -575,9 +578,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateAttachRateTable = (data) => {
         if (!attachRateTableBody || !attachRateTableFooter) return;
         attachRateTableBody.innerHTML = ''; attachRateTableFooter.innerHTML = '';
-        if (data.length === 0) { if(attachTableStatus) attachTableStatus.textContent = 'No data to display based on filters.'; return; }
+
+        // Filter data to only include rows with all valid numerical attach rates
+        const dataForTable = data.filter(row => {
+            return ATTACH_RATE_COLUMNS.every(colKey => isValidNumericForFocus(safeGet(row, colKey, null)));
+        });
+    
+        if (dataForTable.length === 0) { 
+            if(attachTableStatus) attachTableStatus.textContent = 'No stores with complete & valid attach rate data based on current filters.'; 
+            return; 
+        }
         
-        const sortedData = [...data].sort((a, b) => {
+        const sortedData = [...dataForTable].sort((a, b) => {
              let valA = safeGet(a, currentSort.column, null); let valB = safeGet(b, currentSort.column, null);
              if (valA === null && valB === null) return 0; if (valA === null) return currentSort.ascending ? -1 : 1; if (valB === null) return currentSort.ascending ? 1 : -1;
              const isPercentCol = currentSort.column.includes('Attach Rate') || currentSort.column.includes('% Target'); 
@@ -597,31 +609,31 @@ document.addEventListener('DOMContentLoaded', () => {
             { key: 'NCME Attach Rate', format: formatPercent, highlight: true },
         ];
         
-        const averageMetrics = [
-             'Tablet Attach Rate', 'PC Attach Rate', 'NC Attach Rate',
-             'TWS Attach Rate', 'WW Attach Rate', 'ME Attach Rate', 'NCME Attach Rate'
-        ];
         const averages = {};
-        averageMetrics.forEach(key => { 
+        ATTACH_RATE_COLUMNS.forEach(key => { 
             let sum = 0, count = 0; 
-            data.forEach(row => { 
+            dataForTable.forEach(row => { // Use dataForTable for averages too
                 const valStr = safeGet(row, key, null); 
-                if (isValidForAverage(valStr)) { sum += parsePercent(valStr); count++; } 
+                // isValidNumericForFocus ensures we only average actual numbers
+                if (isValidNumericForFocus(valStr)) { sum += parsePercent(valStr); count++; } 
             }); 
             averages[key] = count > 0 ? sum / count : NaN; 
         });
 
         sortedData.forEach(row => {
             const tr = document.createElement('tr'); const storeName = safeGet(row, 'Store', null);
+            // This check might be redundant now due to pre-filtering by dataForTable
             if (storeName && String(storeName).trim() !== '') {
                  tr.dataset.storeName = storeName; tr.onclick = () => { showStoreDetails(row); highlightTableRow(storeName); };
                  columns.forEach(col => {
                      const td = document.createElement('td'); const rawValue = safeGet(row, col.key, null); 
                      const isPercentCol = col.key.includes('Attach Rate'); 
-                     const numericValue = (col.key === 'Store') ? rawValue : (isPercentCol ? parsePercent(rawValue) : parseNumber(rawValue));
-                     let formattedValue; 
-                     if (rawValue === null || (col.key !== 'Store' && isNaN(numericValue)) || String(rawValue).trim() === '') { formattedValue = 'N/A'; } 
-                     else { formattedValue = typeof col.format === 'function' ? col.format(numericValue) : numericValue; }
+                     // All values for attach rate columns should be numeric here due to dataForTable filter
+                     const numericValue = (col.key === 'Store') ? rawValue : parsePercent(rawValue); 
+                     let formattedValue = formatPercent(numericValue); // Default to percent for attach rates
+                     if (col.key === 'Store') { formattedValue = rawValue; }
+                     else if (isNaN(numericValue)) { formattedValue = 'N/A'; } // Should not happen if dataForTable is correct
+                      
                      td.textContent = formattedValue; td.title = `${col.key}: ${formattedValue}`;
                      if (col.highlight && !isNaN(averages[col.key]) && typeof numericValue === 'number' && !isNaN(numericValue)) { 
                          td.classList.toggle('highlight-green', numericValue >= averages[col.key]); 
@@ -633,23 +645,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        if (data.length > 0) {
+        if (dataForTable.length > 0) {
             const footerRow = attachRateTableFooter.insertRow(); 
             const avgLabelCell = footerRow.insertCell(); 
             avgLabelCell.textContent = 'Filtered Avg*';
-            avgLabelCell.title = 'Average calculated only using stores with valid data for each column'; 
+            avgLabelCell.title = 'Average calculated only using stores with complete and valid attach rate data'; 
             avgLabelCell.style.textAlign = "right"; 
             avgLabelCell.style.fontWeight = "bold";
-            averageMetrics.forEach(key => { 
+            ATTACH_RATE_COLUMNS.forEach(key => { 
                 const td = footerRow.insertCell(); 
                 const avgValue = averages[key]; 
                 td.textContent = formatPercent(avgValue); 
-                let validCount = data.filter(r => isValidForAverage(safeGet(r, key, null))).length; 
+                let validCount = dataForTable.filter(r => isValidNumericForFocus(safeGet(r, key, null))).length; 
                 td.title = `Average ${key}: ${formatPercent(avgValue)} (from ${validCount} stores)`; 
                 td.style.textAlign = "right"; 
             });
         }
-        if(attachTableStatus) attachTableStatus.textContent = `Showing ${attachRateTableBody.rows.length} stores. Click row for details. Click headers to sort.`;
+        if(attachTableStatus) attachTableStatus.textContent = `Showing ${attachRateTableBody.rows.length} stores with complete attach rate data. Click row for details. Click headers to sort.`;
         updateSortArrows();
     };
 
