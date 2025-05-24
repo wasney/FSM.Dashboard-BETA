@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-24T13:05:00EDT
-//    Summary: Removed specific text from Elite Score line in email share summary.
+//    Timestamp: 2025-05-24T15:10:00EDT
+//    Summary: Added Geographic Map View (Leaflet.js) and minor UI consistency improvements.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -135,11 +135,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const vpmrOpportunitiesSection = document.getElementById('vpmrOpportunitiesSection');
     const vpmrOpportunitiesTableBody = document.getElementById('vpmrOpportunitiesTableBody');
 
+    // --- Map View Elements ---
+    const mapViewContainer = document.getElementById('mapViewContainer');
+    const mapStatus = document.getElementById('mapStatus');
+
 
     // --- Global State ---
     let rawData = [];
     let filteredData = [];
     let mainChartInstance = null;
+    let mapInstance = null; 
+    let mapMarkersLayer = null;
     let storeOptions = [];
     let allPossibleStores = [];
     let currentSort = { column: 'Store', ascending: true };
@@ -158,6 +164,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (mainChartInstance && (filteredData.length > 0 || (rawData.length > 0 && filteredData.length === 0) )) { 
              updateCharts(filteredData); 
+        }
+        // Re-render map tiles if map exists, to adapt to theme (though default tiles might not change)
+        // Custom themed tiles would require more setup. This ensures Leaflet controls might pick up new CSS vars if styled.
+        if (mapInstance) { 
+            // This doesn't directly re-style tiles, but good to invalidate size if container style changes
+            setTimeout(() => mapInstance.invalidateSize(), 0); 
         }
     };
 
@@ -255,6 +267,69 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isFiltering) { if (filterLoadingIndicator) filterLoadingIndicator.style.display = displayStyle; if (applyFiltersButton) applyFiltersButton.disabled = isLoading; } 
         else { if (loadingIndicator) loadingIndicator.style.display = displayStyle; if (excelFileInput) excelFileInput.disabled = isLoading; }
     };    
+
+    // --- Map Functions ---
+    const initMapView = () => {
+        if (document.getElementById('mapid') && !mapInstance) {
+            mapInstance = L.map('mapid').setView([42.3314, -83.0458], 7); // Default to Detroit area, adjust zoom
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(mapInstance);
+            mapMarkersLayer = L.layerGroup().addTo(mapInstance);
+            if (mapStatus) mapStatus.textContent = 'Map initialized. Apply filters to see stores.';
+        } else if (!document.getElementById('mapid')) {
+            console.warn("Map container 'mapid' not found. Map cannot be initialized.");
+            if (mapStatus) mapStatus.textContent = 'Map container not found.';
+        }
+    };
+
+    const updateMapView = (data) => {
+        if (!mapInstance || !mapMarkersLayer) {
+            if (mapStatus) mapStatus.textContent = 'Map not ready.';
+            if(mapViewContainer) mapViewContainer.style.display = 'none';
+            return;
+        }
+        mapMarkersLayer.clearLayers();
+        let storesOnMapCount = 0;
+        const validStoresWithCoords = data.filter(row => {
+            const lat = parseNumber(safeGet(row, 'LATITUDE_ORG', NaN));
+            const lon = parseNumber(safeGet(row, 'LONGITUDE_ORG', NaN));
+            return !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0; // Also checking for 0,0 coords
+        });
+
+        if (validStoresWithCoords.length === 0) {
+            if (mapStatus) mapStatus.textContent = 'No stores with valid coordinates in filtered data.';
+            if (mapViewContainer) mapViewContainer.style.display = 'block'; // Show container to display message
+            return;
+        }
+
+        validStoresWithCoords.forEach(row => {
+            const lat = parseNumber(safeGet(row, 'LATITUDE_ORG', NaN));
+            const lon = parseNumber(safeGet(row, 'LONGITUDE_ORG', NaN));
+            const storeName = safeGet(row, 'Store', 'Unknown Store');
+            const revenue = formatCurrency(parseNumber(safeGet(row, 'Revenue w/DF', NaN)));
+            const qtdGap = calculateQtdGap(row);
+            const formattedQtdGap = isNaN(qtdGap) || qtdGap === Infinity ? 'N/A' : formatCurrency(qtdGap);
+
+            const popupContent = `<strong>${storeName}</strong><br>Revenue: ${revenue}<br>QTD Gap: ${formattedQtdGap}`;
+            const marker = L.marker([lat, lon]).addTo(mapMarkersLayer);
+            marker.bindPopup(popupContent);
+            marker.on('click', () => {
+                showStoreDetails(row);
+                highlightTableRow(storeName);
+            });
+            storesOnMapCount++;
+        });
+
+        if (storesOnMapCount > 0) {
+            mapInstance.fitBounds(mapMarkersLayer.getBounds(), { padding: [50, 50] });
+            if (mapStatus) mapStatus.textContent = `Displaying ${storesOnMapCount} stores on map.`;
+        } else {
+            if (mapStatus) mapStatus.textContent = 'No stores with coordinates to display for current filters.';
+        }
+        if (mapViewContainer) mapViewContainer.style.display = 'block';
+    };
+
 
     // --- Core Functions ---
     const handleFile = async (event) => {
@@ -374,7 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return true;
                 });
                 updateSummary(filteredData); updateTopBottomTables(filteredData); updateCharts(filteredData); updateAttachRateTable(filteredData); 
-                
+                updateMapView(filteredData); // Update map with filtered data
                 updateFocusPointSections(filteredData);
 
                 if (filteredData.length === 1) { showStoreDetails(filteredData[0]); highlightTableRow(safeGet(filteredData[0], 'Store', null)); } else { hideStoreDetails(); }
@@ -383,11 +458,12 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) {
                 console.error("Error applying filters:", error); if (statusDiv) statusDiv.textContent = "Error applying filters. Check console for details.";
                 filteredData = []; if (resultsArea) resultsArea.style.display = 'none'; if (exportCsvButton) exportCsvButton.disabled = true;
-                updateSummary([]); updateTopBottomTables([]); updateCharts([]); updateAttachRateTable([]); hideStoreDetails();
+                updateSummary([]); updateTopBottomTables([]); updateCharts([]); updateAttachRateTable([]); updateMapView([]); hideStoreDetails();
                 if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none';
                 if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
                 if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
                 if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
+                if (mapViewContainer) mapViewContainer.style.display = 'none';
             } finally { showLoading(false, true); }
         }, 10);
     };
@@ -422,6 +498,11 @@ document.addEventListener('DOMContentLoaded', () => {
          if (filterArea) filterArea.style.display = 'none'; 
          if (resultsArea) resultsArea.style.display = 'none';
          if (mainChartInstance) { mainChartInstance.destroy(); mainChartInstance = null; }
+         if (mapInstance && mapMarkersLayer) { mapMarkersLayer.clearLayers(); }
+         if (mapViewContainer) mapViewContainer.style.display = 'none';
+         if (mapStatus) mapStatus.textContent = 'Load a file and apply filters to see map data.';
+
+
          if (attachRateTableBody) attachRateTableBody.innerHTML = ''; 
          if (attachRateTableFooter) attachRateTableFooter.innerHTML = ''; 
          if (attachTableStatus) attachTableStatus.textContent = '';
@@ -467,6 +548,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (resultsArea) resultsArea.style.display = 'none'; 
         if (topBottomSection) topBottomSection.style.display = 'none';
         if (mainChartInstance) { mainChartInstance.destroy(); mainChartInstance = null; }
+        if (mapInstance && mapMarkersLayer) { mapMarkersLayer.clearLayers(); }
+        if (mapViewContainer) mapViewContainer.style.display = 'none';
+        if (mapStatus) mapStatus.textContent = 'Apply filters to see map data.';
         if (attachRateTableBody) attachRateTableBody.innerHTML = '';
         if (attachRateTableFooter) attachRateTableFooter.innerHTML = '';
         if (attachTableStatus) attachTableStatus.textContent = '';
@@ -815,7 +899,7 @@ document.addEventListener('DOMContentLoaded', () => {
         body += `- Unit Achievement %: ${unitAchievementValue?.textContent || 'N/A'}\n`; body += `- Total Visits: ${visitCountValue?.textContent || 'N/A'}\n`; body += `- Avg. Connectivity: ${retailModeConnectivityValue?.textContent || 'N/A'}\n\n`;
         body += "Mysteryshop & Training (Avg*):\n"; body += `- Rep Skill Ach: ${repSkillAchValue?.textContent || 'N/A'}\n`; body += `- (V)PMR Ach: ${vPmrAchValue?.textContent || 'N/A'}\n`;
         body += `- Post Training Score: ${postTrainingScoreValue?.textContent || 'N/A'} (Excludes 0s)\n`; 
-        body += `- Elite Score %: ${eliteValue?.textContent || 'N/A'}\n\n`; // Removed "(Excludes Verizon COR sub-channel)"
+        body += `- Elite Score %: ${eliteValue?.textContent || 'N/A'}\n\n`;
         body += "*Averages calculated only using stores with valid data for each metric.\n\n";
         const territoriesInData = new Set(filteredData.map(row => safeGet(row, 'Q2 Territory', null)).filter(Boolean));
         if (territoriesInData.size === 1) {
@@ -886,6 +970,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initial Setup ---
     const savedTheme = localStorage.getItem(THEME_STORAGE_KEY); 
     applyTheme(savedTheme || 'dark'); 
+    initMapView(); // Initialize the map structure on load
 
     resetUI(); 
     if (!mainChartCanvas) console.warn("Main chart canvas context not found on load. Chart will not render.");
