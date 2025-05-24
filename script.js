@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-24T11:58:40EDT
-//    Summary: Added 'Focus Points' filter section and corresponding opportunity display tables.
+//    Timestamp: 2025-05-24T12:21:10EDT
+//    Summary: Added 'Territory' column to 'Focus Points' opportunity tables.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -185,17 +185,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const parsePercent = (value) => {
          if (value === null || value === undefined || String(value).trim() === '') return NaN;
-         if (typeof value === 'number') return value; // Assume it's already a decimal if number (e.g. 0.5 for 50%)
+         if (typeof value === 'number') return value; 
          if (typeof value === 'string') { 
              const numStr = value.replace('%', ''); 
              const num = parseFloat(numStr); 
-             // If the original string had a '%', or if the number is likely a whole percentage (e.g. 50 for 50%)
-             // and not already a decimal (e.g. 0.5), then divide by 100.
              if (isNaN(num)) return NaN;
-             if (value.includes('%') || (num > 1 && num <= 100) || (num === 0) || (num === 1) ) { // Handles "50%", 50, 0, 1, 100
+             if (value.includes('%') || (num > 1 && num <= 100) || (num === 0) || (num === 1) ) { 
                  return num / 100;
              }
-             return num; // Assumes it's already a decimal if no '%' and not in typical whole percentage range
+             return num; 
         }
          return NaN;
     };
@@ -203,14 +201,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const value = obj ? obj[path] : undefined;
         return (value !== undefined && value !== null && String(value).trim() !== '') ? value : defaultValue;
     };
-    const isValidForAverage = (value) => { // Used for general averaging, allows 0.
+    const isValidForAverage = (value) => { 
          if (value === null || value === undefined || String(value).trim() === '') return false;
-         const parsed = parseNumber(String(value).replace('%','')); // Use parseNumber for robust parsing.
+         const parsed = parseNumber(String(value).replace('%','')); 
          return !isNaN(parsed);
     };
-    const isValidNumericForFocus = (value) => { // Stricter for focus points: must be numeric, not NaN after parsing.
+    const isValidNumericForFocus = (value) => { 
         if (value === null || value === undefined || String(value).trim() === '') return false;
-        const parsedVal = parsePercent(value); // Use parsePercent as these are percentage-based metrics
+        const parsedVal = parsePercent(value); 
         return !isNaN(parsedVal);
     };
 
@@ -374,7 +372,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 updateSummary(filteredData); updateTopBottomTables(filteredData); updateCharts(filteredData); updateAttachRateTable(filteredData); 
                 
-                // Update Focus Point Sections
                 updateFocusPointSections(filteredData);
 
                 if (filteredData.length === 1) { showStoreDetails(filteredData[0]); highlightTableRow(safeGet(filteredData[0], 'Store', null)); } else { hideStoreDetails(); }
@@ -384,7 +381,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Error applying filters:", error); if (statusDiv) statusDiv.textContent = "Error applying filters. Check console for details.";
                 filteredData = []; if (resultsArea) resultsArea.style.display = 'none'; if (exportCsvButton) exportCsvButton.disabled = true;
                 updateSummary([]); updateTopBottomTables([]); updateCharts([]); updateAttachRateTable([]); hideStoreDetails();
-                 // Hide focus point sections on error too
                 if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none';
                 if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
                 if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
@@ -403,7 +399,6 @@ document.addEventListener('DOMContentLoaded', () => {
          if (storeSearch) { storeSearch.value = ''; storeSearch.disabled = true; }
          storeOptions = []; 
          Object.values(flagFiltersCheckboxes).forEach(input => { if(input) {input.checked = false; input.disabled = true;} });
-        // Reset Focus Point checkboxes
         if(focusEliteFilter) { focusEliteFilter.checked = false; focusEliteFilter.disabled = true; }
         if(focusConnectivityFilter) { focusConnectivityFilter.checked = false; focusConnectivityFilter.disabled = true; }
         if(focusRepSkillFilter) { focusRepSkillFilter.checked = false; focusRepSkillFilter.disabled = true; }
@@ -432,7 +427,6 @@ document.addEventListener('DOMContentLoaded', () => {
          if (bottom5TableBody) bottom5TableBody.innerHTML = '';
          hideStoreDetails(); 
          updateSummary([]); 
-        // Hide focus point sections on UI reset
         if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none';
         if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
         if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
@@ -452,7 +446,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (storeFilter) storeFilter.selectedIndex = -1; 
         if (storeSearch) storeSearch.value = ''; 
         Object.values(flagFiltersCheckboxes).forEach(input => { if(input) input.checked = false; });
-        // Uncheck Focus Point filters
         if(focusEliteFilter) focusEliteFilter.checked = false;
         if(focusConnectivityFilter) focusConnectivityFilter.checked = false;
         if(focusRepSkillFilter) focusRepSkillFilter.checked = false;
@@ -468,21 +461,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (storeDeselectAll) storeDeselectAll.disabled = true;
         }
 
-        if (resultsArea) resultsArea.style.display = 'none'; // Hide results until 'Apply' is clicked
+        if (resultsArea) resultsArea.style.display = 'none'; 
         if (topBottomSection) topBottomSection.style.display = 'none';
         if (mainChartInstance) { mainChartInstance.destroy(); mainChartInstance = null; }
         if (attachRateTableBody) attachRateTableBody.innerHTML = '';
         if (attachRateTableFooter) attachRateTableFooter.innerHTML = '';
         if (attachTableStatus) attachTableStatus.textContent = '';
         hideStoreDetails(); 
-        // Hide Focus Point sections
         if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none';
         if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
         if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
         if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
 
 
-        filteredData = []; // Clear filtered data
+        filteredData = []; 
         if (exportCsvButton) exportCsvButton.disabled = true;
 
         if (statusDiv) {
@@ -720,15 +712,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 tr.insertCell().textContent = storeName;
                 tr.cells[0].title = storeName;
 
+                const territoryName = safeGet(row, 'Q2 Territory', 'N/A');
+                tr.insertCell().textContent = territoryName;
+                tr.cells[1].title = territoryName;
+
                 const metricValue = parsePercent(safeGet(row, valueKey, NaN));
                 tr.insertCell().textContent = formatPercent(metricValue);
-                tr.cells[1].title = formatPercent(metricValue);
+                tr.cells[2].title = formatPercent(metricValue);
             });
             if (statusP) statusP.textContent = `Displaying ${data.length} stores.`;
             sectionElement.style.display = 'block';
         } else {
             if (statusP) statusP.textContent = 'No stores meet this criteria based on current filters.';
-            sectionElement.style.display = 'block'; // Keep section visible to show "No stores" message
+            sectionElement.style.display = 'block';
         }
     };
     // --- End Focus Point Display Functions ---
@@ -831,7 +827,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (subchannelFilter?.value !== 'ALL') summary.push(`Subchannel: ${subchannelFilter.value}`); if (dealerFilter?.value !== 'ALL') summary.push(`Dealer: ${dealerFilter.value}`);
         const stores = storeFilter ? Array.from(storeFilter.selectedOptions).map(o => o.value) : []; if (stores.length > 0) summary.push(`Stores: ${stores.length === 1 ? stores[0] : `${stores.length} selected`}`);
         const flags = Object.entries(flagFiltersCheckboxes).filter(([, input]) => input?.checked).map(([key])=> key.replace(/_/g, ' ')); if (flags.length > 0) summary.push(`Attributes: ${flags.join(', ')}`);
-        // Add Focus Points to email summary
         const focusPointsSummary = [];
         if(focusEliteFilter?.checked) focusPointsSummary.push("Elite Opps");
         if(focusConnectivityFilter?.checked) focusPointsSummary.push("Connectivity Opps");
