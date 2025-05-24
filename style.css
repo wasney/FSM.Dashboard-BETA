@@ -1,6 +1,6 @@
 /*
-    Timestamp: 2025-05-09T06:54:45EDT
-    Summary: Added styles for 'filter-actions-container' and 'reset-filters-button'. Adjusted 'apply-filters-button' for flex layout.
+    Timestamp: 2025-05-24T11:58:40EDT
+    Summary: Added 'Focus Points' filter section and corresponding opportunity display tables.
 */
 
 :root {
@@ -144,6 +144,17 @@ body {
 h1 { color: var(--heading-color); text-align: center; margin-top: 1rem; margin-bottom: 1.5rem; font-weight: 600; font-size: 1.8rem; }
 h2 { color: var(--sub-heading-color); text-align: center; margin-top: 0; margin-bottom: 1rem; font-weight: 500; font-size: 1.4rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
 h3 { margin-top: 0; margin-bottom: 1rem; color: var(--heading-color); font-weight: 500; font-size: 1.15rem; text-align: center; }
+h4 { /* For Focus Point Sections */
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    color: var(--sub-heading-color);
+    font-weight: 500;
+    font-size: 1.05rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.4rem;
+}
+
 
 /* --- Upload Instructions Style --- */
 .upload-instructions { text-align: center; color: var(--text-color-muted); margin-top: -0.5rem; margin-bottom: 1.5rem; padding: 0 10px; }
@@ -189,7 +200,7 @@ h3 { margin-top: 0; margin-bottom: 1rem; color: var(--heading-color); font-weigh
 #storeSearch { margin-bottom: 0.3rem; }
 .filter-group-store { grid-column: span 2; }
 
-/* --- Flag Filters --- */
+/* --- Flag Filters & Focus Points --- */
 .filter-group-flags { grid-column: 1 / -1; margin-top: 0.5rem; }
 .flags-label { margin-bottom: 0.5rem; display: block; }
 .flag-toggles { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; background-color: var(--input-bg); padding: 0.75rem; border-radius: 4px; border: 1px solid var(--border-color); }
@@ -321,6 +332,57 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
 .sort-arrow { display: inline-block; width: 12px; height: 12px; margin-left: 5px; opacity: 0.5; vertical-align: middle; }
 #attachTableStatus { margin-top: 0.75rem; color: var(--text-color-muted); font-size: 0.85rem; text-align: center; }
 
+
+/* --- Focus Point Sections --- */
+.focus-point-card {
+    max-width: 95%;
+    margin-top: 1.5rem;
+}
+.focus-point-card h4 {
+    color: var(--sub-heading-color);
+    text-align: left;
+}
+.focus-point-card table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+}
+.focus-point-card th, .focus-point-card td {
+    border: 1px solid var(--table-cell-border);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    white-space: nowrap;
+    color: var(--table-cell-text);
+}
+.focus-point-card th {
+    background-color: var(--table-header-bg);
+    font-weight: 600;
+    color: var(--table-header-text);
+    font-size: 0.8rem;
+}
+.focus-point-card tbody tr {
+    cursor: pointer;
+    background-color: var(--table-row-bg);
+}
+.focus-point-card tbody tr:hover {
+    background-color: var(--table-row-hover-bg);
+}
+.focus-point-card tbody tr.selected-row {
+    background-color: var(--selected-row-bg) !important;
+    color: var(--selected-row-text);
+}
+.focus-point-card td:last-child {
+    text-align: right;
+}
+.focus-point-status {
+    margin-top: 0.5rem;
+    font-size: 0.85em;
+    color: var(--text-color-muted);
+    text-align: center;
+}
+
+
 /* --- Share Section --- */
 .share-container { max-width: 600px; }
 .share-controls { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; }
@@ -345,6 +407,7 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     .share-controls { flex-direction: row; align-items: center; }
     .share-controls label { margin-bottom: 0; }
     .filter-group-store { grid-column: span 1; }
+    .focus-point-card table { font-size: 0.9rem; }
 }
 
 @media (min-width: 1200px) { 
