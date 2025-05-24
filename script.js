@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-24T16:10:00EDT
-//    Summary: Changed default map view to Michigan and surrounding area.
+//    Timestamp: 2025-05-24T16:35:00EDT
+//    Summary: Attach Rates table now dynamically includes a 'Territory' column if multiple territories are present in filtered data.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
         '%Quarterly Territory Rev Target', 'Region Rev%', 'District Rev%', 'Territory Rev%'
     ]; 
     const FLAG_HEADERS = ['SUPER STORE', 'GOLDEN RHINO', 'GCE', 'AI_Zone', 'Hispanic_Market', 'EV ROUTE'];
-    const ATTACH_RATE_COLUMNS = [
+    const ATTACH_RATE_COLUMNS = [ // Used for identifying which columns are attach rates for averages etc.
         'Tablet Attach Rate', 'PC Attach Rate', 'NC Attach Rate', 
         'TWS Attach Rate', 'WW Attach Rate', 'ME Attach Rate', 'NCME Attach Rate'
     ];
@@ -568,10 +568,10 @@ document.addEventListener('DOMContentLoaded', () => {
          
          if (mapInstance && mapMarkersLayer && typeof mapMarkersLayer.clearLayers === 'function') {
              mapMarkersLayer.clearLayers();
-             mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); // Reset to default view
+             mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); 
          } else if (mapMarkersLayer && typeof mapMarkersLayer.clearLayers !== 'function') {
              console.warn("[Map View] mapMarkersLayer.clearLayers is not a function during resetUI.");
-         } else if (mapInstance) { // If map instance exists but no layer, still set view
+         } else if (mapInstance) { 
              mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
          }
 
@@ -627,14 +627,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (mapInstance && mapMarkersLayer && typeof mapMarkersLayer.clearLayers === 'function') {
             mapMarkersLayer.clearLayers();
-            mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); // Reset to default view
+            mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); 
         } else if (mapMarkersLayer && typeof mapMarkersLayer.clearLayers !== 'function') {
              console.warn("[Map View] mapMarkersLayer.clearLayers is not a function during handleResetFiltersClick.");
-        } else if (mapInstance) { // If map instance exists but no layer, still set view
+        } else if (mapInstance) { 
             mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
         }
 
-        if (mapViewContainer) mapViewContainer.style.display = 'none'; // Keep map hidden until filters are applied
+        if (mapViewContainer) mapViewContainer.style.display = 'none'; 
         if (mapStatus) mapStatus.textContent = 'Apply filters to see map data.';
 
         if (attachRateTableBody) attachRateTableBody.innerHTML = '';
@@ -746,90 +746,152 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateAttachRateTable = (data) => {
-        if (!attachRateTableBody || !attachRateTableFooter) return;
-        attachRateTableBody.innerHTML = ''; attachRateTableFooter.innerHTML = '';
-
+        if (!attachRateTableBody || !attachRateTableFooter || !attachRateTable) return;
+        attachRateTableBody.innerHTML = '';
+        attachRateTableFooter.innerHTML = '';
+    
         const dataForTable = data.filter(row => {
             return ATTACH_RATE_COLUMNS.every(colKey => isValidNumericForFocus(safeGet(row, colKey, null)));
         });
     
-        if (dataForTable.length === 0) { 
-            if(attachTableStatus) attachTableStatus.textContent = 'No stores with complete & valid attach rate data based on current filters.'; 
-            return; 
+        if (dataForTable.length === 0) {
+            if (attachTableStatus) attachTableStatus.textContent = 'No stores with complete & valid attach rate data based on current filters.';
+            // Clear headers if table is empty
+            const tableHead = attachRateTable.querySelector('thead');
+            if (tableHead) {
+                let headerRow = tableHead.querySelector('tr');
+                if (headerRow) headerRow.innerHTML = '';
+            }
+            return;
         }
-        
-        const sortedData = [...dataForTable].sort((a, b) => {
-             let valA = safeGet(a, currentSort.column, null); let valB = safeGet(b, currentSort.column, null);
-             if (valA === null && valB === null) return 0; if (valA === null) return currentSort.ascending ? -1 : 1; if (valB === null) return currentSort.ascending ? 1 : -1;
-             const isPercentCol = currentSort.column.includes('Attach Rate') || currentSort.column.includes('% Target'); 
-             const numA = isPercentCol ? parsePercent(valA) : parseNumber(valA); const numB = isPercentCol ? parsePercent(valB) : parseNumber(valB);
-             if (!isNaN(numA) && !isNaN(numB)) { return currentSort.ascending ? numA - numB : numB - numA; }
-             else { valA = String(valA).toLowerCase(); valB = String(valB).toLowerCase(); return currentSort.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA); }
-        });
-
-        const columns = [
-            { key: 'Store', format: (val) => val },
-            { key: 'Tablet Attach Rate', format: formatPercent, highlight: true },
-            { key: 'PC Attach Rate', format: formatPercent, highlight: true },
-            { key: 'NC Attach Rate', format: formatPercent, highlight: true },
-            { key: 'TWS Attach Rate', format: formatPercent, highlight: true },
-            { key: 'WW Attach Rate', format: formatPercent, highlight: true },
-            { key: 'ME Attach Rate', format: formatPercent, highlight: true },
-            { key: 'NCME Attach Rate', format: formatPercent, highlight: true },
+    
+        const uniqueTerritories = new Set(dataForTable.map(row => safeGet(row, 'Q2 Territory', 'N/A_TERRITORY')));
+        const showTerritoryColumn = uniqueTerritories.size > 1;
+    
+        // Dynamically build headers
+        const tableHead = attachRateTable.querySelector('thead');
+        if (!tableHead) { console.error("Attach rate table head not found!"); return; }
+        let headerRow = tableHead.querySelector('tr');
+        if (!headerRow) { headerRow = tableHead.insertRow(); }
+        headerRow.innerHTML = ''; // Clear existing headers
+    
+        const baseHeaderConfig = [
+            { label: 'Store', sortKey: 'Store', title: 'Store Name' },
+            // Territory will be inserted here conditionally
+            { label: 'Tablet', sortKey: 'Tablet Attach Rate', title: 'Tablet Attach Rate' },
+            { label: 'PC', sortKey: 'PC Attach Rate', title: 'PC Attach Rate' },
+            { label: 'NC', sortKey: 'NC Attach Rate', title: 'NC = Tablet + PC Attach Rate' },
+            { label: 'TWS', sortKey: 'TWS Attach Rate', title: 'True Wireless Stereo (Buds) Attach Rate' },
+            { label: 'WW', sortKey: 'WW Attach Rate', title: 'Wearable Watch Attach Rate' },
+            { label: 'ME', sortKey: 'ME Attach Rate', title: 'ME = TWS + WW Attach Rate' },
+            { label: 'NCME', sortKey: 'NCME Attach Rate', title: 'NCME = Total Attach Rate' }
         ];
-        
-        const averages = {};
-        ATTACH_RATE_COLUMNS.forEach(key => { 
-            let sum = 0, count = 0; 
-            dataForTable.forEach(row => { 
-                const valStr = safeGet(row, key, null); 
-                if (isValidNumericForFocus(valStr)) { sum += parsePercent(valStr); count++; } 
-            }); 
-            averages[key] = count > 0 ? sum / count : NaN; 
+    
+        let actualTableHeaders = [...baseHeaderConfig];
+        if (showTerritoryColumn) {
+            actualTableHeaders.splice(1, 0, { label: 'Territory', sortKey: 'Q2 Territory', title: 'Q2 Territory' });
+        }
+    
+        actualTableHeaders.forEach(headerInfo => {
+            const th = document.createElement('th');
+            th.textContent = headerInfo.label;
+            th.dataset.sort = headerInfo.sortKey;
+            th.title = headerInfo.title;
+            th.classList.add('sortable');
+            th.innerHTML += ' <span class="sort-arrow"></span>';
+            headerRow.appendChild(th);
         });
+    
+        // Sort data (dataForTable is already filtered for valid attach rates)
+        const sortedData = [...dataForTable].sort((a, b) => {
+            let valA = safeGet(a, currentSort.column, null);
+            let valB = safeGet(b, currentSort.column, null);
+            if (valA === null && valB === null) return 0;
+            if (valA === null) return currentSort.ascending ? -1 : 1;
+            if (valB === null) return currentSort.ascending ? 1 : -1;
+    
+            const isPercentCol = ATTACH_RATE_COLUMNS.includes(currentSort.column);
+            const numA = isPercentCol ? parsePercent(valA) : (currentSort.column === 'Store' || currentSort.column === 'Q2 Territory' ? valA : parseNumber(valA));
+            const numB = isPercentCol ? parsePercent(valB) : (currentSort.column === 'Store' || currentSort.column === 'Q2 Territory' ? valB : parseNumber(valB));
 
-        sortedData.forEach(row => {
-            const tr = document.createElement('tr'); const storeName = safeGet(row, 'Store', null);
-            if (storeName && String(storeName).trim() !== '') {
-                 tr.dataset.storeName = storeName; tr.onclick = () => { showStoreDetails(row); highlightTableRow(storeName); };
-                 columns.forEach(col => {
-                     const td = document.createElement('td'); const rawValue = safeGet(row, col.key, null); 
-                     const isPercentCol = col.key.includes('Attach Rate'); 
-                     const numericValue = (col.key === 'Store') ? rawValue : parsePercent(rawValue); 
-                     let formattedValue = formatPercent(numericValue); 
-                     if (col.key === 'Store') { formattedValue = rawValue; }
-                     else if (isNaN(numericValue)) { formattedValue = 'N/A'; } 
-                      
-                     td.textContent = formattedValue; td.title = `${col.key}: ${formattedValue}`;
-                     if (col.highlight && !isNaN(averages[col.key]) && typeof numericValue === 'number' && !isNaN(numericValue)) { 
-                         td.classList.toggle('highlight-green', numericValue >= averages[col.key]); 
-                         td.classList.toggle('highlight-red', numericValue < averages[col.key]); 
-                     }
-                     tr.appendChild(td);
-                 }); 
-                 attachRateTableBody.appendChild(tr);
+            if (typeof numA === 'number' && typeof numB === 'number' && !isNaN(numA) && !isNaN(numB)) {
+                 return currentSort.ascending ? numA - numB : numB - numA;
+            } else { // String comparison for Store and Territory or if parsing failed
+                 valA = String(valA).toLowerCase();
+                 valB = String(valB).toLowerCase();
+                 return currentSort.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
             }
         });
-
+    
+        // Calculate averages (based on dataForTable)
+        const averages = {};
+        ATTACH_RATE_COLUMNS.forEach(key => {
+            let sum = 0, count = 0;
+            dataForTable.forEach(row => {
+                const valStr = safeGet(row, key, null);
+                if (isValidNumericForFocus(valStr)) { // Use this for consistency
+                    sum += parsePercent(valStr);
+                    count++;
+                }
+            });
+            averages[key] = count > 0 ? sum / count : NaN;
+        });
+    
+        // Populate table body
+        sortedData.forEach(row => {
+            const tr = attachRateTableBody.insertRow();
+            const storeName = safeGet(row, 'Store', 'N/A');
+            tr.dataset.storeName = storeName;
+            tr.onclick = () => { showStoreDetails(row); highlightTableRow(storeName); };
+    
+            actualTableHeaders.forEach(headerInfo => {
+                const td = tr.insertCell();
+                let cellValue;
+                let rawValueForMetric = safeGet(row, headerInfo.sortKey, null);
+    
+                if (headerInfo.sortKey === 'Store') {
+                    cellValue = storeName;
+                } else if (headerInfo.sortKey === 'Q2 Territory') {
+                    cellValue = safeGet(row, 'Q2 Territory', 'N/A');
+                } else { // Attach Rate columns
+                    const numericValue = parsePercent(rawValueForMetric);
+                    cellValue = isNaN(numericValue) ? 'N/A' : formatPercent(numericValue);
+                    td.style.textAlign = "right";
+                    if (!isNaN(averages[headerInfo.sortKey]) && typeof numericValue === 'number' && !isNaN(numericValue)) {
+                        td.classList.toggle('highlight-green', numericValue >= averages[headerInfo.sortKey]);
+                        td.classList.toggle('highlight-red', numericValue < averages[headerInfo.sortKey]);
+                    }
+                }
+                td.textContent = cellValue;
+                td.title = cellValue; // Simple title, could be more descriptive like header title
+            });
+        });
+    
+        // Populate table footer
         if (dataForTable.length > 0) {
-            const footerRow = attachRateTableFooter.insertRow(); 
-            const avgLabelCell = footerRow.insertCell(); 
-            avgLabelCell.textContent = 'Filtered Avg*';
-            avgLabelCell.title = 'Average calculated only using stores with complete and valid attach rate data'; 
-            avgLabelCell.style.textAlign = "right"; 
-            avgLabelCell.style.fontWeight = "bold";
-            ATTACH_RATE_COLUMNS.forEach(key => { 
-                const td = footerRow.insertCell(); 
-                const avgValue = averages[key]; 
-                td.textContent = formatPercent(avgValue); 
-                let validCount = dataForTable.filter(r => isValidNumericForFocus(safeGet(r, key, null))).length; 
-                td.title = `Average ${key}: ${formatPercent(avgValue)} (from ${validCount} stores)`; 
-                td.style.textAlign = "right"; 
+            const footerRow = attachRateTableFooter.insertRow();
+            actualTableHeaders.forEach((headerInfo, index) => {
+                const td = footerRow.insertCell();
+                if (index === 0) { // Store column
+                    td.textContent = 'Filtered Avg*';
+                    td.style.fontWeight = "bold";
+                    td.title = 'Average calculated only using stores with complete and valid attach rate data';
+                } else if (showTerritoryColumn && index === 1 && headerInfo.sortKey === 'Q2 Territory') {
+                    td.textContent = ''; // Empty cell for Territory average
+                } else if (ATTACH_RATE_COLUMNS.includes(headerInfo.sortKey)) {
+                    const avgValue = averages[headerInfo.sortKey];
+                    td.textContent = formatPercent(avgValue);
+                    let validCount = dataForTable.filter(r => isValidNumericForFocus(safeGet(r, headerInfo.sortKey, null))).length;
+                    td.title = `Average ${headerInfo.label}: ${formatPercent(avgValue)} (from ${validCount} stores)`;
+                    td.style.textAlign = "right";
+                }
             });
         }
-        if(attachTableStatus) attachTableStatus.textContent = `Showing ${attachRateTableBody.rows.length} stores with complete attach rate data. Click row for details. Click headers to sort.`;
+    
+        if (attachTableStatus) attachTableStatus.textContent = `Showing ${attachRateTableBody.rows.length} stores with complete attach rate data. Click row for details. Click headers to sort.`;
         updateSortArrows();
     };
+    
 
     // --- Focus Point Display Functions ---
     const updateFocusPointSections = (baseData) => {
@@ -912,7 +974,8 @@ document.addEventListener('DOMContentLoaded', () => {
          const headerCell = event.target.closest('th'); if (!headerCell?.classList.contains('sortable')) return;
          const sortKey = headerCell.dataset.sort; if (!sortKey) return;
          if (currentSort.column === sortKey) { currentSort.ascending = !currentSort.ascending; } else { currentSort.column = sortKey; currentSort.ascending = true; }
-         updateAttachRateTable(filteredData);
+         // Re-render the attach rate table with new sort
+         updateAttachRateTable(filteredData); // Pass the main filteredData
     };
 
     const updateSortArrows = () => {
@@ -960,18 +1023,42 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportData = () => {
         if (filteredData.length === 0) { alert("No filtered data to export."); return; }
         try {
-            if (!attachRateTable) throw new Error("Attach rate table not found for headers.");
-            const headers = Array.from(attachRateTable.querySelectorAll('thead th'))
+            // Use the currently rendered headers in the attachRateTable for export
+            const currentHeaders = Array.from(attachRateTable.querySelectorAll('thead th'))
                                  .map(th => th.dataset.sort || th.textContent.replace(/ [▲▼]$/, '').trim());
-            const dataToExport = filteredData.map(row => {
-                return headers.map(headerKey => { 
-                    let value = safeGet(row, headerKey, ''); 
-                    const isPercentLike = headerKey.includes('%') || headerKey.includes('Rate') || headerKey.includes('Ach') || headerKey.includes('Connectivity') || headerKey.includes('Elite');
-                    if (isPercentLike) { const numVal = parsePercent(value); return isNaN(numVal) ? '' : numVal; } 
-                    else { const numVal = parseNumber(value); if (!isNaN(numVal) && typeof value !== 'boolean' && String(value).trim() !== '') { return numVal; } if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) { return `"${value.replace(/"/g, '""')}"`; } return value; }
+            
+            // Filter the main filteredData for stores that appear in the attach rate table (valid numeric attach rates)
+            const dataForExport = filteredData.filter(row => {
+                return ATTACH_RATE_COLUMNS.every(colKey => isValidNumericForFocus(safeGet(row, colKey, null)));
+            }).map(row => {
+                return currentHeaders.map(headerKey => { 
+                    // For "Territory", data source is "Q2 Territory"
+                    const dataKey = headerKey === 'Territory' ? 'Q2 Territory' : headerKey;
+                    let value = safeGet(row, dataKey, ''); 
+                    
+                    const isPercentLike = ATTACH_RATE_COLUMNS.includes(dataKey) || dataKey.includes('%') || dataKey.includes('Ach') || dataKey.includes('Connectivity') || dataKey.includes('Elite');
+
+                    if (isPercentLike) { 
+                        const numVal = parsePercent(value); 
+                        // For CSV export, often better to export raw numbers (0.5) than formatted strings ("50.0%")
+                        // However, to match table, let's keep it as is for now, or make it an option.
+                        // For simplicity, if it's a percentage, let's export the decimal value.
+                        return isNaN(numVal) ? '' : numVal; 
+                    } else { 
+                        const numVal = parseNumber(value); 
+                        if (!isNaN(numVal) && typeof value !== 'boolean' && String(value).trim() !== '') { 
+                            return numVal; 
+                        } 
+                        if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) { 
+                            return `"${value.replace(/"/g, '""')}"`; 
+                        } 
+                        return value; 
+                    }
                 });
             });
-            let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + dataToExport.map(e => e.join(",")).join("\n");
+
+            // Use the currentHeaders for the CSV header row
+            let csvContent = "data:text/csv;charset=utf-8," + currentHeaders.join(",") + "\n" + dataForExport.map(e => e.join(",")).join("\n");
             const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "fsm_dashboard_export.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
         } catch (error) { console.error("Error exporting CSV:", error); alert("Error generating CSV export. See console for details."); }
     };
