@@ -1,19 +1,21 @@
 // sw.js - Basic Caching Service Worker
-// Timestamp: 2025-05-24T14:55:00EDT
-// Summary: Improved offline refresh behavior by explicitly serving cached index.html for failed navigation fetches.
+// Timestamp: 2025-05-24T15:10:00EDT
+// Summary: Added Geographic Map View (Leaflet.js) and minor UI consistency improvements.
 
 const CACHE_NAME = 'fsm-dashboard-cache-v1'; // Keep or update cache name as needed
 // List of files to cache immediately upon installation (Relative Paths)
 const urlsToCache = [
-  '.',             // Represents index.html within /fsm_dashboard/
-  'index.html',    // Relative to sw.js
-  'style.css',     // Relative to sw.js
-  'script.js',     // Relative to sw.js
-  'manifest.json', // Relative to sw.js
-  'icons/icon.svg',// Relative to sw.js (assumes icons folder inside fsm_dashboard)
-  // External libraries remain absolute
+  '.',             // Represents index.html
+  'index.html',
+  'style.css',
+  'script.js',
+  'manifest.json',
+  'icons/icon.svg',
+  // External libraries
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-  'https://cdn.jsdelivr.net/npm/chart.js@latest/dist/chart.umd.js'
+  'https://cdn.jsdelivr.net/npm/chart.js@latest/dist/chart.umd.js',
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', // Leaflet CSS
+  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'    // Leaflet JS
 ];
 
 // Install event: Cache the core assets
@@ -24,15 +26,12 @@ self.addEventListener('install', event => {
       .then(cache => {
         console.log('[Service Worker] Caching app shell');
         const promises = urlsToCache.map(url => {
-            // For relative URLs, fetch respects the service worker's path
-            return fetch(url, { cache: 'reload' }) // 'reload' bypasses HTTP cache for fresh copies
+            return fetch(url, { cache: 'reload' }) 
                 .then(response => {
                     if (!response.ok) {
-                        // Log error but don't let one failed resource stop others
                         console.error(`[Service Worker] Request failed for ${url} during cache: ${response.statusText}`);
                         return Promise.resolve(); 
                     }
-                    // Check if response type is valid for caching
                     if(response.status === 200 || response.type === 'basic' || response.type === 'cors') {
                          return cache.put(url, response);
                     } else {
@@ -41,14 +40,14 @@ self.addEventListener('install', event => {
                     }
                 }).catch(fetchError => {
                     console.error(`[Service Worker] Fetch error for ${url} during cache:`, fetchError);
-                    return Promise.resolve(); // Continue caching other files
+                    return Promise.resolve(); 
                 });
         });
         return Promise.all(promises);
       })
       .then(() => {
         console.log('[Service Worker] App shell caching attempted, skipping waiting.');
-        return self.skipWaiting(); // Activate the new service worker immediately
+        return self.skipWaiting(); 
       })
       .catch(error => {
          console.error('[Service Worker] Caching failed during install setup:', error);
@@ -72,53 +71,31 @@ self.addEventListener('activate', event => {
       );
     }).then(() => {
          console.log('[Service Worker] Claiming clients.');
-         return self.clients.claim(); // Ensure the new service worker controls all clients
+         return self.clients.claim(); 
     })
   );
 });
 
 // Fetch event: Serve from cache first, fall back to network
 self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET') { return; } // Only handle GET requests
+  if (event.request.method !== 'GET') { return; } 
 
   event.respondWith(
     caches.match(event.request)
       .then(cachedResponse => {
-        // Cache hit - return response
         if (cachedResponse) {
-          // console.log('[Service Worker] Serving from cache:', event.request.url);
           return cachedResponse;
         }
-
-        // Not in cache - try network
-        // console.log('[Service Worker] Not in cache, fetching from network:', event.request.url);
         return fetch(event.request).then(
           networkResponse => {
-            // Optional: Cache dynamically fetched resources if needed
-            // Example: Cache new successful GET requests from your origin
-            // if (networkResponse && networkResponse.status === 200 && event.request.url.startsWith(self.location.origin)) {
-            //   const responseToCache = networkResponse.clone();
-            //   caches.open(CACHE_NAME)
-            //     .then(cache => {
-            //       console.log('[Service Worker] Caching new resource:', event.request.url);
-            //       cache.put(event.request, responseToCache);
-            //     });
-            // }
             return networkResponse;
           }
         ).catch(error => {
           console.error('[Service Worker] Network fetch failed for:', event.request.url, error);
-          
-          // IMPORTANT: For navigation requests (like refreshing index.html), 
-          // try to serve the cached index.html as a fallback.
           if (event.request.mode === 'navigate') {
             console.log('[Service Worker] Fetch failed for navigation, attempting to serve cached index.html');
-            return caches.match('index.html'); // Or a specific offline.html page if you have one
+            return caches.match('index.html'); 
           }
-          
-          // For other failed requests (assets etc.), they will result in a network error
-          // if not found in cache and network fails. This is often the desired behavior
-          // for non-critical assets or to indicate that a specific non-cached resource is unavailable.
           return undefined; 
         });
       })
