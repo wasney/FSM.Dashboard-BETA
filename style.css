@@ -1,6 +1,6 @@
 /*
-    Timestamp: 2025-05-24T11:58:40EDT
-    Summary: Added 'Focus Points' filter section and corresponding opportunity display tables.
+    Timestamp: 2025-05-24T15:10:00EDT
+    Summary: Added Geographic Map View (Leaflet.js) and minorz UI consistency improvements.
 */
 
 :root {
@@ -52,6 +52,11 @@
     --disabled-text: #888;
     --disabled-border: #555;
     --accent-color-checkbox: #58a6ff;
+    --leaflet-popup-bg: var(--card-bg);
+    --leaflet-popup-text: var(--text-color);
+    --leaflet-popup-border: var(--border-color);
+    --leaflet-tooltip-bg: var(--card-bg);
+    --leaflet-tooltip-text: var(--text-color);
 }
 
 body.light-theme {
@@ -102,6 +107,11 @@ body.light-theme {
     --disabled-text: #adb5bd;
     --disabled-border: #ced4da;
     --accent-color-checkbox: #007bff;
+    --leaflet-popup-bg: #fff;
+    --leaflet-popup-text: #333;
+    --leaflet-popup-border: #ccc;
+    --leaflet-tooltip-bg: #fff;
+    --leaflet-tooltip-text: #333;
 }
 
 /* --- Global Resets & Body --- */
@@ -124,7 +134,7 @@ body {
     position: fixed;
     top: 15px;
     right: 15px;
-    z-index: 1001; 
+    z-index: 10001; /* Higher than Leaflet controls */
     background-color: var(--card-bg);
     color: var(--text-color);
     border: 1px solid var(--border-color);
@@ -308,6 +318,20 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
 .chart-container { height: 350px; max-width: 95%; background-color: var(--card-bg); }
 #mainChartCanvas, #secondaryChartCanvas { width: 100% !important; height: 100% !important; }
 
+/* --- Map Container --- */
+#mapViewContainer { max-width: 95%; }
+#mapid { height: 450px; width: 100%; border-radius: 0.25rem; border: 1px solid var(--border-color); }
+.map-status-message { text-align: center; color: var(--text-color-muted); margin-top: 0.5rem; }
+/* Leaflet popup styling for themes */
+.leaflet-popup-content-wrapper { background: var(--leaflet-popup-bg); color: var(--leaflet-popup-text); border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.leaflet-popup-content { margin: 10px; font-size: 0.9em; }
+.leaflet-popup-content p { margin: 0.3em 0; }
+.leaflet-popup-content strong { color: var(--text-color-strong); }
+.leaflet-popup-tip { background: var(--leaflet-popup-bg); }
+.leaflet-container a.leaflet-popup-close-button { color: var(--text-color-muted) !important; }
+.leaflet-tooltip { background-color: var(--leaflet-tooltip-bg); color: var(--leaflet-tooltip-text); border: 1px solid var(--leaflet-popup-border); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+
+
 /* --- Table Container & Table --- */
 .table-container { max-width: 95%; }
 .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 10px; }
@@ -401,6 +425,7 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     .summary-grid p { font-size: 1rem; }
     .rep-pmr-container p, .training-stats-container p { font-size: 1rem; }
     .chart-container { height: 400px; }
+    #mapid { height: 500px; }
     #attachRateTable { font-size: 0.9rem; }
     #attachRateTable th, #attachRateTable td { padding: 0.6rem 0.8rem; } 
     #attachRateTable th { font-size: 0.85rem; }
@@ -417,6 +442,7 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     .top-bottom-container.card { padding: 1.5rem; }
     .filter-controls { gap: 1.2rem 2rem; }
     .chart-container { height: 450px; }
+    #mapid { height: 550px; }
     #attachRateTable { font-size: 0.9rem; }
     #attachRateTable th { font-size: 0.9rem; }
     #attachRateTable th, #attachRateTable td { padding: 0.75rem 1rem; }
