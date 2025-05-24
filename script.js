@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-24T15:58:00EDT
-//    Summary: Adjusted map's fitBounds padding for a slightly tighter zoom when displaying filtered stores.
+//    Timestamp: 2025-05-24T16:10:00EDT
+//    Summary: Changed default map view to Michigan and surrounding area.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const metaThemeColorTag = document.querySelector('meta[name="theme-color"]');
 
     // --- Configuration ---
+    const MICHIGAN_AREA_VIEW = { lat: 43.8, lon: -84.8, zoom: 7 }; // Centered on Michigan
+
     const REQUIRED_HEADERS = [ 
         'Store', 'REGION', 'DISTRICT', 'Q2 Territory', 'FSM NAME', 'CHANNEL',
         'SUB_CHANNEL', 'DEALER_NAME', 'Revenue w/DF', 'QTD Revenue Target',
@@ -282,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mapElement && !mapInstance) {
             try {
                 console.log('[Map View] Initializing Leaflet map...');
-                mapInstance = L.map(mapElement).setView([39.8283, -98.5795], 4); 
+                mapInstance = L.map(mapElement).setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); 
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                     maxZoom: 18,
@@ -344,8 +346,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mapViewContainer) mapViewContainer.style.display = 'block';
 
         if (validStoresWithCoords.length === 0) {
-            if (mapStatus) mapStatus.textContent = 'No stores with valid coordinates in filtered data.';
-            mapInstance.setView([39.8283, -98.5795], 4); // Reset to default US view
+            if (mapStatus) mapStatus.textContent = 'No stores with valid coordinates in filtered data. Showing default map area.';
+            mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
             return;
         }
 
@@ -372,26 +374,25 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mapMarkersLayer && typeof mapMarkersLayer.getBounds === 'function') {
                 const bounds = mapMarkersLayer.getBounds();
                 if (bounds && typeof bounds.isValid === 'function' && bounds.isValid()) {
-                    // Adjusted padding for a tighter fit and ensure maxZoom is respected
                     mapInstance.fitBounds(bounds, { padding: [25, 25], maxZoom: 16 }); 
                 } else {
                     console.warn('[Map View] getBounds() returned invalid bounds despite having markers. Centering on first marker.');
                     if (validStoresWithCoords.length > 0) {
-                        const firstStoreWithCoords = validStoresWithCoords[0]; // Already filtered for valid coords
+                        const firstStoreWithCoords = validStoresWithCoords[0];
                         const lat = parseNumber(safeGet(firstStoreWithCoords, 'LATITUDE_ORG'));
                         const lon = parseNumber(safeGet(firstStoreWithCoords, 'LONGITUDE_ORG'));
-                        mapInstance.setView([lat, lon], 10); // Zoom level 10 for a single area
-                    } else { // Should not happen if storesOnMapCount > 0
-                         mapInstance.setView([39.8283, -98.5795], 4); 
+                        if(!isNaN(lat) && !isNaN(lon)) mapInstance.setView([lat, lon], 10);
+                    } else { 
+                         mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); 
                     }
                 }
             } else {
                 console.error('[Map View] mapMarkersLayer is invalid or getBounds is not a function just before fitBounds was to be called.');
             }
             if (mapStatus) mapStatus.textContent = `Displaying ${storesOnMapCount} stores on map.`;
-        } else { // This case should be rare now due to the validStoresWithCoords.length check earlier
-            if (mapStatus) mapStatus.textContent = 'No stores with displayable coordinates in filtered data.';
-             mapInstance.setView([39.8283, -98.5795], 4);
+        } else { 
+            if (mapStatus) mapStatus.textContent = 'No stores with displayable coordinates in filtered data. Showing default map area.';
+             mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
         }
         setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 0);
     };
@@ -567,9 +568,13 @@ document.addEventListener('DOMContentLoaded', () => {
          
          if (mapInstance && mapMarkersLayer && typeof mapMarkersLayer.clearLayers === 'function') {
              mapMarkersLayer.clearLayers();
+             mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); // Reset to default view
          } else if (mapMarkersLayer && typeof mapMarkersLayer.clearLayers !== 'function') {
              console.warn("[Map View] mapMarkersLayer.clearLayers is not a function during resetUI.");
+         } else if (mapInstance) { // If map instance exists but no layer, still set view
+             mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
          }
+
          if (mapViewContainer) mapViewContainer.style.display = 'none';
          if (mapStatus) mapStatus.textContent = 'Load a file and apply filters to see map data.';
 
@@ -622,10 +627,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (mapInstance && mapMarkersLayer && typeof mapMarkersLayer.clearLayers === 'function') {
             mapMarkersLayer.clearLayers();
+            mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); // Reset to default view
         } else if (mapMarkersLayer && typeof mapMarkersLayer.clearLayers !== 'function') {
              console.warn("[Map View] mapMarkersLayer.clearLayers is not a function during handleResetFiltersClick.");
+        } else if (mapInstance) { // If map instance exists but no layer, still set view
+            mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
         }
-        if (mapViewContainer) mapViewContainer.style.display = 'none';
+
+        if (mapViewContainer) mapViewContainer.style.display = 'none'; // Keep map hidden until filters are applied
         if (mapStatus) mapStatus.textContent = 'Apply filters to see map data.';
 
         if (attachRateTableBody) attachRateTableBody.innerHTML = '';
