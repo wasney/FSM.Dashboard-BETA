@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-24T15:30:00EDT
-//    Summary: Further strengthened map initialization and layer group validation to prevent TypeError with getBounds.
+//    Timestamp: 2025-05-24T15:58:00EDT
+//    Summary: Adjusted map's fitBounds padding for a slightly tighter zoom when displaying filtered stores.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -282,7 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mapElement && !mapInstance) {
             try {
                 console.log('[Map View] Initializing Leaflet map...');
-                mapInstance = L.map(mapElement).setView([39.8283, -98.5795], 4); // Default to US center
+                mapInstance = L.map(mapElement).setView([39.8283, -98.5795], 4); 
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                     maxZoom: 18,
@@ -306,7 +306,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.warn("Map container 'mapid' not found. Map cannot be initialized.");
             if (mapStatus) mapStatus.textContent = 'Map container not found.';
         } else if (mapInstance && !mapMarkersLayer) {
-             // This case should ideally be caught by the main init block, but as a fallback:
             console.warn('[Map View] mapInstance exists, but mapMarkersLayer was not properly initialized. Attempting to create layer group.');
             mapMarkersLayer = L.layerGroup().addTo(mapInstance);
         }
@@ -320,17 +319,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Ensure mapMarkersLayer is a valid L.LayerGroup instance
         if (!mapMarkersLayer || !(mapMarkersLayer instanceof L.LayerGroup)) {
             console.warn('[Map View] mapMarkersLayer is invalid or not an L.LayerGroup instance. Re-creating it.');
-             if (mapMarkersLayer && typeof mapMarkersLayer.remove === 'function') { // If it was something else, try to remove it from map
+             if (mapMarkersLayer && typeof mapMarkersLayer.remove === 'function') { 
                 mapMarkersLayer.remove();
             }
             mapMarkersLayer = L.layerGroup().addTo(mapInstance);
-            if (!(mapMarkersLayer instanceof L.LayerGroup)) { // If re-creation also failed
+            if (!(mapMarkersLayer instanceof L.LayerGroup)) { 
                 console.error('[Map View] Critical error: Failed to create mapMarkersLayer as a valid L.LayerGroup.');
                 if (mapStatus) mapStatus.textContent = 'Map layer component error. Please refresh.';
-                if (mapViewContainer) mapViewContainer.style.display = 'block'; // Show to display error
+                if (mapViewContainer) mapViewContainer.style.display = 'block'; 
                 return;
             }
         }
@@ -347,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (validStoresWithCoords.length === 0) {
             if (mapStatus) mapStatus.textContent = 'No stores with valid coordinates in filtered data.';
-            // mapInstance.setView([39.8283, -98.5795], 4); // Optionally reset view
+            mapInstance.setView([39.8283, -98.5795], 4); // Reset to default US view
             return;
         }
 
@@ -371,30 +369,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (storesOnMapCount > 0) {
-            if (typeof mapMarkersLayer.getBounds === 'function') {
+            if (mapMarkersLayer && typeof mapMarkersLayer.getBounds === 'function') {
                 const bounds = mapMarkersLayer.getBounds();
                 if (bounds && typeof bounds.isValid === 'function' && bounds.isValid()) {
-                    mapInstance.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+                    // Adjusted padding for a tighter fit and ensure maxZoom is respected
+                    mapInstance.fitBounds(bounds, { padding: [25, 25], maxZoom: 16 }); 
                 } else {
                     console.warn('[Map View] getBounds() returned invalid bounds despite having markers. Centering on first marker.');
                     if (validStoresWithCoords.length > 0) {
-                        const firstStoreWithCoords = validStoresWithCoords[0];
+                        const firstStoreWithCoords = validStoresWithCoords[0]; // Already filtered for valid coords
                         const lat = parseNumber(safeGet(firstStoreWithCoords, 'LATITUDE_ORG'));
                         const lon = parseNumber(safeGet(firstStoreWithCoords, 'LONGITUDE_ORG'));
-                        if(!isNaN(lat) && !isNaN(lon)) mapInstance.setView([lat, lon], 10);
-                    } else {
+                        mapInstance.setView([lat, lon], 10); // Zoom level 10 for a single area
+                    } else { // Should not happen if storesOnMapCount > 0
                          mapInstance.setView([39.8283, -98.5795], 4); 
                     }
                 }
             } else {
-                console.error('[Map View] mapMarkersLayer.getBounds is still not a function. Layer object:', mapMarkersLayer);
+                console.error('[Map View] mapMarkersLayer is invalid or getBounds is not a function just before fitBounds was to be called.');
             }
             if (mapStatus) mapStatus.textContent = `Displaying ${storesOnMapCount} stores on map.`;
-        } else {
+        } else { // This case should be rare now due to the validStoresWithCoords.length check earlier
             if (mapStatus) mapStatus.textContent = 'No stores with displayable coordinates in filtered data.';
              mapInstance.setView([39.8283, -98.5795], 4);
         }
-        // Ensure map re-renders correctly if its container was hidden
         setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 0);
     };
 
