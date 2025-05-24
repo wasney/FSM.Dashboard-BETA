@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-24T11:58:40EDT
-//    Summary: Added 'Focus Points' filter section and corresponding opportunity display tables.
+//    Timestamp: 2025-05-24T12:40:52EDT
+//    Summary: Attach rate table now only shows stores with all valid numerical attach rate values.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -31,6 +31,10 @@ document.addEventListener('DOMContentLoaded', () => {
         '%Quarterly Territory Rev Target', 'Region Rev%', 'District Rev%', 'Territory Rev%'
     ]; 
     const FLAG_HEADERS = ['SUPER STORE', 'GOLDEN RHINO', 'GCE', 'AI_Zone', 'Hispanic_Market', 'EV ROUTE'];
+    const ATTACH_RATE_COLUMNS = [
+        'Tablet Attach Rate', 'PC Attach Rate', 'NC Attach Rate', 
+        'TWS Attach Rate', 'WW Attach Rate', 'ME Attach Rate', 'NCME Attach Rate'
+    ];
     const CURRENCY_FORMAT = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
     const PERCENT_FORMAT = new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
     const NUMBER_FORMAT = new Intl.NumberFormat('en-US');
@@ -185,17 +189,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const parsePercent = (value) => {
          if (value === null || value === undefined || String(value).trim() === '') return NaN;
-         if (typeof value === 'number') return value; // Assume it's already a decimal if number (e.g. 0.5 for 50%)
+         if (typeof value === 'number') return value; 
          if (typeof value === 'string') { 
              const numStr = value.replace('%', ''); 
              const num = parseFloat(numStr); 
-             // If the original string had a '%', or if the number is likely a whole percentage (e.g. 50 for 50%)
-             // and not already a decimal (e.g. 0.5), then divide by 100.
              if (isNaN(num)) return NaN;
-             if (value.includes('%') || (num > 1 && num <= 100) || (num === 0) || (num === 1) ) { // Handles "50%", 50, 0, 1, 100
+             if (value.includes('%') || (num > 1 && num <= 100) || (num === 0) || (num === 1) ) { 
                  return num / 100;
              }
-             return num; // Assumes it's already a decimal if no '%' and not in typical whole percentage range
+             return num; 
         }
          return NaN;
     };
@@ -203,14 +205,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const value = obj ? obj[path] : undefined;
         return (value !== undefined && value !== null && String(value).trim() !== '') ? value : defaultValue;
     };
-    const isValidForAverage = (value) => { // Used for general averaging, allows 0.
+    const isValidForAverage = (value) => { 
          if (value === null || value === undefined || String(value).trim() === '') return false;
-         const parsed = parseNumber(String(value).replace('%','')); // Use parseNumber for robust parsing.
+         const parsed = parseNumber(String(value).replace('%','')); 
          return !isNaN(parsed);
     };
-    const isValidNumericForFocus = (value) => { // Stricter for focus points: must be numeric, not NaN after parsing.
+    const isValidNumericForFocus = (value) => { 
         if (value === null || value === undefined || String(value).trim() === '') return false;
-        const parsedVal = parsePercent(value); // Use parsePercent as these are percentage-based metrics
+        const parsedVal = parsePercent(value); 
         return !isNaN(parsedVal);
     };
 
@@ -277,7 +279,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setOptions(regionFilter, getUniqueValues(data, 'REGION')); setOptions(districtFilter, getUniqueValues(data, 'DISTRICT')); setMultiSelectOptions(territoryFilter, getUniqueValues(data, 'Q2 Territory').slice(1));
         setOptions(fsmFilter, getUniqueValues(data, 'FSM NAME')); setOptions(channelFilter, getUniqueValues(data, 'CHANNEL')); setOptions(subchannelFilter, getUniqueValues(data, 'SUB_CHANNEL')); setOptions(dealerFilter, getUniqueValues(data, 'DEALER_NAME'));
         Object.values(flagFiltersCheckboxes).forEach(input => { if(input) input.disabled = false; });
-        // Enable Focus Point Filters
         if(focusEliteFilter) focusEliteFilter.disabled = false;
         if(focusConnectivityFilter) focusConnectivityFilter.disabled = false;
         if(focusRepSkillFilter) focusRepSkillFilter.disabled = false;
@@ -374,7 +375,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 updateSummary(filteredData); updateTopBottomTables(filteredData); updateCharts(filteredData); updateAttachRateTable(filteredData); 
                 
-                // Update Focus Point Sections
                 updateFocusPointSections(filteredData);
 
                 if (filteredData.length === 1) { showStoreDetails(filteredData[0]); highlightTableRow(safeGet(filteredData[0], 'Store', null)); } else { hideStoreDetails(); }
@@ -384,7 +384,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Error applying filters:", error); if (statusDiv) statusDiv.textContent = "Error applying filters. Check console for details.";
                 filteredData = []; if (resultsArea) resultsArea.style.display = 'none'; if (exportCsvButton) exportCsvButton.disabled = true;
                 updateSummary([]); updateTopBottomTables([]); updateCharts([]); updateAttachRateTable([]); hideStoreDetails();
-                 // Hide focus point sections on error too
                 if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none';
                 if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
                 if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
@@ -403,7 +402,6 @@ document.addEventListener('DOMContentLoaded', () => {
          if (storeSearch) { storeSearch.value = ''; storeSearch.disabled = true; }
          storeOptions = []; 
          Object.values(flagFiltersCheckboxes).forEach(input => { if(input) {input.checked = false; input.disabled = true;} });
-        // Reset Focus Point checkboxes
         if(focusEliteFilter) { focusEliteFilter.checked = false; focusEliteFilter.disabled = true; }
         if(focusConnectivityFilter) { focusConnectivityFilter.checked = false; focusConnectivityFilter.disabled = true; }
         if(focusRepSkillFilter) { focusRepSkillFilter.checked = false; focusRepSkillFilter.disabled = true; }
@@ -432,7 +430,6 @@ document.addEventListener('DOMContentLoaded', () => {
          if (bottom5TableBody) bottom5TableBody.innerHTML = '';
          hideStoreDetails(); 
          updateSummary([]); 
-        // Hide focus point sections on UI reset
         if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none';
         if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
         if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
@@ -452,7 +449,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (storeFilter) storeFilter.selectedIndex = -1; 
         if (storeSearch) storeSearch.value = ''; 
         Object.values(flagFiltersCheckboxes).forEach(input => { if(input) input.checked = false; });
-        // Uncheck Focus Point filters
         if(focusEliteFilter) focusEliteFilter.checked = false;
         if(focusConnectivityFilter) focusConnectivityFilter.checked = false;
         if(focusRepSkillFilter) focusRepSkillFilter.checked = false;
@@ -468,21 +464,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (storeDeselectAll) storeDeselectAll.disabled = true;
         }
 
-        if (resultsArea) resultsArea.style.display = 'none'; // Hide results until 'Apply' is clicked
+        if (resultsArea) resultsArea.style.display = 'none'; 
         if (topBottomSection) topBottomSection.style.display = 'none';
         if (mainChartInstance) { mainChartInstance.destroy(); mainChartInstance = null; }
         if (attachRateTableBody) attachRateTableBody.innerHTML = '';
         if (attachRateTableFooter) attachRateTableFooter.innerHTML = '';
         if (attachTableStatus) attachTableStatus.textContent = '';
         hideStoreDetails(); 
-        // Hide Focus Point sections
         if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none';
         if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
         if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
         if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
 
 
-        filteredData = []; // Clear filtered data
+        filteredData = []; 
         if (exportCsvButton) exportCsvButton.disabled = true;
 
         if (statusDiv) {
@@ -583,9 +578,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateAttachRateTable = (data) => {
         if (!attachRateTableBody || !attachRateTableFooter) return;
         attachRateTableBody.innerHTML = ''; attachRateTableFooter.innerHTML = '';
-        if (data.length === 0) { if(attachTableStatus) attachTableStatus.textContent = 'No data to display based on filters.'; return; }
+
+        // Filter data to only include rows with all valid numerical attach rates
+        const dataForTable = data.filter(row => {
+            return ATTACH_RATE_COLUMNS.every(colKey => isValidNumericForFocus(safeGet(row, colKey, null)));
+        });
+    
+        if (dataForTable.length === 0) { 
+            if(attachTableStatus) attachTableStatus.textContent = 'No stores with complete & valid attach rate data based on current filters.'; 
+            return; 
+        }
         
-        const sortedData = [...data].sort((a, b) => {
+        const sortedData = [...dataForTable].sort((a, b) => {
              let valA = safeGet(a, currentSort.column, null); let valB = safeGet(b, currentSort.column, null);
              if (valA === null && valB === null) return 0; if (valA === null) return currentSort.ascending ? -1 : 1; if (valB === null) return currentSort.ascending ? 1 : -1;
              const isPercentCol = currentSort.column.includes('Attach Rate') || currentSort.column.includes('% Target'); 
@@ -605,31 +609,31 @@ document.addEventListener('DOMContentLoaded', () => {
             { key: 'NCME Attach Rate', format: formatPercent, highlight: true },
         ];
         
-        const averageMetrics = [
-             'Tablet Attach Rate', 'PC Attach Rate', 'NC Attach Rate',
-             'TWS Attach Rate', 'WW Attach Rate', 'ME Attach Rate', 'NCME Attach Rate'
-        ];
         const averages = {};
-        averageMetrics.forEach(key => { 
+        ATTACH_RATE_COLUMNS.forEach(key => { 
             let sum = 0, count = 0; 
-            data.forEach(row => { 
+            dataForTable.forEach(row => { // Use dataForTable for averages too
                 const valStr = safeGet(row, key, null); 
-                if (isValidForAverage(valStr)) { sum += parsePercent(valStr); count++; } 
+                // isValidNumericForFocus ensures we only average actual numbers
+                if (isValidNumericForFocus(valStr)) { sum += parsePercent(valStr); count++; } 
             }); 
             averages[key] = count > 0 ? sum / count : NaN; 
         });
 
         sortedData.forEach(row => {
             const tr = document.createElement('tr'); const storeName = safeGet(row, 'Store', null);
+            // This check might be redundant now due to pre-filtering by dataForTable
             if (storeName && String(storeName).trim() !== '') {
                  tr.dataset.storeName = storeName; tr.onclick = () => { showStoreDetails(row); highlightTableRow(storeName); };
                  columns.forEach(col => {
                      const td = document.createElement('td'); const rawValue = safeGet(row, col.key, null); 
                      const isPercentCol = col.key.includes('Attach Rate'); 
-                     const numericValue = (col.key === 'Store') ? rawValue : (isPercentCol ? parsePercent(rawValue) : parseNumber(rawValue));
-                     let formattedValue; 
-                     if (rawValue === null || (col.key !== 'Store' && isNaN(numericValue)) || String(rawValue).trim() === '') { formattedValue = 'N/A'; } 
-                     else { formattedValue = typeof col.format === 'function' ? col.format(numericValue) : numericValue; }
+                     // All values for attach rate columns should be numeric here due to dataForTable filter
+                     const numericValue = (col.key === 'Store') ? rawValue : parsePercent(rawValue); 
+                     let formattedValue = formatPercent(numericValue); // Default to percent for attach rates
+                     if (col.key === 'Store') { formattedValue = rawValue; }
+                     else if (isNaN(numericValue)) { formattedValue = 'N/A'; } // Should not happen if dataForTable is correct
+                      
                      td.textContent = formattedValue; td.title = `${col.key}: ${formattedValue}`;
                      if (col.highlight && !isNaN(averages[col.key]) && typeof numericValue === 'number' && !isNaN(numericValue)) { 
                          td.classList.toggle('highlight-green', numericValue >= averages[col.key]); 
@@ -641,23 +645,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        if (data.length > 0) {
+        if (dataForTable.length > 0) {
             const footerRow = attachRateTableFooter.insertRow(); 
             const avgLabelCell = footerRow.insertCell(); 
             avgLabelCell.textContent = 'Filtered Avg*';
-            avgLabelCell.title = 'Average calculated only using stores with valid data for each column'; 
+            avgLabelCell.title = 'Average calculated only using stores with complete and valid attach rate data'; 
             avgLabelCell.style.textAlign = "right"; 
             avgLabelCell.style.fontWeight = "bold";
-            averageMetrics.forEach(key => { 
+            ATTACH_RATE_COLUMNS.forEach(key => { 
                 const td = footerRow.insertCell(); 
                 const avgValue = averages[key]; 
                 td.textContent = formatPercent(avgValue); 
-                let validCount = data.filter(r => isValidForAverage(safeGet(r, key, null))).length; 
+                let validCount = dataForTable.filter(r => isValidNumericForFocus(safeGet(r, key, null))).length; 
                 td.title = `Average ${key}: ${formatPercent(avgValue)} (from ${validCount} stores)`; 
                 td.style.textAlign = "right"; 
             });
         }
-        if(attachTableStatus) attachTableStatus.textContent = `Showing ${attachRateTableBody.rows.length} stores. Click row for details. Click headers to sort.`;
+        if(attachTableStatus) attachTableStatus.textContent = `Showing ${attachRateTableBody.rows.length} stores with complete attach rate data. Click row for details. Click headers to sort.`;
         updateSortArrows();
     };
 
@@ -720,15 +724,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 tr.insertCell().textContent = storeName;
                 tr.cells[0].title = storeName;
 
+                const territoryName = safeGet(row, 'Q2 Territory', 'N/A');
+                tr.insertCell().textContent = territoryName;
+                tr.cells[1].title = territoryName;
+
                 const metricValue = parsePercent(safeGet(row, valueKey, NaN));
                 tr.insertCell().textContent = formatPercent(metricValue);
-                tr.cells[1].title = formatPercent(metricValue);
+                tr.cells[2].title = formatPercent(metricValue);
             });
             if (statusP) statusP.textContent = `Displaying ${data.length} stores.`;
             sectionElement.style.display = 'block';
         } else {
             if (statusP) statusP.textContent = 'No stores meet this criteria based on current filters.';
-            sectionElement.style.display = 'block'; // Keep section visible to show "No stores" message
+            sectionElement.style.display = 'block';
         }
     };
     // --- End Focus Point Display Functions ---
@@ -831,7 +839,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (subchannelFilter?.value !== 'ALL') summary.push(`Subchannel: ${subchannelFilter.value}`); if (dealerFilter?.value !== 'ALL') summary.push(`Dealer: ${dealerFilter.value}`);
         const stores = storeFilter ? Array.from(storeFilter.selectedOptions).map(o => o.value) : []; if (stores.length > 0) summary.push(`Stores: ${stores.length === 1 ? stores[0] : `${stores.length} selected`}`);
         const flags = Object.entries(flagFiltersCheckboxes).filter(([, input]) => input?.checked).map(([key])=> key.replace(/_/g, ' ')); if (flags.length > 0) summary.push(`Attributes: ${flags.join(', ')}`);
-        // Add Focus Points to email summary
         const focusPointsSummary = [];
         if(focusEliteFilter?.checked) focusPointsSummary.push("Elite Opps");
         if(focusConnectivityFilter?.checked) focusPointsSummary.push("Connectivity Opps");
