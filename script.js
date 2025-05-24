@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-09T07:48:22EDT
-//    Summary: Removed '% Quarterly Revenue Target' from the Attach Rates table display logic (columns array and averageMetrics array).
+//    Timestamp: 2025-05-24T01:59:18EDT
+//    Summary: Modified 'Post Training Score' calculation to exclude 0 values from the average.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'ORG_STORE_ID', 'CV_STORE_ID', 'CINGLEPOINT_ID', 
         'STORE_TYPE_NAME', 'National_Tier', 'Merchandising_Level', 'Combined_Tier', 
         '%Quarterly Territory Rev Target', 'Region Rev%', 'District Rev%', 'Territory Rev%'
-    ]; // '% Quarterly Revenue Target' is still required for other parts of the dashboard
+    ]; 
     const FLAG_HEADERS = ['SUPER STORE', 'GOLDEN RHINO', 'GCE', 'AI_Zone', 'Hispanic_Market', 'EV ROUTE'];
     const CURRENCY_FORMAT = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
     const PERCENT_FORMAT = new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -442,7 +442,18 @@ document.addEventListener('DOMContentLoaded', () => {
             valStr = safeGet(row, 'Retail Mode Connectivity', null); if (isValidForAverage(valStr)) { sumConnectivity += parsePercent(valStr); countConnectivity++; }
             valStr = safeGet(row, 'Rep Skill Ach', null); if (isValidForAverage(valStr)) { sumRepSkill += parsePercent(valStr); countRepSkill++; }
             valStr = safeGet(row, '(V)PMR Ach', null); if (isValidForAverage(valStr)) { sumPmr += parsePercent(valStr); countPmr++; }
-            valStr = safeGet(row, 'Post Training Score', null); if (isValidForAverage(valStr)) { sumPostTraining += parseNumber(valStr); countPostTraining++; }
+            
+            // ** MODIFIED 'Post Training Score' LOGIC **
+            valStr = safeGet(row, 'Post Training Score', null); 
+            if (isValidForAverage(valStr)) { // Checks for null, empty, and if parseNumber(valStr) is not NaN
+                const numericScore = parseNumber(valStr); // Parse the number
+                if (numericScore !== 0) { // Exclude 0 values
+                    sumPostTraining += numericScore;
+                    countPostTraining++;
+                }
+            }
+            // ** END MODIFIED LOGIC **
+
             if (subChannel !== "Verizon COR") { valStr = safeGet(row, 'Elite', null); if (isValidForAverage(valStr)) { sumElite += parsePercent(valStr); countElite++; } }
         });
         const calculatedRevAR = sumQtdTarget === 0 ? NaN : sumRevenue / sumQtdTarget;
@@ -464,7 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (retailModeConnectivityValue) { retailModeConnectivityValue.textContent = formatPercent(avgConnectivity); retailModeConnectivityValue.title = `Average 'Retail Mode Connectivity' across ${countConnectivity} stores with data`; }
         if (repSkillAchValue) { repSkillAchValue.textContent = formatPercent(avgRepSkill); repSkillAchValue.title = `Average 'Rep Skill Ach' across ${countRepSkill} stores with data`; }
         if (vPmrAchValue) { vPmrAchValue.textContent = formatPercent(avgPmr); vPmrAchValue.title = `Average '(V)PMR Ach' across ${countPmr} stores with data`; }
-        if (postTrainingScoreValue) { postTrainingScoreValue.textContent = isNaN(avgPostTraining) ? 'N/A' : avgPostTraining.toFixed(1); postTrainingScoreValue.title = `Average 'Post Training Score' across ${countPostTraining} stores with data`; }
+        if (postTrainingScoreValue) { postTrainingScoreValue.textContent = isNaN(avgPostTraining) ? 'N/A' : avgPostTraining.toFixed(1); postTrainingScoreValue.title = `Average 'Post Training Score' across ${countPostTraining} stores with data (excluding 0s)`; }
         if (eliteValue) { eliteValue.textContent = formatPercent(avgElite); eliteValue.title = `Average 'Elite' score % across ${countElite} stores with data (excluding Verizon COR sub-channel)`;}
         updateContextualSummary(data);
     };
@@ -507,16 +518,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const sortedData = [...data].sort((a, b) => {
              let valA = safeGet(a, currentSort.column, null); let valB = safeGet(b, currentSort.column, null);
              if (valA === null && valB === null) return 0; if (valA === null) return currentSort.ascending ? -1 : 1; if (valB === null) return currentSort.ascending ? 1 : -1;
-             const isPercentCol = currentSort.column.includes('Attach Rate') || currentSort.column.includes('% Target'); // Keep this for sorting main table
+             const isPercentCol = currentSort.column.includes('Attach Rate') || currentSort.column.includes('% Target'); 
              const numA = isPercentCol ? parsePercent(valA) : parseNumber(valA); const numB = isPercentCol ? parsePercent(valB) : parseNumber(valB);
              if (!isNaN(numA) && !isNaN(numB)) { return currentSort.ascending ? numA - numB : numB - numA; }
              else { valA = String(valA).toLowerCase(); valB = String(valB).toLowerCase(); return currentSort.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA); }
         });
 
-        // ** MODIFIED: Define columns for Attach Rate Table (excluding '% Quarterly Revenue Target') **
         const columns = [
             { key: 'Store', format: (val) => val },
-            // '% Quarterly Revenue Target' removed from here
             { key: 'Tablet Attach Rate', format: formatPercent, highlight: true },
             { key: 'PC Attach Rate', format: formatPercent, highlight: true },
             { key: 'NC Attach Rate', format: formatPercent, highlight: true },
@@ -526,9 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { key: 'NCME Attach Rate', format: formatPercent, highlight: true },
         ];
         
-        // ** MODIFIED: averageMetrics for footer (excluding '% Quarterly Revenue Target') **
         const averageMetrics = [
-             // '% Quarterly Revenue Target' removed
              'Tablet Attach Rate', 'PC Attach Rate', 'NC Attach Rate',
              'TWS Attach Rate', 'WW Attach Rate', 'ME Attach Rate', 'NCME Attach Rate'
         ];
@@ -546,10 +553,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const tr = document.createElement('tr'); const storeName = safeGet(row, 'Store', null);
             if (storeName && String(storeName).trim() !== '') {
                  tr.dataset.storeName = storeName; tr.onclick = () => { showStoreDetails(row); highlightTableRow(storeName); };
-                 // Use the MODIFIED 'columns' array here
                  columns.forEach(col => {
                      const td = document.createElement('td'); const rawValue = safeGet(row, col.key, null); 
-                     const isPercentCol = col.key.includes('Attach Rate'); // Simplified as '% Target' is removed
+                     const isPercentCol = col.key.includes('Attach Rate'); 
                      const numericValue = (col.key === 'Store') ? rawValue : (isPercentCol ? parsePercent(rawValue) : parseNumber(rawValue));
                      let formattedValue; 
                      if (rawValue === null || (col.key !== 'Store' && isNaN(numericValue)) || String(rawValue).trim() === '') { formattedValue = 'N/A'; } 
@@ -572,7 +578,6 @@ document.addEventListener('DOMContentLoaded', () => {
             avgLabelCell.title = 'Average calculated only using stores with valid data for each column'; 
             avgLabelCell.style.textAlign = "right"; 
             avgLabelCell.style.fontWeight = "bold";
-            // Use the MODIFIED 'averageMetrics' array here
             averageMetrics.forEach(key => { 
                 const td = footerRow.insertCell(); 
                 const avgValue = averages[key]; 
@@ -635,15 +640,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (filteredData.length === 0) { alert("No filtered data to export."); return; }
         try {
             if (!attachRateTable) throw new Error("Attach rate table not found for headers.");
-            // Get headers from the modified attachRateTable (which no longer has % Qtr Rev Target)
             const headers = Array.from(attachRateTable.querySelectorAll('thead th'))
                                  .map(th => th.dataset.sort || th.textContent.replace(/ [▲▼]$/, '').trim());
             const dataToExport = filteredData.map(row => {
-                return headers.map(headerKey => { // This headerKey comes from the current table headers
+                return headers.map(headerKey => { 
                     let value = safeGet(row, headerKey, ''); 
-                    // Note: If headerKey is for a column that was removed (like '% Qtr Rev Target'), 
-                    // it won't be in `headers` anymore, so safeGet will use its default for that key if accessed directly.
-                    // But since we iterate `headers` from the table, this is fine.
                     const isPercentLike = headerKey.includes('%') || headerKey.includes('Rate') || headerKey.includes('Ach') || headerKey.includes('Connectivity') || headerKey.includes('Elite');
                     if (isPercentLike) { const numVal = parsePercent(value); return isNaN(numVal) ? '' : numVal; } 
                     else { const numVal = parseNumber(value); if (!isNaN(numVal) && typeof value !== 'boolean' && String(value).trim() !== '') { return numVal; } if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) { return `"${value.replace(/"/g, '""')}"`; } return value; }
@@ -662,7 +663,7 @@ document.addEventListener('DOMContentLoaded', () => {
         body += `- % Store Quarterly Target: ${percentQuarterlyStoreTargetValue?.textContent || 'N/A'}\n`; body += `- Total Units (incl. DF): ${unitsWithDFValue?.textContent || 'N/A'}\n`;
         body += `- Unit Achievement %: ${unitAchievementValue?.textContent || 'N/A'}\n`; body += `- Total Visits: ${visitCountValue?.textContent || 'N/A'}\n`; body += `- Avg. Connectivity: ${retailModeConnectivityValue?.textContent || 'N/A'}\n\n`;
         body += "Mysteryshop & Training (Avg*):\n"; body += `- Rep Skill Ach: ${repSkillAchValue?.textContent || 'N/A'}\n`; body += `- (V)PMR Ach: ${vPmrAchValue?.textContent || 'N/A'}\n`;
-        body += `- Post Training Score: ${postTrainingScoreValue?.textContent || 'N/A'}\n`; body += `- Elite Score %: ${eliteValue?.textContent || 'N/A'} (Excludes Verizon COR sub-channel)\n\n`;
+        body += `- Post Training Score: ${postTrainingScoreValue?.textContent || 'N/A'} (Excludes 0s)\n`; body += `- Elite Score %: ${eliteValue?.textContent || 'N/A'} (Excludes Verizon COR sub-channel)\n\n`;
         body += "*Averages calculated only using stores with valid data for each metric.\n\n";
         const territoriesInData = new Set(filteredData.map(row => safeGet(row, 'Q2 Territory', null)).filter(Boolean));
         if (territoriesInData.size === 1) {
