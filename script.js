@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-24T15:10:00EDT
-//    Summary: Added Geographic Map View (Leaflet.js) and minor UI consistency improvements.
+//    Timestamp: 2025-05-24T15:26:00EDT
+//    Summary: Added robust checks before calling mapMarkersLayer.getBounds() and mapInstance.fitBounds() to prevent TypeError.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -165,10 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mainChartInstance && (filteredData.length > 0 || (rawData.length > 0 && filteredData.length === 0) )) { 
              updateCharts(filteredData); 
         }
-        // Re-render map tiles if map exists, to adapt to theme (though default tiles might not change)
-        // Custom themed tiles would require more setup. This ensures Leaflet controls might pick up new CSS vars if styled.
         if (mapInstance) { 
-            // This doesn't directly re-style tiles, but good to invalidate size if container style changes
             setTimeout(() => mapInstance.invalidateSize(), 0); 
         }
     };
@@ -270,13 +267,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Map Functions ---
     const initMapView = () => {
-        if (document.getElementById('mapid') && !mapInstance) {
-            mapInstance = L.map('mapid').setView([42.3314, -83.0458], 7); // Default to Detroit area, adjust zoom
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(mapInstance);
-            mapMarkersLayer = L.layerGroup().addTo(mapInstance);
-            if (mapStatus) mapStatus.textContent = 'Map initialized. Apply filters to see stores.';
+        if (document.getElementById('mapid') && !mapInstance) { 
+            try {
+                mapInstance = L.map('mapid').setView([42.3314, -83.0458], 7); 
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 18, // Standard max zoom
+                    tileSize: 512,
+                    zoomOffset: -1
+                }).addTo(mapInstance);
+                mapMarkersLayer = L.layerGroup().addTo(mapInstance); 
+                if (mapStatus) mapStatus.textContent = 'Map initialized. Apply filters to see stores.';
+            } catch (e) {
+                console.error("Error initializing Leaflet map:", e);
+                if (mapStatus) mapStatus.textContent = 'Error initializing map.';
+                mapInstance = null; // Ensure it's null if init fails
+                mapMarkersLayer = null;
+            }
         } else if (!document.getElementById('mapid')) {
             console.warn("Map container 'mapid' not found. Map cannot be initialized.");
             if (mapStatus) mapStatus.textContent = 'Map container not found.';
@@ -284,22 +291,33 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateMapView = (data) => {
-        if (!mapInstance || !mapMarkersLayer) {
-            if (mapStatus) mapStatus.textContent = 'Map not ready.';
+        if (!mapInstance) { // Check mapInstance directly
+            if (mapStatus) mapStatus.textContent = 'Map not initialized or failed to load.';
             if(mapViewContainer) mapViewContainer.style.display = 'none';
             return;
         }
+        if (!mapMarkersLayer) { // Check mapMarkersLayer specifically
+             console.warn("[Service Worker] mapMarkersLayer is not initialized. Attempting to re-initialize.");
+             mapMarkersLayer = L.layerGroup().addTo(mapInstance); // Attempt to re-initialize
+             if (!mapMarkersLayer) { // If still fails
+                if (mapStatus) mapStatus.textContent = 'Map layer group could not be initialized.';
+                if(mapViewContainer) mapViewContainer.style.display = 'none';
+                return;
+             }
+        }
+
         mapMarkersLayer.clearLayers();
         let storesOnMapCount = 0;
         const validStoresWithCoords = data.filter(row => {
             const lat = parseNumber(safeGet(row, 'LATITUDE_ORG', NaN));
             const lon = parseNumber(safeGet(row, 'LONGITUDE_ORG', NaN));
-            return !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0; // Also checking for 0,0 coords
+            return !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0;
         });
+
+        if (mapViewContainer) mapViewContainer.style.display = 'block'; // Show container regardless for status message
 
         if (validStoresWithCoords.length === 0) {
             if (mapStatus) mapStatus.textContent = 'No stores with valid coordinates in filtered data.';
-            if (mapViewContainer) mapViewContainer.style.display = 'block'; // Show container to display message
             return;
         }
 
@@ -312,22 +330,38 @@ document.addEventListener('DOMContentLoaded', () => {
             const formattedQtdGap = isNaN(qtdGap) || qtdGap === Infinity ? 'N/A' : formatCurrency(qtdGap);
 
             const popupContent = `<strong>${storeName}</strong><br>Revenue: ${revenue}<br>QTD Gap: ${formattedQtdGap}`;
-            const marker = L.marker([lat, lon]).addTo(mapMarkersLayer);
+            const marker = L.marker([lat, lon]);
             marker.bindPopup(popupContent);
             marker.on('click', () => {
                 showStoreDetails(row);
                 highlightTableRow(storeName);
             });
+            mapMarkersLayer.addLayer(marker); // Use addLayer method
             storesOnMapCount++;
         });
 
         if (storesOnMapCount > 0) {
-            mapInstance.fitBounds(mapMarkersLayer.getBounds(), { padding: [50, 50] });
+             // Ensure mapMarkersLayer and getBounds are valid before calling
+            if (mapMarkersLayer && typeof mapMarkersLayer.getBounds === 'function') {
+                const bounds = mapMarkersLayer.getBounds();
+                if (bounds && typeof bounds.isValid === 'function' && bounds.isValid()) {
+                    mapInstance.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+                } else if (validStoresWithCoords.length > 0) { // Fallback if bounds are not valid but we have coords
+                    console.warn('[Service Worker] mapMarkersLayer.getBounds() returned invalid bounds. Falling back to first store view.');
+                    const firstStore = validStoresWithCoords[0];
+                    const lat = parseNumber(safeGet(firstStore, 'LATITUDE_ORG'));
+                    const lon = parseNumber(safeGet(firstStore, 'LONGITUDE_ORG'));
+                    if(!isNaN(lat) && !isNaN(lon)) mapInstance.setView([lat, lon], 10);
+                } else { // Should not be reached if storesOnMapCount > 0
+                    console.warn('[Service Worker] No valid bounds and no stores to fallback to for map view.');
+                }
+            } else {
+                console.error('[Service Worker] mapMarkersLayer is invalid or getBounds is not a function when trying to fitBounds.');
+            }
             if (mapStatus) mapStatus.textContent = `Displaying ${storesOnMapCount} stores on map.`;
         } else {
             if (mapStatus) mapStatus.textContent = 'No stores with coordinates to display for current filters.';
         }
-        if (mapViewContainer) mapViewContainer.style.display = 'block';
     };
 
 
@@ -449,7 +483,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return true;
                 });
                 updateSummary(filteredData); updateTopBottomTables(filteredData); updateCharts(filteredData); updateAttachRateTable(filteredData); 
-                updateMapView(filteredData); // Update map with filtered data
+                updateMapView(filteredData); 
                 updateFocusPointSections(filteredData);
 
                 if (filteredData.length === 1) { showStoreDetails(filteredData[0]); highlightTableRow(safeGet(filteredData[0], 'Store', null)); } else { hideStoreDetails(); }
@@ -970,7 +1004,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initial Setup ---
     const savedTheme = localStorage.getItem(THEME_STORAGE_KEY); 
     applyTheme(savedTheme || 'dark'); 
-    initMapView(); // Initialize the map structure on load
+    initMapView(); 
 
     resetUI(); 
     if (!mainChartCanvas) console.warn("Main chart canvas context not found on load. Chart will not render.");
