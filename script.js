@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-24T12:40:52EDT
-//    Summary: Attach rate table now only shows stores with all valid numerical attach rate values.
+//    Timestamp: 2025-05-24T13:05:00EDT
+//    Summary: Removed specific text from Elite Score line in email share summary.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -579,7 +579,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!attachRateTableBody || !attachRateTableFooter) return;
         attachRateTableBody.innerHTML = ''; attachRateTableFooter.innerHTML = '';
 
-        // Filter data to only include rows with all valid numerical attach rates
         const dataForTable = data.filter(row => {
             return ATTACH_RATE_COLUMNS.every(colKey => isValidNumericForFocus(safeGet(row, colKey, null)));
         });
@@ -612,9 +611,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const averages = {};
         ATTACH_RATE_COLUMNS.forEach(key => { 
             let sum = 0, count = 0; 
-            dataForTable.forEach(row => { // Use dataForTable for averages too
+            dataForTable.forEach(row => { 
                 const valStr = safeGet(row, key, null); 
-                // isValidNumericForFocus ensures we only average actual numbers
                 if (isValidNumericForFocus(valStr)) { sum += parsePercent(valStr); count++; } 
             }); 
             averages[key] = count > 0 ? sum / count : NaN; 
@@ -622,17 +620,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         sortedData.forEach(row => {
             const tr = document.createElement('tr'); const storeName = safeGet(row, 'Store', null);
-            // This check might be redundant now due to pre-filtering by dataForTable
             if (storeName && String(storeName).trim() !== '') {
                  tr.dataset.storeName = storeName; tr.onclick = () => { showStoreDetails(row); highlightTableRow(storeName); };
                  columns.forEach(col => {
                      const td = document.createElement('td'); const rawValue = safeGet(row, col.key, null); 
                      const isPercentCol = col.key.includes('Attach Rate'); 
-                     // All values for attach rate columns should be numeric here due to dataForTable filter
                      const numericValue = (col.key === 'Store') ? rawValue : parsePercent(rawValue); 
-                     let formattedValue = formatPercent(numericValue); // Default to percent for attach rates
+                     let formattedValue = formatPercent(numericValue); 
                      if (col.key === 'Store') { formattedValue = rawValue; }
-                     else if (isNaN(numericValue)) { formattedValue = 'N/A'; } // Should not happen if dataForTable is correct
+                     else if (isNaN(numericValue)) { formattedValue = 'N/A'; } 
                       
                      td.textContent = formattedValue; td.title = `${col.key}: ${formattedValue}`;
                      if (col.highlight && !isNaN(averages[col.key]) && typeof numericValue === 'number' && !isNaN(numericValue)) { 
@@ -818,7 +814,8 @@ document.addEventListener('DOMContentLoaded', () => {
         body += `- % Store Quarterly Target: ${percentQuarterlyStoreTargetValue?.textContent || 'N/A'}\n`; body += `- Total Units (incl. DF): ${unitsWithDFValue?.textContent || 'N/A'}\n`;
         body += `- Unit Achievement %: ${unitAchievementValue?.textContent || 'N/A'}\n`; body += `- Total Visits: ${visitCountValue?.textContent || 'N/A'}\n`; body += `- Avg. Connectivity: ${retailModeConnectivityValue?.textContent || 'N/A'}\n\n`;
         body += "Mysteryshop & Training (Avg*):\n"; body += `- Rep Skill Ach: ${repSkillAchValue?.textContent || 'N/A'}\n`; body += `- (V)PMR Ach: ${vPmrAchValue?.textContent || 'N/A'}\n`;
-        body += `- Post Training Score: ${postTrainingScoreValue?.textContent || 'N/A'} (Excludes 0s)\n`; body += `- Elite Score %: ${eliteValue?.textContent || 'N/A'} (Excludes Verizon COR sub-channel)\n\n`;
+        body += `- Post Training Score: ${postTrainingScoreValue?.textContent || 'N/A'} (Excludes 0s)\n`; 
+        body += `- Elite Score %: ${eliteValue?.textContent || 'N/A'}\n\n`; // Removed "(Excludes Verizon COR sub-channel)"
         body += "*Averages calculated only using stores with valid data for each metric.\n\n";
         const territoriesInData = new Set(filteredData.map(row => safeGet(row, 'Q2 Territory', null)).filter(Boolean));
         if (territoriesInData.size === 1) {
