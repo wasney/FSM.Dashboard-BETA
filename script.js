@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-25T16:28:43EDT
-//    Summary: Added JavaScript logic for full-screen filter modal, including event listeners for open/close and filter actions.
+//    Timestamp: 2025-05-25T16:41:52EDT
+//    Summary: Implemented JavaScript for full-screen filter modal, including open/close, and updated filter/reset button logic.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const applyFiltersButtonModal = document.getElementById('applyFiltersButtonModal');
     const resetFiltersButtonModal = document.getElementById('resetFiltersButtonModal');
     const filterLoadingIndicatorModal = document.getElementById('filterLoadingIndicatorModal');
-    const desktopFilterArea = document.getElementById('filterArea');
+    // const desktopFilterArea = document.getElementById('filterArea'); // No longer primary, hidden by CSS
 
 
     // --- Configuration ---
@@ -61,16 +61,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const TOP_N_CHART = 15; 
     const TOP_N_TABLES = 5;
 
-    // --- DOM Elements (Original filter buttons are now for desktop/fallback) ---
+    // --- DOM Elements ---
     const excelFileInput = document.getElementById('excelFile');
     const statusDiv = document.getElementById('status');
     const loadingIndicator = document.getElementById('loadingIndicator');
-    // const filterLoadingIndicator = document.getElementById('filterLoadingIndicator'); // Now specific to modal: filterLoadingIndicatorModal
     const resultsArea = document.getElementById('resultsArea');
-    // const applyFiltersButton = document.getElementById('applyFiltersButton'); // Now specific to modal: applyFiltersButtonModal
-    // const resetFiltersButton = document.getElementById('resetFiltersButton'); // Now specific to modal: resetFiltersButtonModal
     
-    // Filters (references remain the same, as they are moved into the modal in HTML)
     const regionFilter = document.getElementById('regionFilter');
     const districtFilter = document.getElementById('districtFilter');
     const territoryFilter = document.getElementById('territoryFilter');
@@ -137,7 +133,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const storeDetailsContent = document.getElementById('storeDetailsContent');
     const closeStoreDetailsButton = document.getElementById('closeStoreDetailsButton');
     
-    // Share Section Elements
     const printReportButton = document.getElementById('printReportButton');
     const emailShareSection = document.getElementById('emailShareSection');
     const emailShareControls = document.getElementById('emailShareControls');
@@ -146,7 +141,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareStatus = document.getElementById('shareStatus');
     const emailShareHint = document.getElementById('emailShareHint');
 
-    // --- "Additional Tools" (formerly Focus Points) DOM Elements ---
     const showMapViewFilter = document.getElementById('showMapViewFilter'); 
     const focusEliteFilter = document.getElementById('focusEliteFilter');
     const focusConnectivityFilter = document.getElementById('focusConnectivityFilter');
@@ -162,10 +156,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const vpmrOpportunitiesSection = document.getElementById('vpmrOpportunitiesSection');
     const vpmrOpportunitiesTableBody = document.getElementById('vpmrOpportunitiesTableBody');
 
-    // --- Map View Elements ---
     const mapViewContainer = document.getElementById('mapViewContainer');
     const mapStatus = document.getElementById('mapStatus');
-
 
     // --- Global State ---
     let rawData = [];
@@ -185,20 +177,17 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => whatsNewModal.classList.add('active'), 10); 
         }
     };
-
     const hideWhatsNewModal = () => {
         if (whatsNewModal) {
             whatsNewModal.classList.remove('active');
             setTimeout(() => whatsNewModal.style.display = 'none', 300); 
         }
     };
-
     const checkAndShowWhatsNew = () => {
         if (!getCookie(BETA_FEATURES_POPUP_COOKIE)) {
             showWhatsNewModal();
         }
     };
-
     const setCookie = (name, value, days) => {
         let expires = "";
         if (days) {
@@ -208,7 +197,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Lax";
     };
-
     const getCookie = (name) => {
         const nameEQ = name + "=";
         const ca = document.cookie.split(';');
@@ -219,7 +207,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return null;
     };
-    
     if (closeWhatsNewModalBtn) {
         closeWhatsNewModalBtn.addEventListener('click', () => {
             hideWhatsNewModal();
@@ -233,31 +220,27 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-
     // --- Filter Modal Logic ---
     const openFilterModal = () => {
         if (filterModal) {
             filterModal.style.display = 'flex';
             setTimeout(() => filterModal.classList.add('active'), 10);
-            document.body.style.overflow = 'hidden'; // Prevent background scroll
+            document.body.style.overflow = 'hidden'; 
         }
     };
-
     const closeFilterModal = () => {
         if (filterModal) {
             filterModal.classList.remove('active');
             setTimeout(() => filterModal.style.display = 'none', 300);
-            document.body.style.overflow = ''; // Restore background scroll
+            document.body.style.overflow = ''; 
         }
     };
-
     if (openFilterModalBtn) {
         openFilterModalBtn.addEventListener('click', openFilterModal);
     }
     if (closeFilterModalBtn) {
         closeFilterModalBtn.addEventListener('click', closeFilterModal);
     }
-
 
     // --- Theme Management ---
     const applyTheme = (theme) => {
@@ -281,14 +264,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 0); 
         }
     };
-
     const toggleTheme = () => {
         const isLight = document.body.classList.contains(LIGHT_THEME_CLASS);
         const newTheme = isLight ? 'dark' : 'light';
         applyTheme(newTheme);
         localStorage.setItem(THEME_STORAGE_KEY, newTheme);
     };
-    
     const getChartThemeColors = () => {
         const isLight = document.body.classList.contains(LIGHT_THEME_CLASS);
         return {
@@ -336,7 +317,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const parsedVal = parsePercent(value); 
         return !isNaN(parsedVal);
     };
-
     const calculateQtdGap = (row) => {
         const revenue = parseNumber(safeGet(row, 'Revenue w/DF', 0)); 
         const target = parseNumber(safeGet(row, 'QTD Revenue Target', 0));
@@ -373,18 +353,20 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const showLoading = (isLoading, isFiltering = false) => {
         const displayStyle = isLoading ? 'flex' : 'none';
-        const indicator = isFiltering ? filterLoadingIndicatorModal : loadingIndicator; // Use modal indicator for filtering
-        const button = isFiltering ? applyFiltersButtonModal : excelFileInput; // Use modal button for filtering
+        const indicator = isFiltering ? filterLoadingIndicatorModal : loadingIndicator;
+        const primaryButton = isFiltering ? applyFiltersButtonModal : excelFileInput; 
     
         if (indicator) indicator.style.display = displayStyle;
-        if (button) button.disabled = isLoading;
+        if (primaryButton) primaryButton.disabled = isLoading;
     
-        // Also disable the main file input if initial loading is happening
-        if (!isFiltering && excelFileInput) excelFileInput.disabled = isLoading;
-        // Also disable the open filter modal button during filtering
-        if (isFiltering && openFilterModalBtn) openFilterModalBtn.disabled = isLoading;
-        else if (!isFiltering && openFilterModalBtn) openFilterModalBtn.disabled = rawData.length === 0; // Re-enable after initial load if data exists
-
+        if (isFiltering) {
+            if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = isLoading;
+            if (openFilterModalBtn) openFilterModalBtn.disabled = isLoading; // Disable open button during filtering
+        } else {
+            // Initial file loading
+            if (excelFileInput) excelFileInput.disabled = isLoading;
+            if (openFilterModalBtn) openFilterModalBtn.disabled = isLoading; // Also disable during initial load
+        }
     };    
 
     // --- Map Functions ---
@@ -395,70 +377,48 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mapViewContainer) mapViewContainer.style.display = 'none';
             return;
         }
-
         const mapElement = document.getElementById('mapid');
         if (mapElement && !mapInstance) {
             try {
-                console.log('[Map View] Initializing Leaflet map...');
                 mapInstance = L.map(mapElement).setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); 
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                    maxZoom: 18,
-                    tileSize: 512,
-                    zoomOffset: -1
+                    maxZoom: 18, tileSize: 512, zoomOffset: -1
                 }).addTo(mapInstance);
-                
-                mapMarkersLayer = L.layerGroup();
-                mapMarkersLayer.addTo(mapInstance);
-                console.log('[Map View] Map and mapMarkersLayer initialized successfully.');
-
+                mapMarkersLayer = L.layerGroup().addTo(mapInstance);
                 if (mapStatus) mapStatus.textContent = 'Map ready. Enable via "Additional Tools" and apply filters to see stores.';
             } catch (e) {
                 console.error("Error initializing Leaflet map:", e);
                 if (mapStatus) mapStatus.textContent = 'Error initializing map.';
-                mapInstance = null; 
-                mapMarkersLayer = null;
+                mapInstance = null; mapMarkersLayer = null;
                 if (mapViewContainer) mapViewContainer.style.display = 'none';
             }
         } else if (!mapElement) {
-            console.warn("Map container 'mapid' not found. Map cannot be initialized.");
             if (mapStatus) mapStatus.textContent = 'Map container not found.';
         } else if (mapInstance && !mapMarkersLayer) {
-            console.warn('[Map View] mapInstance exists, but mapMarkersLayer was not properly initialized. Attempting to create layer group.');
             mapMarkersLayer = L.layerGroup().addTo(mapInstance);
         }
     };
-
     const updateMapView = (data) => {
         if (!showMapViewFilter || !showMapViewFilter.checked) {
             if (mapViewContainer) mapViewContainer.style.display = 'none';
-            if (mapInstance && mapMarkersLayer && typeof mapMarkersLayer.clearLayers === 'function') {
-                 mapMarkersLayer.clearLayers(); 
-            }
+            if (mapInstance && mapMarkersLayer?.clearLayers) mapMarkersLayer.clearLayers(); 
             return; 
         }
-        
         if (!mapInstance || !document.getElementById('mapid')) {
             if (mapStatus) mapStatus.textContent = 'Map is not initialized or container is missing.';
-            console.warn('[Map View] updateMapView called but mapInstance is null or mapid div is missing.');
             if (mapViewContainer) mapViewContainer.style.display = 'block'; 
             return;
         }
-
         if (!mapMarkersLayer || !(mapMarkersLayer instanceof L.LayerGroup)) {
-            console.warn('[Map View] mapMarkersLayer is invalid or not an L.LayerGroup instance. Re-creating it.');
-             if (mapMarkersLayer && typeof mapMarkersLayer.remove === 'function') { 
-                mapMarkersLayer.remove();
-            }
+             if (mapMarkersLayer?.remove) mapMarkersLayer.remove();
             mapMarkersLayer = L.layerGroup().addTo(mapInstance);
             if (!(mapMarkersLayer instanceof L.LayerGroup)) { 
-                console.error('[Map View] Critical error: Failed to create mapMarkersLayer as a valid L.LayerGroup.');
                 if (mapStatus) mapStatus.textContent = 'Map layer component error. Please refresh.';
                 if (mapViewContainer) mapViewContainer.style.display = 'block'; 
                 return;
             }
         }
-        
         mapMarkersLayer.clearLayers();
         let storesOnMapCount = 0;
         const validStoresWithCoords = data.filter(row => {
@@ -466,15 +426,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const lon = parseNumber(safeGet(row, 'LONGITUDE_ORG', NaN));
             return !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0  && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
         });
-
         if (mapViewContainer) mapViewContainer.style.display = 'block'; 
-
         if (validStoresWithCoords.length === 0) {
             if (mapStatus) mapStatus.textContent = 'No stores with valid coordinates in filtered data. Showing default map area.';
             mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
             return;
         }
-
         validStoresWithCoords.forEach(row => {
             const lat = parseNumber(safeGet(row, 'LATITUDE_ORG', NaN));
             const lon = parseNumber(safeGet(row, 'LONGITUDE_ORG', NaN));
@@ -482,36 +439,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const revenue = formatCurrency(parseNumber(safeGet(row, 'Revenue w/DF', NaN)));
             const qtdGapVal = calculateQtdGap(row);
             const formattedQtdGap = isNaN(qtdGapVal) || qtdGapVal === Infinity ? 'N/A' : formatCurrency(qtdGapVal);
-
             const popupContent = `<strong>${storeName}</strong><br>Revenue: ${revenue}<br>QTD Gap: ${formattedQtdGap}`;
             const marker = L.marker([lat, lon]);
             marker.bindPopup(popupContent);
-            marker.on('click', () => {
-                showStoreDetails(row);
-                highlightTableRow(storeName);
-            });
+            marker.on('click', () => { showStoreDetails(row); highlightTableRow(storeName); });
             mapMarkersLayer.addLayer(marker);
             storesOnMapCount++;
         });
-
         if (storesOnMapCount > 0) {
-            if (mapMarkersLayer && typeof mapMarkersLayer.getBounds === 'function') {
+            if (mapMarkersLayer?.getBounds) {
                 const bounds = mapMarkersLayer.getBounds();
-                if (bounds && typeof bounds.isValid === 'function' && bounds.isValid()) {
+                if (bounds?.isValid()) {
                     mapInstance.fitBounds(bounds, { padding: [25, 25], maxZoom: 16 }); 
                 } else {
-                    console.warn('[Map View] getBounds() returned invalid bounds despite having markers. Centering on first marker.');
                     if (validStoresWithCoords.length > 0) {
                         const firstStoreWithCoords = validStoresWithCoords[0];
                         const lat = parseNumber(safeGet(firstStoreWithCoords, 'LATITUDE_ORG'));
                         const lon = parseNumber(safeGet(firstStoreWithCoords, 'LONGITUDE_ORG'));
                         if(!isNaN(lat) && !isNaN(lon)) mapInstance.setView([lat, lon], 10);
-                    } else { 
-                         mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); 
-                    }
+                    } else { mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); }
                 }
-            } else {
-                console.error('[Map View] mapMarkersLayer is invalid or getBounds is not a function just before fitBounds was to be called.');
             }
             if (mapStatus) mapStatus.textContent = `Displaying ${storesOnMapCount} stores on map.`;
         } else { 
@@ -521,14 +468,12 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 0);
     };
 
-
     // --- Core Functions ---
     const handleFile = async (event) => {
         const file = event.target.files[0];
         if (!file) { if (statusDiv) statusDiv.textContent = 'No file selected.'; return; }
         if (statusDiv) statusDiv.textContent = 'Reading file...';
-        showLoading(true); 
-        if (desktopFilterArea) desktopFilterArea.style.display = 'none'; // Hide original filter card
+        showLoading(true, false); // Pass false for isFiltering, it's initial load
         if (resultsArea) resultsArea.style.display = 'none'; 
         resetUI(); 
         try {
@@ -539,13 +484,14 @@ document.addEventListener('DOMContentLoaded', () => {
             rawData = jsonData; allPossibleStores = [...new Set(rawData.map(r => safeGet(r, 'Store', null)).filter(s => s && String(s).trim() !== ''))].sort().map(s => ({ value: s, text: s }));
             if (statusDiv) statusDiv.textContent = `Loaded ${rawData.length} rows. Use the 'Show Filters' button to refine your view.`;
             populateFilters(rawData); 
-            if (openFilterModalBtn) openFilterModalBtn.disabled = false; // Enable filter button
-            // Desktop filter area remains hidden by default, modal is primary
+            if (openFilterModalBtn) openFilterModalBtn.disabled = false;
         } catch (error) {
             console.error('Error processing file:', error); if (statusDiv) statusDiv.textContent = `Error: ${error.message}`;
             rawData = []; allPossibleStores = []; filteredData = []; resetUI();
-            if (openFilterModalBtn) openFilterModalBtn.disabled = true;
-        } finally { showLoading(false); if (excelFileInput) excelFileInput.value = ''; }
+        } finally { 
+            showLoading(false, false); // Pass false for isFiltering
+            if (excelFileInput) excelFileInput.value = ''; 
+        }
     };
     const populateFilters = (data) => {
         setOptions(regionFilter, getUniqueValues(data, 'REGION')); setOptions(districtFilter, getUniqueValues(data, 'DISTRICT')); setMultiSelectOptions(territoryFilter, getUniqueValues(data, 'Q2 Territory').slice(1));
@@ -563,7 +509,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (storeSelectAll) storeSelectAll.disabled = false; if (storeDeselectAll) storeDeselectAll.disabled = false;
         if (storeSearch) storeSearch.disabled = false; 
         
-        // Enable modal buttons
         if (applyFiltersButtonModal) applyFiltersButtonModal.disabled = false;
         if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = false; 
         
@@ -606,7 +551,6 @@ document.addEventListener('DOMContentLoaded', () => {
         storeFilter.innerHTML = ''; filteredOptions.forEach(opt => { const option = document.createElement('option'); option.value = opt.value; option.textContent = opt.text; option.title = opt.text; if (selectedValues.has(opt.value)) { option.selected = true; } storeFilter.appendChild(option); });
         if (storeSelectAll) storeSelectAll.disabled = storeFilter.disabled || filteredOptions.length === 0; if (storeDeselectAll) storeDeselectAll.disabled = storeFilter.disabled || filteredOptions.length === 0;
     };
-
     const updateTopBottomTables = (data) => {
         if (!topBottomSection || !top5TableBody || !bottom5TableBody) { console.warn("Top/Bottom table elements not found."); return; }
         top5TableBody.innerHTML = ''; bottom5TableBody.innerHTML = '';
@@ -633,13 +577,8 @@ document.addEventListener('DOMContentLoaded', () => {
             tr.insertCell().textContent = formatNumber(visits); tr.cells[4].title = formatNumber(visits);
         });
     };
-
-    const applyFiltersAndCloseModal = () => {
-        applyFilters(true); // Pass true to indicate it's from modal
-        closeFilterModal();
-    };
     
-    const applyFilters = (isFromModal = false) => {
+    const applyFilters = (isFromModal = false) => { // Added isFromModal parameter
         showLoading(true, true); 
         if (resultsArea) resultsArea.style.display = 'none';
         
@@ -663,9 +602,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateMapView(filteredData);
                 } else {
                     if (mapViewContainer) mapViewContainer.style.display = 'none';
-                    if (mapInstance && mapMarkersLayer && typeof mapMarkersLayer.clearLayers === 'function') {
-                        mapMarkersLayer.clearLayers();
-                    }
+                    if (mapInstance && mapMarkersLayer?.clearLayers) mapMarkersLayer.clearLayers();
                 }
                 
                 updateFocusPointSections(filteredData);
@@ -676,7 +613,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (resultsArea) resultsArea.style.display = 'block'; 
                 if (exportCsvButton) exportCsvButton.disabled = filteredData.length === 0;
                 if (printReportButton) printReportButton.disabled = filteredData.length === 0;
-                if (isFromModal) closeFilterModal();
+                
+                if (isFromModal) { // Close modal if filters applied from it
+                    closeFilterModal();
+                }
 
             } catch (error) {
                 console.error("Error applying filters:", error); if (statusDiv) statusDiv.textContent = "Error applying filters. Check console for details.";
@@ -691,7 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
                 if (mapViewContainer) mapViewContainer.style.display = 'none';
             } finally { 
-                showLoading(false, true); 
+                showLoading(false, true); // Pass true for isFiltering
                 if (openFilterModalBtn) openFilterModalBtn.disabled = rawData.length === 0;
             }
         }, 10);
@@ -730,22 +670,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
      const resetUI = () => {
          resetFiltersForFullUIReset(); 
-         if (desktopFilterArea) desktopFilterArea.style.display = 'none'; 
          if (resultsArea) resultsArea.style.display = 'none';
          if (mainChartInstance) { mainChartInstance.destroy(); mainChartInstance = null; }
          
-         if (mapInstance && mapMarkersLayer && typeof mapMarkersLayer.clearLayers === 'function') {
+         if (mapInstance && mapMarkersLayer?.clearLayers) {
              mapMarkersLayer.clearLayers();
              mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); 
-         } else if (mapMarkersLayer && typeof mapMarkersLayer.clearLayers !== 'function') {
-             console.warn("[Map View] mapMarkersLayer.clearLayers is not a function during resetUI.");
          } else if (mapInstance) { 
              mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
          }
 
          if (mapViewContainer) mapViewContainer.style.display = 'none';
          if (mapStatus) mapStatus.textContent = 'Enable via "Additional Tools" and apply filters to see map.';
-
 
          if (attachRateTableBody) attachRateTableBody.innerHTML = ''; 
          if (attachRateTableFooter) attachRateTableFooter.innerHTML = ''; 
@@ -761,13 +697,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
         if (emailShareSection) emailShareSection.style.display = 'none';
 
-
          if(statusDiv) statusDiv.textContent = 'No file selected.';
          allPossibleStores = []; 
          rawData = []; 
          filteredData = [];
          updateShareOptions(); 
-         if (openFilterModalBtn) openFilterModalBtn.disabled = true; // Disable filter button on full reset
+         if (openFilterModalBtn) openFilterModalBtn.disabled = true;
      };
 
     const handleResetFiltersClick = (isFromModal = false) => {
@@ -785,7 +720,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if(focusRepSkillFilter) focusRepSkillFilter.checked = false;
         if(focusVpmrFilter) focusVpmrFilter.checked = false;
 
-
         if (rawData.length > 0) {
             updateStoreFilterOptionsBasedOnHierarchy(); 
         } else {
@@ -799,11 +733,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (topBottomSection) topBottomSection.style.display = 'none';
         if (mainChartInstance) { mainChartInstance.destroy(); mainChartInstance = null; }
         
-        if (mapInstance && mapMarkersLayer && typeof mapMarkersLayer.clearLayers === 'function') {
+        if (mapInstance && mapMarkersLayer?.clearLayers) {
             mapMarkersLayer.clearLayers();
             mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); 
-        } else if (mapMarkersLayer && typeof mapMarkersLayer.clearLayers !== 'function') {
-             console.warn("[Map View] mapMarkersLayer.clearLayers is not a function during handleResetFiltersClick.");
         } else if (mapInstance) { 
             mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
         }
@@ -821,12 +753,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
         if (emailShareSection) emailShareSection.style.display = 'none';
 
-
         filteredData = []; 
         if (exportCsvButton) exportCsvButton.disabled = true;
         if (printReportButton) printReportButton.disabled = true;
         updateShareOptions();
-
 
         if (statusDiv) {
             if (rawData.length > 0) {
@@ -836,18 +766,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         if (isFromModal) {
-            applyFilters(true); // Re-apply with "ALL" filters to show everything, then close
+            applyFilters(true); 
         }
     };
 
-    // Update event listeners for modal buttons
+    // Event listeners for modal buttons
     if (applyFiltersButtonModal) {
-        applyFiltersButtonModal.addEventListener('click', () => applyFilters(true));
+        applyFiltersButtonModal.addEventListener('click', () => applyFilters(true)); // Pass true for isFromModal
     }
     if (resetFiltersButtonModal) {
-        resetFiltersButtonModal.addEventListener('click', () => handleResetFiltersClick(true));
+        resetFiltersButtonModal.addEventListener('click', () => handleResetFiltersClick(true)); // Pass true for isFromModal
     }
-
 
     const updateSummary = (data) => {
         const totalCount = data.length;
@@ -869,16 +798,11 @@ document.addEventListener('DOMContentLoaded', () => {
             valStr = safeGet(row, 'Retail Mode Connectivity', null); if (isValidForAverage(valStr)) { sumConnectivity += parsePercent(valStr); countConnectivity++; }
             valStr = safeGet(row, 'Rep Skill Ach', null); if (isValidForAverage(valStr)) { sumRepSkill += parsePercent(valStr); countRepSkill++; }
             valStr = safeGet(row, '(V)PMR Ach', null); if (isValidForAverage(valStr)) { sumPmr += parsePercent(valStr); countPmr++; }
-            
             valStr = safeGet(row, 'Post Training Score', null); 
             if (isValidForAverage(valStr)) { 
                 const numericScore = parseNumber(valStr); 
-                if (numericScore !== 0) { 
-                    sumPostTraining += numericScore;
-                    countPostTraining++;
-                }
+                if (numericScore !== 0) { sumPostTraining += numericScore; countPostTraining++; }
             }
-
             if (subChannel !== "Verizon COR") { valStr = safeGet(row, 'Elite', null); if (isValidForAverage(valStr)) { sumElite += parsePercent(valStr); countElite++; } }
         });
         const calculatedRevAR = sumQtdTarget === 0 ? NaN : sumRevenue / sumQtdTarget;
@@ -904,7 +828,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (eliteValue) { eliteValue.textContent = formatPercent(avgElite); eliteValue.title = `Average 'Elite' score % across ${countElite} stores with data (excluding Verizon COR sub-channel)`;}
         updateContextualSummary(data);
     };
-
     const updateContextualSummary = (data) => {
         [percentQuarterlyTerritoryTargetP, territoryRevPercentP, districtRevPercentP, regionRevPercentP].forEach(p => {if (p) p.style.display = 'none'});
         if (data.length === 0) return;
@@ -917,7 +840,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (singleDistrict || singleRegion) { if (districtRevPercentValue) districtRevPercentValue.textContent = formatPercent(avgDistrictRevPercent); if (districtRevPercentP && !isNaN(avgDistrictRevPercent)) districtRevPercentP.style.display = 'block'; }
         if (singleRegion) { if (regionRevPercentValue) regionRevPercentValue.textContent = formatPercent(avgRegionRevPercent); if (regionRevPercentP && !isNaN(avgRegionRevPercent)) regionRevPercentP.style.display = 'block'; }
     };
-
     const updateCharts = (data) => {
         if (mainChartInstance) { mainChartInstance.destroy(); mainChartInstance = null; }
         if (!mainChartCanvas || (data.length === 0 && rawData.length === 0) ) { if (mainChartCanvas && mainChartInstance) { mainChartInstance = new Chart(mainChartCanvas, {type: 'bar', data: {labels:[], datasets:[]}}); mainChartInstance.destroy(); mainChartInstance = null;} return; }
@@ -934,30 +856,21 @@ document.addEventListener('DOMContentLoaded', () => {
             options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: chartThemeColors.tickColor, callback: value => formatCurrency(value) }, grid: { color: chartThemeColors.gridColor } }, x: { ticks: { color: chartThemeColors.tickColor }, grid: { display: false } } }, plugins: { legend: { labels: { color: chartThemeColors.legendColor } }, tooltip: { callbacks: { label: function(context) { let label = context.dataset.label || ''; if (label) label += ': '; if (context.parsed.y !== null) { label += formatCurrency(context.parsed.y); if (context.dataset.type !== 'line' && chartData[context.dataIndex]) { const storeData = chartData[context.dataIndex]; const percentQtrTarget = parsePercent(safeGet(storeData, '% Quarterly Revenue Target', 0)); if (!isNaN(percentQtrTarget)) { label += ` (${formatPercent(percentQtrTarget)} of Qtr Target)`; } } } return label; } } } }, onClick: (_, elements) => { if (elements.length > 0) { const index = elements[0].index; const storeName = labels[index]; const storeData = filteredData.find(row => safeGet(row, 'Store', null) === storeName); if (storeData) { showStoreDetails(storeData); highlightTableRow(storeName); } } } }
         });
     };
-
     const updateAttachRateTable = (data) => {
         if (!attachRateTableBody || !attachRateTableFooter || !attachRateTable) return;
-        attachRateTableBody.innerHTML = '';
-        attachRateTableFooter.innerHTML = '';
-    
-        const dataForTable = data.filter(row => {
-            return ATTACH_RATE_COLUMNS.every(colKey => isValidNumericForFocus(safeGet(row, colKey, null)));
-        });
-    
+        attachRateTableBody.innerHTML = ''; attachRateTableFooter.innerHTML = '';
+        const dataForTable = data.filter(row => ATTACH_RATE_COLUMNS.every(colKey => isValidNumericForFocus(safeGet(row, colKey, null))));
         const tableHead = attachRateTable.querySelector('thead');
         if (!tableHead) { console.error("Attach rate table head not found!"); return; }
         let headerRow = tableHead.querySelector('tr');
         if (!headerRow) { headerRow = tableHead.insertRow(); }
         headerRow.innerHTML = ''; 
-    
         if (dataForTable.length === 0) {
             if (attachTableStatus) attachTableStatus.textContent = 'No stores with complete & valid attach rate data based on current filters.';
             return;
         }
-    
         const uniqueTerritories = new Set(dataForTable.map(row => safeGet(row, 'Q2 Territory', 'N/A_TERRITORY')));
         const showTerritoryColumn = uniqueTerritories.size > 1;
-    
         const baseHeaderConfig = [
             { label: 'Store', sortKey: 'Store', title: 'Store Name' },
             { label: 'Tablet', sortKey: 'Tablet Attach Rate', title: 'Tablet Attach Rate' },
@@ -968,222 +881,120 @@ document.addEventListener('DOMContentLoaded', () => {
             { label: 'ME', sortKey: 'ME Attach Rate', title: 'ME = TWS + WW Attach Rate' },
             { label: 'NCME', sortKey: 'NCME Attach Rate', title: 'NCME = Total Attach Rate' }
         ];
-    
         let actualTableHeaders = [...baseHeaderConfig];
         if (showTerritoryColumn) {
             actualTableHeaders.splice(1, 0, { label: 'Territory', sortKey: 'Q2 Territory', title: 'Q2 Territory' });
         }
-    
         actualTableHeaders.forEach(headerInfo => {
             const th = document.createElement('th');
-            th.textContent = headerInfo.label;
-            th.dataset.sort = headerInfo.sortKey;
-            th.title = headerInfo.title;
-            th.classList.add('sortable');
-            th.innerHTML += ' <span class="sort-arrow"></span>';
+            th.textContent = headerInfo.label; th.dataset.sort = headerInfo.sortKey; th.title = headerInfo.title;
+            th.classList.add('sortable'); th.innerHTML += ' <span class="sort-arrow"></span>';
             headerRow.appendChild(th);
         });
-    
         const sortedData = [...dataForTable].sort((a, b) => {
-            let valA = safeGet(a, currentSort.column, null);
-            let valB = safeGet(b, currentSort.column, null);
-            if (valA === null && valB === null) return 0;
-            if (valA === null) return currentSort.ascending ? -1 : 1;
+            let valA = safeGet(a, currentSort.column, null); let valB = safeGet(b, currentSort.column, null);
+            if (valA === null && valB === null) return 0; if (valA === null) return currentSort.ascending ? -1 : 1;
             if (valB === null) return currentSort.ascending ? 1 : -1;
-    
             const isAttachRateKey = ATTACH_RATE_COLUMNS.includes(currentSort.column);
             const isStoreOrTerritoryKey = currentSort.column === 'Store' || currentSort.column === 'Q2 Territory';
-            
             let numA, numB;
-            if(isAttachRateKey) {
-                numA = parsePercent(valA);
-                numB = parsePercent(valB);
-            } else if (!isStoreOrTerritoryKey) { 
-                numA = parseNumber(valA);
-                numB = parseNumber(valB);
-            } else { 
-                valA = String(valA).toLowerCase();
-                valB = String(valB).toLowerCase();
-                return currentSort.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
-            }
-
-            if (typeof numA === 'number' && typeof numB === 'number' && !isNaN(numA) && !isNaN(numB)) {
-                 return currentSort.ascending ? numA - numB : numB - numA;
-            }
-            valA = String(valA).toLowerCase();
-            valB = String(valB).toLowerCase();
+            if(isAttachRateKey) { numA = parsePercent(valA); numB = parsePercent(valB); } 
+            else if (!isStoreOrTerritoryKey) { numA = parseNumber(valA); numB = parseNumber(valB); } 
+            else { valA = String(valA).toLowerCase(); valB = String(valB).toLowerCase(); return currentSort.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA); }
+            if (typeof numA === 'number' && typeof numB === 'number' && !isNaN(numA) && !isNaN(numB)) { return currentSort.ascending ? numA - numB : numB - numA; }
+            valA = String(valA).toLowerCase(); valB = String(valB).toLowerCase();
             return currentSort.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
         });
-    
         const averages = {};
         ATTACH_RATE_COLUMNS.forEach(key => {
             let sum = 0, count = 0;
-            dataForTable.forEach(row => {
-                const valStr = safeGet(row, key, null);
-                if (isValidNumericForFocus(valStr)) { 
-                    sum += parsePercent(valStr);
-                    count++;
-                }
-            });
+            dataForTable.forEach(row => { const valStr = safeGet(row, key, null); if (isValidNumericForFocus(valStr)) { sum += parsePercent(valStr); count++; } });
             averages[key] = count > 0 ? sum / count : NaN;
         });
-    
         sortedData.forEach(row => {
-            const tr = attachRateTableBody.insertRow();
-            const storeName = safeGet(row, 'Store', 'N/A');
-            tr.dataset.storeName = storeName;
-            tr.onclick = () => { showStoreDetails(row); highlightTableRow(storeName); };
-    
+            const tr = attachRateTableBody.insertRow(); const storeName = safeGet(row, 'Store', 'N/A');
+            tr.dataset.storeName = storeName; tr.onclick = () => { showStoreDetails(row); highlightTableRow(storeName); };
             actualTableHeaders.forEach(headerInfo => {
-                const td = tr.insertCell();
-                let cellValue;
-                let rawValueForMetric = safeGet(row, headerInfo.sortKey, null);
-    
-                if (headerInfo.sortKey === 'Store') {
-                    cellValue = storeName;
-                } else if (headerInfo.sortKey === 'Q2 Territory') {
-                    cellValue = safeGet(row, 'Q2 Territory', 'N/A');
-                } else { 
-                    const numericValue = parsePercent(rawValueForMetric);
-                    cellValue = isNaN(numericValue) ? 'N/A' : formatPercent(numericValue);
-                    td.style.textAlign = "right";
-                    
+                const td = tr.insertCell(); let cellValue; let rawValueForMetric = safeGet(row, headerInfo.sortKey, null);
+                if (headerInfo.sortKey === 'Store') { cellValue = storeName; } 
+                else if (headerInfo.sortKey === 'Q2 Territory') { cellValue = safeGet(row, 'Q2 Territory', 'N/A'); } 
+                else { 
+                    const numericValue = parsePercent(rawValueForMetric); cellValue = isNaN(numericValue) ? 'N/A' : formatPercent(numericValue); td.style.textAlign = "right";
                     td.classList.remove('highlight-green', 'highlight-red', 'highlight-yellow'); 
                     if (!isNaN(averages[headerInfo.sortKey]) && typeof numericValue === 'number' && !isNaN(numericValue)) {
-                        const avg = averages[headerInfo.sortKey];
-                        const lowerBound = avg * (1 - AVERAGE_THRESHOLD_PERCENT);
-                        const upperBound = avg * (1 + AVERAGE_THRESHOLD_PERCENT);
-
-                        if (numericValue > upperBound) {
-                            td.classList.add('highlight-green');
-                        } else if (numericValue < lowerBound) {
-                            td.classList.add('highlight-red');
-                        } else {
-                            td.classList.add('highlight-yellow');
-                        }
+                        const avg = averages[headerInfo.sortKey]; const lowerBound = avg * (1 - AVERAGE_THRESHOLD_PERCENT); const upperBound = avg * (1 + AVERAGE_THRESHOLD_PERCENT);
+                        if (numericValue > upperBound) td.classList.add('highlight-green');
+                        else if (numericValue < lowerBound) td.classList.add('highlight-red');
+                        else td.classList.add('highlight-yellow');
                     }
                 }
-                td.textContent = cellValue;
-                td.title = cellValue; 
+                td.textContent = cellValue; td.title = cellValue; 
             });
         });
-    
         if (dataForTable.length > 0) {
             const footerRowNew = attachRateTableFooter.insertRow();
             actualTableHeaders.forEach((headerInfo, index) => {
                 const td = footerRowNew.insertCell();
-                 if (index === 0) { 
-                    td.textContent = 'Filtered Avg*';
-                    td.style.fontWeight = "bold";
-                    td.title = 'Average calculated only using stores with complete and valid attach rate data';
-                } else if (showTerritoryColumn && index === 1 && headerInfo.sortKey === 'Q2 Territory') {
-                    td.textContent = ''; 
-                } else if (ATTACH_RATE_COLUMNS.includes(headerInfo.sortKey)) {
-                    const avgValue = averages[headerInfo.sortKey];
-                    td.textContent = formatPercent(avgValue);
+                 if (index === 0) { td.textContent = 'Filtered Avg*'; td.style.fontWeight = "bold"; td.title = 'Average calculated only using stores with complete and valid attach rate data'; } 
+                 else if (showTerritoryColumn && index === 1 && headerInfo.sortKey === 'Q2 Territory') { td.textContent = ''; } 
+                 else if (ATTACH_RATE_COLUMNS.includes(headerInfo.sortKey)) {
+                    const avgValue = averages[headerInfo.sortKey]; td.textContent = formatPercent(avgValue);
                     let validCount = dataForTable.filter(r => isValidNumericForFocus(safeGet(r, headerInfo.sortKey, null))).length;
-                    td.title = `Average ${headerInfo.label}: ${formatPercent(avgValue)} (from ${validCount} stores)`;
-                    td.style.textAlign = "right";
+                    td.title = `Average ${headerInfo.label}: ${formatPercent(avgValue)} (from ${validCount} stores)`; td.style.textAlign = "right";
                 }
             });
         }
-    
         if (attachTableStatus) attachTableStatus.textContent = `Showing ${attachRateTableBody.rows.length} stores with complete attach rate data. Click row for details. Click headers to sort.`;
         updateSortArrows();
     };
-    
-
-    // --- Focus Point Display Functions ---
     const updateFocusPointSections = (baseData) => {
         if (focusEliteFilter?.checked) {
-            const eliteOpps = baseData.filter(row => {
-                const eliteVal = parsePercent(safeGet(row, 'Elite', null));
-                return !isNaN(eliteVal) && eliteVal > 0.01 && eliteVal < 1.0;
-            });
+            const eliteOpps = baseData.filter(row => { const eliteVal = parsePercent(safeGet(row, 'Elite', null)); return !isNaN(eliteVal) && eliteVal > 0.01 && eliteVal < 1.0; });
             populateFocusPointTable(eliteOpportunitiesTableBody, eliteOpportunitiesSection, eliteOpps, 'Elite', 'Elite %');
-        } else {
-            if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none';
-        }
-
+        } else { if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none'; }
         if (focusConnectivityFilter?.checked) {
-            const connOpps = baseData.filter(row => {
-                const connVal = parsePercent(safeGet(row, 'Retail Mode Connectivity', null));
-                return !isNaN(connVal) && connVal < 1.0;
-            });
+            const connOpps = baseData.filter(row => { const connVal = parsePercent(safeGet(row, 'Retail Mode Connectivity', null)); return !isNaN(connVal) && connVal < 1.0; });
             populateFocusPointTable(connectivityOpportunitiesTableBody, connectivityOpportunitiesSection, connOpps, 'Retail Mode Connectivity', 'Connectivity %');
-        } else {
-            if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
-        }
-
+        } else { if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none'; }
         if (focusRepSkillFilter?.checked) {
-            const repSkillOpps = baseData.filter(row => {
-                const repSkillVal = parsePercent(safeGet(row, 'Rep Skill Ach', null));
-                return isValidNumericForFocus(safeGet(row, 'Rep Skill Ach', null)) && repSkillVal < 1.0;
-            });
+            const repSkillOpps = baseData.filter(row => { const repSkillVal = parsePercent(safeGet(row, 'Rep Skill Ach', null)); return isValidNumericForFocus(safeGet(row, 'Rep Skill Ach', null)) && repSkillVal < 1.0; });
             populateFocusPointTable(repSkillOpportunitiesTableBody, repSkillOpportunitiesSection, repSkillOpps, 'Rep Skill Ach', 'Rep Skill Ach %');
-        } else {
-            if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
-        }
-
+        } else { if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none'; }
         if (focusVpmrFilter?.checked) {
-            const vpmrOpps = baseData.filter(row => {
-                const vpmrVal = parsePercent(safeGet(row, '(V)PMR Ach', null));
-                return isValidNumericForFocus(safeGet(row, '(V)PMR Ach', null)) && vpmrVal < 1.0;
-            });
+            const vpmrOpps = baseData.filter(row => { const vpmrVal = parsePercent(safeGet(row, '(V)PMR Ach', null)); return isValidNumericForFocus(safeGet(row, '(V)PMR Ach', null)) && vpmrVal < 1.0; });
             populateFocusPointTable(vpmrOpportunitiesTableBody, vpmrOpportunitiesSection, vpmrOpps, '(V)PMR Ach', '(V)PMR Ach %');
-        } else {
-            if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
-        }
+        } else { if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none'; }
     };
-
     const populateFocusPointTable = (tbody, sectionElement, data, valueKey, valueLabel) => {
-        if (!tbody || !sectionElement) return;
-        tbody.innerHTML = '';
+        if (!tbody || !sectionElement) return; tbody.innerHTML = '';
         const statusP = sectionElement.querySelector('.focus-point-status');
         if (statusP) statusP.textContent = '';
-
         if (data.length > 0) {
             data.forEach(row => {
-                const tr = tbody.insertRow();
-                const storeName = safeGet(row, 'Store', 'N/A');
-                tr.dataset.storeName = storeName;
-                tr.onclick = () => { showStoreDetails(row); highlightTableRow(storeName); };
-                
-                tr.insertCell().textContent = storeName;
-                tr.cells[0].title = storeName;
-
+                const tr = tbody.insertRow(); const storeName = safeGet(row, 'Store', 'N/A');
+                tr.dataset.storeName = storeName; tr.onclick = () => { showStoreDetails(row); highlightTableRow(storeName); };
+                tr.insertCell().textContent = storeName; tr.cells[0].title = storeName;
                 const territoryName = safeGet(row, 'Q2 Territory', 'N/A');
-                tr.insertCell().textContent = territoryName;
-                tr.cells[1].title = territoryName;
-
+                tr.insertCell().textContent = territoryName; tr.cells[1].title = territoryName;
                 const metricValue = parsePercent(safeGet(row, valueKey, NaN));
-                tr.insertCell().textContent = formatPercent(metricValue);
-                tr.cells[2].title = formatPercent(metricValue);
+                tr.insertCell().textContent = formatPercent(metricValue); tr.cells[2].title = formatPercent(metricValue);
             });
             if (statusP) statusP.textContent = `Displaying ${data.length} stores.`;
             sectionElement.style.display = 'block';
-        } else {
-            if (statusP) statusP.textContent = 'No stores meet this criteria based on current filters.';
-            sectionElement.style.display = 'block';
-        }
+        } else { if (statusP) statusP.textContent = 'No stores meet this criteria based on current filters.'; sectionElement.style.display = 'block'; }
     };
-    // --- End Focus Point Display Functions ---
-
-
     const handleSort = (event) => {
          const headerCell = event.target.closest('th'); if (!headerCell?.classList.contains('sortable')) return;
          const sortKey = headerCell.dataset.sort; if (!sortKey) return;
          if (currentSort.column === sortKey) { currentSort.ascending = !currentSort.ascending; } else { currentSort.column = sortKey; currentSort.ascending = true; }
          updateAttachRateTable(filteredData); 
     };
-
     const updateSortArrows = () => {
         if (!attachRateTable) return;
         attachRateTable.querySelectorAll('th.sortable .sort-arrow').forEach(arrow => { arrow.className = 'sort-arrow'; arrow.textContent = ''; });
         const currentHeaderArrow = attachRateTable.querySelector(`th[data-sort="${CSS.escape(currentSort.column)}"] .sort-arrow`);
         if (currentHeaderArrow) { currentHeaderArrow.classList.add(currentSort.ascending ? 'asc' : 'desc'); }
     };
-
     const showStoreDetails = (storeData) => {
         if (!storeDetailsContent || !storeDetailsSection || !closeStoreDetailsButton) return;
         const addressParts = [ safeGet(storeData, 'ADDRESS1', null), safeGet(storeData, 'CITY', null), safeGet(storeData, 'STATE', null), safeGet(storeData, 'ZIPCODE', null) ].filter(part => part && String(part).trim() !== '');
@@ -1195,125 +1006,77 @@ document.addEventListener('DOMContentLoaded', () => {
         storeDetailsContent.innerHTML = ` <p><strong>Store:</strong> ${safeGet(storeData, 'Store')}</p> <p><strong>Address:</strong> ${addressString}</p> ${mapsLinkHtml} <hr> <p><strong>IDs:</strong> Store: ${safeGet(storeData, 'STORE ID')} | Org: ${safeGet(storeData, 'ORG_STORE_ID')} | CV: ${safeGet(storeData, 'CV_STORE_ID')} | CinglePoint: ${safeGet(storeData, 'CINGLEPOINT_ID')}</p> <p><strong>Type:</strong> ${safeGet(storeData, 'STORE_TYPE_NAME')} | Nat Tier: ${safeGet(storeData, 'National_Tier')} | Merch Lvl: ${safeGet(storeData, 'Merchandising_Level')} | Comb Tier: ${safeGet(storeData, 'Combined_Tier')}</p> <hr> <p><strong>Hierarchy:</strong> ${safeGet(storeData, 'REGION')} > ${safeGet(storeData, 'DISTRICT')} > ${safeGet(storeData, 'Q2 Territory')}</p> <p><strong>FSM:</strong> ${safeGet(storeData, 'FSM NAME')}</p> <p><strong>Channel:</strong> ${safeGet(storeData, 'CHANNEL')} / ${safeGet(storeData, 'SUB_CHANNEL')}</p> <p><strong>Dealer:</strong> ${safeGet(storeData, 'DEALER_NAME')}</p> <hr> <p><strong>Visits:</strong> ${formatNumber(parseNumber(safeGet(storeData, 'Visit count', 0)))} | <strong>Trainings:</strong> ${formatNumber(parseNumber(safeGet(storeData, 'Trainings', 0)))}</p> <p><strong>Connectivity:</strong> ${formatPercent(parsePercent(safeGet(storeData, 'Retail Mode Connectivity', 0)))}</p> <hr> <p><strong>Flags:</strong> ${flagSummaryHtml}</p> `;
         storeDetailsSection.style.display = 'block'; closeStoreDetailsButton.style.display = 'inline-block';
     };
-
     const hideStoreDetails = () => {
         if (!storeDetailsContent || !storeDetailsSection || !closeStoreDetailsButton) return;
         storeDetailsContent.innerHTML = 'Select a store from the table or chart for details, or apply filters resulting in a single store.';
         storeDetailsSection.style.display = 'none'; closeStoreDetailsButton.style.display = 'none'; highlightTableRow(null);
     };
-
     const highlightTableRow = (storeName) => {
         if (selectedStoreRow) { selectedStoreRow.classList.remove('selected-row'); selectedStoreRow = null; }
         if (storeName) {
-            const tablesToSearch = [
-                attachRateTableBody, top5TableBody, bottom5TableBody,
-                eliteOpportunitiesTableBody, connectivityOpportunitiesTableBody,
-                repSkillOpportunitiesTableBody, vpmrOpportunitiesTableBody
-            ];
+            const tablesToSearch = [ attachRateTableBody, top5TableBody, bottom5TableBody, eliteOpportunitiesTableBody, connectivityOpportunitiesTableBody, repSkillOpportunitiesTableBody, vpmrOpportunitiesTableBody ];
             for (const tableBody of tablesToSearch) {
                 if (tableBody) { 
                     try { const rowToHighlight = tableBody.querySelector(`tr[data-store-name="${CSS.escape(storeName)}"]`); if (rowToHighlight) { rowToHighlight.classList.add('selected-row'); selectedStoreRow = rowToHighlight; break; }
-                    } catch (e) { console.error("Error selecting table row in highlightTableRow:", e, "StoreName:", storeName, "Table:", tableBody); }
+                    } catch (e) { console.error("Error selecting table row:", e, "StoreName:", storeName); }
                 }
             }
         }
     };
-    
-    // --- Share and Report Functions ---
     const updateShareOptions = () => {
         if (!emailShareSection || !shareEmailButton || !emailShareHint || !printReportButton) return;
-
-        if (filteredData.length === 0) {
-            printReportButton.disabled = true;
-            emailShareSection.style.display = 'none';
-            return;
-        }
-        printReportButton.disabled = false;
-
-        const emailBody = generateEmailBody(); 
+        if (filteredData.length === 0) { printReportButton.disabled = true; emailShareSection.style.display = 'none'; return; }
+        printReportButton.disabled = false; const emailBody = generateEmailBody(); 
         if (emailBody.length < 2000) {
-            emailShareSection.style.display = 'block';
-            if(emailShareControls) emailShareControls.style.display = 'flex'; 
+            emailShareSection.style.display = 'block'; if(emailShareControls) emailShareControls.style.display = 'flex'; 
             shareEmailButton.disabled = false;
             emailShareHint.textContent = 'Note: This will open your default desktop email client. Available for summaries under 2000 characters.';
         } else {
-            emailShareSection.style.display = 'block';
-            if(emailShareControls) emailShareControls.style.display = 'none';
+            emailShareSection.style.display = 'block'; if(emailShareControls) emailShareControls.style.display = 'none';
             shareEmailButton.disabled = true;
             emailShareHint.textContent = 'Email summary is too long for direct sharing. Please use "Print / Save as PDF" for a full report.';
         }
     };
-
     const generateReportHTML = () => {
-        let html = `<h1>FSM Performance Dashboard Report</h1>`;
-        html += `<p><strong>Report Generated:</strong> ${new Date().toLocaleString()}</p>`;
-        html += `<div class="report-filter-summary"><p><strong>Filters Applied:</strong> ${getFilterSummary() || 'None'}</p></div>`;
-
+        let html = `<h1>FSM Performance Dashboard Report</h1><p><strong>Report Generated:</strong> ${new Date().toLocaleString()}</p><div class="report-filter-summary"><p><strong>Filters Applied:</strong> ${getFilterSummary() || 'None'}</p></div>`;
         const summaryDataEl = document.getElementById('summaryData');
         if (summaryDataEl) {
-            html += `<h2>Performance Summary</h2>`;
-            const summaryGrid = summaryDataEl.querySelector('.summary-grid');
+            html += `<h2>Performance Summary</h2>`; const summaryGrid = summaryDataEl.querySelector('.summary-grid');
             if (summaryGrid) {
                 html += '<ul style="list-style-type: none; padding-left: 0;">';
                 summaryGrid.querySelectorAll('p').forEach(p => {
                     if (p.style.display !== 'none') {
-                         const labelNode = p.childNodes[0];
-                         const label = labelNode ? labelNode.nodeValue.trim() : '';
+                         const labelNode = p.childNodes[0]; const label = labelNode ? labelNode.nodeValue.trim() : '';
                          const value = p.querySelector('strong')?.textContent || '';
                          if(label) html += `<li style="margin-bottom: 5px;">${label} <strong>${value}</strong></li>`;
                     }
-                });
-                html += '</ul>';
+                }); html += '</ul>';
             }
         }
-        
         if (mainChartInstance) {
-            try {
-                const chartImageURL = mainChartInstance.toBase64Image();
-                html += `<h2>Revenue Performance Chart</h2><div class="report-chart-container"><img src="${chartImageURL}" alt="Revenue Performance Chart" style="max-width: 100%; height: auto; border: 1px solid #ddd;"></div>`;
-            } catch(e) {
-                console.error("Error converting chart to image for report:", e);
-                html += `<p><em>Main chart could not be included.</em></p>`;
-            }
+            try { const chartImageURL = mainChartInstance.toBase64Image(); html += `<h2>Revenue Performance Chart</h2><div class="report-chart-container"><img src="${chartImageURL}" alt="Revenue Performance Chart" style="max-width: 100%; height: auto; border: 1px solid #ddd;"></div>`;
+            } catch(e) { html += `<p><em>Main chart could not be included.</em></p>`; }
         }
-
         const generateTableHTMLFromDOM = (tableElementId, title) => {
             const tableElement = document.getElementById(tableElementId);
             let parentSection = tableElement ? tableElement.closest('.card') : null;
-            if (tableElementId === 'top5Table' || tableElementId === 'bottom5Table') { 
-                parentSection = document.getElementById('topBottomSection');
-            } else if (tableElementId.includes('OpportunitiesTable')) { 
-                 parentSection = tableElement.closest('.focus-point-card');
-            } else if (tableElementId === 'attachRateTable') {
-                 parentSection = document.getElementById('attachRateTableContainer');
-            }
-
+            if (tableElementId === 'top5Table' || tableElementId === 'bottom5Table') parentSection = document.getElementById('topBottomSection');
+            else if (tableElementId.includes('OpportunitiesTable')) parentSection = tableElement.closest('.focus-point-card');
+            else if (tableElementId === 'attachRateTable') parentSection = document.getElementById('attachRateTableContainer');
             if (!tableElement || (parentSection && parentSection.style.display === 'none') ) return '';
-            
             const tableBody = tableElement.querySelector('tbody');
             if (!tableBody || tableBody.children.length === 0) return '';
-
-            let tableHTML = `<h2>${title}</h2><table>`;
-            const header = tableElement.querySelector('thead');
+            let tableHTML = `<h2>${title}</h2><table>`; const header = tableElement.querySelector('thead');
             if (header) tableHTML += `<thead>${header.innerHTML}</thead>`; 
-            
             tableHTML += `<tbody>`;
             Array.from(tableBody.rows).forEach(row => {
-                tableHTML += `<tr>`;
-                Array.from(row.cells).forEach(cell => {
-                    tableHTML += `<td style="text-align: ${cell.style.textAlign || 'left'};">${cell.textContent}</td>`;
-                });
+                tableHTML += `<tr>`; Array.from(row.cells).forEach(cell => { tableHTML += `<td style="text-align: ${cell.style.textAlign || 'left'};">${cell.textContent}</td>`; });
                 tableHTML += `</tr>`;
-            });
-            tableHTML += `</tbody>`;
-
+            }); tableHTML += `</tbody>`;
             const footer = tableElement.querySelector('tfoot');
             if (footer && footer.innerHTML.trim() !== '') tableHTML += `<tfoot>${footer.innerHTML}</tfoot>`;
-            
-            tableHTML += `</table>`;
-            return tableHTML;
+            tableHTML += `</table>`; return tableHTML;
         };
-        
         if (topBottomSection && topBottomSection.style.display !== 'none') {
             html += generateTableHTMLFromDOM('top5Table', 'Top 5 (Revenue)');
             html += generateTableHTMLFromDOM('bottom5Table', 'Bottom 5 (Opportunities by QTD Gap)');
@@ -1323,97 +1086,32 @@ document.addEventListener('DOMContentLoaded', () => {
             { id: 'eliteOpportunitiesTable', title: 'Elite Opportunities', sectionId: 'eliteOpportunitiesSection' },
             { id: 'connectivityOpportunitiesTable', title: 'Connectivity Opportunities', sectionId: 'connectivityOpportunitiesSection' },
             { id: 'repSkillOpportunitiesTable', title: 'Rep Skill Opportunities', sectionId: 'repSkillOpportunitiesSection' },
-            { id: 'vpmrOpportunitiesTable', title: 'VPMR Opportunities', sectionId: 'vpmrOpportunitiesSection' }
-        ];
-        focusSections.forEach(fs => {
-            html += generateTableHTMLFromDOM(fs.id, fs.title);
-        });
-        
+            { id: 'vpmrOpportunitiesTable', title: 'VPMR Opportunities', sectionId: 'vpmrOpportunitiesSection' } ];
+        focusSections.forEach(fs => { html += generateTableHTMLFromDOM(fs.id, fs.title); });
         return html;
     };
-
     const handlePrintReport = () => {
-        if (filteredData.length === 0) {
-            alert("No data to generate a report. Please apply filters first.");
-            return;
-        }
-
-        const reportHTML = generateReportHTML();
-        const reportWindow = window.open('', '_blank');
-        if (!reportWindow) {
-            alert("Please allow popups for this site to generate the report.");
-            return;
-        }
-        
-        const printStyles = `
-            body { font-family: Arial, sans-serif; margin: 20px; color: #000; }
-            h1 { font-size: 20pt; text-align: center; margin-bottom: 10px; color: #000;}
-            h2 { font-size: 16pt; margin-top: 25px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px; color: #000; page-break-after: avoid; }
-            p, li { font-size: 10pt; color: #000;}
-            ul { padding-left: 20px; margin-top: 5px; list-style-type: none; }
-            ul li { margin-bottom: 5px; }
-            .report-filter-summary { margin-bottom: 20px; padding: 10px; border: 1px solid #eee; background-color: #f9f9f9 !important; page-break-inside: avoid; }
-            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 9pt; page-break-inside: auto; }
-            th, td { border: 1px solid #ccc !important; padding: 6px; text-align: left; color: #000 !important; background-color: #fff !important; page-break-inside: avoid;}
-            th { background-color: #f2f2f2 !important; font-weight: bold; }
-            .report-chart-container img { max-width: 100%; height: auto; display: block; margin: 15px auto; border: 1px solid #eee; page-break-inside: avoid; }
-            @media print {
-                body { margin: 0.5in; font-size: 9pt; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                h1 { font-size: 18pt; } h2 { font-size: 14pt; }
-                table { font-size: 8pt; } th, td { padding: 4px; }
-            }
-        `;
-
-        reportWindow.document.write(`
-            <html>
-                <head>
-                    <title>FSM Dashboard Report - ${new Date().toLocaleDateString()}</title>
-                    <style>${printStyles}</style>
-                </head>
-                <body>${reportHTML}</body>
-            </html>
-        `);
-        reportWindow.document.close();
-        setTimeout(() => { 
-            reportWindow.focus();
-            reportWindow.print();
-        }, 500);
+        if (filteredData.length === 0) { alert("No data to generate a report. Please apply filters first."); return; }
+        const reportHTML = generateReportHTML(); const reportWindow = window.open('', '_blank');
+        if (!reportWindow) { alert("Please allow popups for this site to generate the report."); return; }
+        const printStyles = `body{font-family:Arial,sans-serif;margin:20px;color:#000}h1{font-size:20pt;text-align:center;margin-bottom:10px;color:#000}h2{font-size:16pt;margin-top:25px;margin-bottom:10px;border-bottom:1px solid #ccc;padding-bottom:5px;color:#000;page-break-after:avoid}p,li{font-size:10pt;color:#000}ul{padding-left:20px;margin-top:5px;list-style-type:none}ul li{margin-bottom:5px}.report-filter-summary{margin-bottom:20px;padding:10px;border:1px solid #eee;background-color:#f9f9f9!important;page-break-inside:avoid}table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:9pt;page-break-inside:auto}th,td{border:1px solid #ccc!important;padding:6px;text-align:left;color:#000!important;background-color:#fff!important;page-break-inside:avoid}th{background-color:#f2f2f2!important;font-weight:bold}.report-chart-container img{max-width:100%!important;height:auto!important;display:block;margin:15px auto;border:1px solid #eee;page-break-inside:avoid}@media print{body{margin:.5in;font-size:9pt;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}h1{font-size:18pt}h2{font-size:14pt}table{font-size:8pt}th,td{padding:4px}}`;
+        reportWindow.document.write(`<html><head><title>FSM Dashboard Report - ${new Date().toLocaleDateString()}</title><style>${printStyles}</style></head><body>${reportHTML}</body></html>`);
+        reportWindow.document.close(); setTimeout(() => { reportWindow.focus(); reportWindow.print(); }, 500);
     };
-
-
     const exportData = () => {
         if (filteredData.length === 0) { alert("No filtered data to export."); return; }
         try {
-            const currentHeaders = Array.from(attachRateTable.querySelectorAll('thead th'))
-                                 .map(th => th.dataset.sort || th.textContent.replace(/ [▲▼]$/, '').trim());
-            
-            const dataForExport = filteredData.filter(row => {
-                return ATTACH_RATE_COLUMNS.every(colKey => isValidNumericForFocus(safeGet(row, colKey, null)));
-            }).map(row => {
-                return currentHeaders.map(headerKey => { 
-                    const dataKey = headerKey === 'Territory' ? 'Q2 Territory' : headerKey;
-                    let value = safeGet(row, dataKey, ''); 
-                    const isPercentLike = ATTACH_RATE_COLUMNS.includes(dataKey) || dataKey.includes('%') || dataKey.includes('Ach') || dataKey.includes('Connectivity') || dataKey.includes('Elite');
-                    if (isPercentLike) { 
-                        const numVal = parsePercent(value); 
-                        return isNaN(numVal) ? '' : numVal; 
-                    } else { 
-                        const numVal = parseNumber(value); 
-                        if (!isNaN(numVal) && typeof value !== 'boolean' && String(value).trim() !== '') { 
-                            return numVal; 
-                        } 
-                        if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) { 
-                            return `"${value.replace(/"/g, '""')}"`; 
-                        } 
-                        return value; 
-                    }
-                });
-            });
+            const currentHeaders = Array.from(attachRateTable.querySelectorAll('thead th')).map(th => th.dataset.sort || th.textContent.replace(/ [▲▼]$/, '').trim());
+            const dataForExport = filteredData.filter(row => ATTACH_RATE_COLUMNS.every(colKey => isValidNumericForFocus(safeGet(row, colKey, null)))).map(row => currentHeaders.map(headerKey => { 
+                const dataKey = headerKey === 'Territory' ? 'Q2 Territory' : headerKey; let value = safeGet(row, dataKey, ''); 
+                const isPercentLike = ATTACH_RATE_COLUMNS.includes(dataKey) || dataKey.includes('%') || dataKey.includes('Ach') || dataKey.includes('Connectivity') || dataKey.includes('Elite');
+                if (isPercentLike) { const numVal = parsePercent(value); return isNaN(numVal) ? '' : numVal; } 
+                else { const numVal = parseNumber(value); if (!isNaN(numVal) && typeof value !== 'boolean' && String(value).trim() !== '') return numVal; if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) return `"${value.replace(/"/g, '""')}"`; return value; }
+            }));
             let csvContent = "data:text/csv;charset=utf-8," + currentHeaders.join(",") + "\n" + dataForExport.map(e => e.join(",")).join("\n");
             const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "fsm_dashboard_export.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
         } catch (error) { console.error("Error exporting CSV:", error); alert("Error generating CSV export. See console for details."); }
     };
-
     const generateEmailBody = () => {
         if (filteredData.length === 0) return "No data available based on current filters.";
         let body = "FSM Dashboard Summary:\n---------------------------------\n"; body += `Filters Applied: ${getFilterSummary()}\nStores Found: ${filteredData.length}\n---------------------------------\n\n`;
@@ -1435,7 +1133,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         body += "---------------------------------\nGenerated by FSM Dashboard\n"; return body;
     };
-
     const getFilterSummary = () => {
         let summary = [];
         if (regionFilter?.value !== 'ALL') summary.push(`Region: ${regionFilter.value}`); if (districtFilter?.value !== 'ALL') summary.push(`District: ${districtFilter.value}`);
@@ -1444,7 +1141,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (subchannelFilter?.value !== 'ALL') summary.push(`Subchannel: ${subchannelFilter.value}`); if (dealerFilter?.value !== 'ALL') summary.push(`Dealer: ${dealerFilter.value}`);
         const stores = storeFilter ? Array.from(storeFilter.selectedOptions).map(o => o.value) : []; if (stores.length > 0) summary.push(`Stores: ${stores.length === 1 ? stores[0] : `${stores.length} selected`}`);
         const flags = Object.entries(flagFiltersCheckboxes).filter(([, input]) => input?.checked).map(([key])=> key.replace(/_/g, ' ')); if (flags.length > 0) summary.push(`Attributes: ${flags.join(', ')}`);
-        
         const additionalToolsSummary = [];
         if(showMapViewFilter?.checked) additionalToolsSummary.push("Map View");
         if(focusEliteFilter?.checked) additionalToolsSummary.push("Elite Opps");
@@ -1452,37 +1148,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if(focusRepSkillFilter?.checked) additionalToolsSummary.push("Rep Skill Opps");
         if(focusVpmrFilter?.checked) additionalToolsSummary.push("VPMR Opps");
         if(additionalToolsSummary.length > 0) summary.push(`Tools: ${additionalToolsSummary.join(', ')}`);
-
         return summary.length > 0 ? summary.join('; ') : 'None';
     };
-
     const handleShareEmail = () => {
         if (!emailRecipientInput || !shareStatus) return; const recipient = emailRecipientInput.value;
-        if (!recipient || !/\S+@\S+\.\S+/.test(recipient)) { 
-            if(shareStatus) shareStatus.textContent = "Please enter a valid recipient email address."; 
-            return; 
-        }
+        if (!recipient || !/\S+@\S+\.\S+/.test(recipient)) { if(shareStatus) shareStatus.textContent = "Please enter a valid recipient email address."; return; }
         try {
             const subject = `FSM Dashboard Summary - ${new Date().toLocaleDateString()}`; const bodyContent = generateEmailBody();
             const mailtoLink = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyContent)}`;
-            if (mailtoLink.length > 2000) { 
-                if(shareStatus) shareStatus.textContent = "Generated email body is too long for a mailto link. Please use Print/Save as PDF."; 
-                console.warn("Mailto link length exceeds 2000 characters:", mailtoLink.length); 
-                return; 
-            }
-            window.location.href = mailtoLink; 
-            if(shareStatus) shareStatus.textContent = "Your email client should open. Please review and send the email.";
-        } catch (error) { 
-            console.error("Error generating mailto link:", error); 
-            if(shareStatus) shareStatus.textContent = "Error generating email content. Check console for details."; 
-        }
+            if (mailtoLink.length > 2000) { if(shareStatus) shareStatus.textContent = "Generated email body is too long. Please use Print/Save as PDF."; console.warn("Mailto link > 2000 chars"); return; }
+            window.location.href = mailtoLink; if(shareStatus) shareStatus.textContent = "Your email client should open.";
+        } catch (error) { console.error("Error generating mailto link:", error); if(shareStatus) shareStatus.textContent = "Error generating email. Check console."; }
     };
-
      const selectAllOptions = (selectElement) => {
          if (!selectElement) return; Array.from(selectElement.options).forEach(option => option.selected = true);
          if (selectElement === territoryFilter) updateStoreFilterOptionsBasedOnHierarchy();
     };
-
      const deselectAllOptions = (selectElement) => {
          if (!selectElement) return; selectElement.selectedIndex = -1;
          if (selectElement === territoryFilter) updateStoreFilterOptionsBasedOnHierarchy();
@@ -1490,7 +1171,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Listeners ---
     if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
-    
     excelFileInput?.addEventListener('change', handleFile);
     storeSearch?.addEventListener('input', filterStoreOptions);
     exportCsvButton?.addEventListener('click', exportData);
@@ -1507,7 +1187,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const savedTheme = localStorage.getItem(THEME_STORAGE_KEY); 
     applyTheme(savedTheme || 'dark'); 
     initMapView(); 
-
     resetUI(); 
     if (!mainChartCanvas) console.warn("Main chart canvas context not found on load. Chart will not render.");
     updateShareOptions(); 
