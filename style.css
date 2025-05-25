@@ -1,6 +1,6 @@
 /*
-    Timestamp: 2025-05-25T13:38:00EDT
-    Summary: Added 'highlight-yellow' class for average attach rates and adjusted existing highlight logic.
+    Timestamp: 2025-05-25T14:00:00EDT
+    Summary: Added styles for the 'What's New' pop-up modal.
 */
 
 :root {
@@ -59,6 +59,15 @@
     --leaflet-popup-border: var(--border-color);
     --leaflet-tooltip-bg: var(--card-bg);
     --leaflet-tooltip-text: var(--text-color);
+    --modal-overlay-bg: rgba(0, 0, 0, 0.6);
+    --modal-content-bg: var(--card-bg);
+    --modal-header-color: var(--heading-color);
+    --modal-text-color: var(--text-color);
+    --modal-button-bg: var(--button-primary-bg);
+    --modal-button-text: var(--button-primary-text);
+    --modal-button-hover-bg: var(--button-primary-hover-bg);
+    --modal-close-button-text: var(--text-color-muted);
+    --modal-close-button-hover-text: var(--text-color);
 }
 
 body.light-theme {
@@ -116,6 +125,15 @@ body.light-theme {
     --leaflet-popup-border: #ccc;
     --leaflet-tooltip-bg: #fff;
     --leaflet-tooltip-text: #333;
+    --modal-overlay-bg: rgba(0, 0, 0, 0.4);
+    --modal-content-bg: #ffffff;
+    --modal-header-color: var(--heading-color);
+    --modal-text-color: var(--text-color);
+    --modal-button-bg: var(--button-primary-bg);
+    --modal-button-text: var(--button-primary-text);
+    --modal-button-hover-bg: var(--button-primary-hover-bg);
+    --modal-close-button-text: #6c757d;
+    --modal-close-button-hover-text: #333;
 }
 
 /* --- Global Resets & Body --- */
@@ -491,6 +509,110 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     .top5-card, .bottom5-card { min-width: 0; }
 }
 
+/* --- "What's New" Modal Styles --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--modal-overlay-bg);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000; /* Ensure it's on top */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+}
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease;
+}
+.modal-content {
+    background-color: var(--modal-content-bg);
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    width: 90%;
+    max-width: 650px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    color: var(--modal-text-color);
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+.modal-overlay.active .modal-content {
+    transform: scale(1);
+}
+.modal-content h2 {
+    color: var(--modal-header-color);
+    margin-top: 0;
+    margin-bottom: 1rem;
+    text-align: center;
+    font-size: 1.6rem;
+}
+.modal-content p {
+    margin-bottom: 0.75rem;
+    line-height: 1.6;
+}
+.modal-content ul {
+    list-style-type: disc;
+    padding-left: 20px;
+    margin-bottom: 1.5rem;
+}
+.modal-content ul ul {
+    list-style-type: circle;
+    margin-top: 0.3rem;
+    margin-bottom: 0.5rem;
+}
+.modal-content li {
+    margin-bottom: 0.6rem;
+}
+.modal-content li strong {
+    color: var(--sub-heading-color); /* Make feature names stand out a bit */
+}
+body.light-theme .modal-content li strong {
+    color: var(--heading-color);
+}
+
+.modal-close-button {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: var(--modal-close-button-text);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    line-height: 1;
+}
+.modal-close-button:hover {
+    color: var(--modal-close-button-hover-text);
+}
+.modal-action-button {
+    display: block;
+    width: auto;
+    min-width: 120px;
+    padding: 0.75rem 1.5rem;
+    background-color: var(--modal-button-bg);
+    color: var(--modal-button-text);
+    border: none;
+    border-radius: 5px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin: 1.5rem auto 0;
+}
+.modal-action-button:hover {
+    background-color: var(--modal-button-hover-bg);
+}
+
+
 /* Print Specific Styles */
 @media print {
     body {
@@ -505,7 +627,8 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     .no-print, .theme-toggle-button, .input-area, #filterArea, #excelFile, /* Hide non-report elements */
     #shareSection button, #shareSection input, #shareSection label, #shareStatus, .share-note,
     #closeStoreDetailsButton, .multi-select-controls, .multi-select-info,
-    .export-button /* Hide other interactive elements */
+    .export-button, /* Hide other interactive elements */
+    #whatsNewModal /* Hide the modal itself when printing */
      {
         display: none !important;
     }
