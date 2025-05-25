@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-25T00:55:00EDT
-//    Summary: Made Geographic Map View optional via checkbox in renamed 'Additional Tools' section.
+//    Timestamp: 2025-05-25T13:38:00EDT
+//    Summary: Modified Attach Rate table to use three-tier color highlighting (red, yellow, green) based on +/- 10% of average.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Configuration ---
     const MICHIGAN_AREA_VIEW = { lat: 43.8, lon: -84.8, zoom: 7 }; 
+    const AVERAGE_THRESHOLD_PERCENT = 0.10; // 10% band for "average" highlighting
 
     const REQUIRED_HEADERS = [ 
         'Store', 'REGION', 'DISTRICT', 'Q2 Territory', 'FSM NAME', 'CHANNEL',
@@ -907,9 +908,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     const numericValue = parsePercent(rawValueForMetric);
                     cellValue = isNaN(numericValue) ? 'N/A' : formatPercent(numericValue);
                     td.style.textAlign = "right";
+                    
+                    td.classList.remove('highlight-green', 'highlight-red', 'highlight-yellow'); // Clear previous
                     if (!isNaN(averages[headerInfo.sortKey]) && typeof numericValue === 'number' && !isNaN(numericValue)) {
-                        td.classList.toggle('highlight-green', numericValue >= averages[headerInfo.sortKey]);
-                        td.classList.toggle('highlight-red', numericValue < averages[headerInfo.sortKey]);
+                        const avg = averages[headerInfo.sortKey];
+                        const lowerBound = avg * (1 - AVERAGE_THRESHOLD_PERCENT);
+                        const upperBound = avg * (1 + AVERAGE_THRESHOLD_PERCENT);
+
+                        if (numericValue > upperBound) {
+                            td.classList.add('highlight-green');
+                        } else if (numericValue < lowerBound) {
+                            td.classList.add('highlight-red');
+                        } else {
+                            td.classList.add('highlight-yellow');
+                        }
                     }
                 }
                 td.textContent = cellValue;
