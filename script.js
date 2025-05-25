@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-25T16:41:52EDT
-//    Summary: Implemented JavaScript for full-screen filter modal, including open/close, and updated filter/reset button logic.
+//    Timestamp: 2025-05-25T16:55:12EDT
+//    Summary: Added auto-open for filter modal on file upload and ensured auto-close on applying filters from modal.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -361,11 +361,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
         if (isFiltering) {
             if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = isLoading;
-            if (openFilterModalBtn) openFilterModalBtn.disabled = isLoading; // Disable open button during filtering
+            if (openFilterModalBtn) openFilterModalBtn.disabled = isLoading;
         } else {
-            // Initial file loading
             if (excelFileInput) excelFileInput.disabled = isLoading;
-            if (openFilterModalBtn) openFilterModalBtn.disabled = isLoading; // Also disable during initial load
+            if (openFilterModalBtn) openFilterModalBtn.disabled = isLoading; 
         }
     };    
 
@@ -473,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = event.target.files[0];
         if (!file) { if (statusDiv) statusDiv.textContent = 'No file selected.'; return; }
         if (statusDiv) statusDiv.textContent = 'Reading file...';
-        showLoading(true, false); // Pass false for isFiltering, it's initial load
+        showLoading(true, false); 
         if (resultsArea) resultsArea.style.display = 'none'; 
         resetUI(); 
         try {
@@ -482,14 +481,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (jsonData.length > 0) { const headers = Object.keys(jsonData[0]); const missingHeaders = REQUIRED_HEADERS.filter(h => !headers.includes(h)); if (missingHeaders.length > 0) { console.warn(`Warning: Missing expected columns: ${missingHeaders.join(', ')}.`); }
             } else { throw new Error("Excel sheet appears to be empty."); }
             rawData = jsonData; allPossibleStores = [...new Set(rawData.map(r => safeGet(r, 'Store', null)).filter(s => s && String(s).trim() !== ''))].sort().map(s => ({ value: s, text: s }));
-            if (statusDiv) statusDiv.textContent = `Loaded ${rawData.length} rows. Use the 'Show Filters' button to refine your view.`;
+            if (statusDiv) statusDiv.textContent = `Loaded ${rawData.length} rows. Filters opened automatically.`;
             populateFilters(rawData); 
             if (openFilterModalBtn) openFilterModalBtn.disabled = false;
+            openFilterModal(); // Auto-open filter modal
         } catch (error) {
             console.error('Error processing file:', error); if (statusDiv) statusDiv.textContent = `Error: ${error.message}`;
             rawData = []; allPossibleStores = []; filteredData = []; resetUI();
         } finally { 
-            showLoading(false, false); // Pass false for isFiltering
+            showLoading(false, false); 
             if (excelFileInput) excelFileInput.value = ''; 
         }
     };
@@ -578,7 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
     
-    const applyFilters = (isFromModal = false) => { // Added isFromModal parameter
+    const applyFilters = (isFromModal = false) => { 
         showLoading(true, true); 
         if (resultsArea) resultsArea.style.display = 'none';
         
@@ -614,7 +614,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (exportCsvButton) exportCsvButton.disabled = filteredData.length === 0;
                 if (printReportButton) printReportButton.disabled = filteredData.length === 0;
                 
-                if (isFromModal) { // Close modal if filters applied from it
+                if (isFromModal) { 
                     closeFilterModal();
                 }
 
@@ -631,7 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
                 if (mapViewContainer) mapViewContainer.style.display = 'none';
             } finally { 
-                showLoading(false, true); // Pass true for isFiltering
+                showLoading(false, true); 
                 if (openFilterModalBtn) openFilterModalBtn.disabled = rawData.length === 0;
             }
         }, 10);
@@ -703,6 +703,7 @@ document.addEventListener('DOMContentLoaded', () => {
          filteredData = [];
          updateShareOptions(); 
          if (openFilterModalBtn) openFilterModalBtn.disabled = true;
+         closeFilterModal(); // Ensure modal is closed on full UI reset
      };
 
     const handleResetFiltersClick = (isFromModal = false) => {
@@ -765,6 +766,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusDiv.textContent = 'No file selected. Load a file to use filters.';
             }
         }
+        // If reset is called from modal, re-apply filters (which effectively shows all data or data based on cleared filters)
+        // and then the applyFilters function will close the modal.
         if (isFromModal) {
             applyFilters(true); 
         }
@@ -772,10 +775,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Event listeners for modal buttons
     if (applyFiltersButtonModal) {
-        applyFiltersButtonModal.addEventListener('click', () => applyFilters(true)); // Pass true for isFromModal
+        applyFiltersButtonModal.addEventListener('click', () => applyFilters(true)); 
     }
     if (resetFiltersButtonModal) {
-        resetFiltersButtonModal.addEventListener('click', () => handleResetFiltersClick(true)); // Pass true for isFromModal
+        resetFiltersButtonModal.addEventListener('click', () => handleResetFiltersClick(true)); 
     }
 
     const updateSummary = (data) => {
