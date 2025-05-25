@@ -1,6 +1,6 @@
 /*
-    Timestamp: 2025-05-25T16:37:44EDT
-    Summary: Corrected 'Show Filters' button visibility on desktop/tablet and ensured filter modal is the primary access method.
+    Timestamp: 2025-05-25T16:53:18EDT
+    Summary: Centered 'Show Filters' button on desktop/tablet view under the upload area.
 */
 
 :root {
@@ -224,15 +224,14 @@ h4 {
 
 /* --- Filter Trigger Button and Area --- */
 .mobile-filter-trigger-container {
-    display: block; /* Always allow block display */
+    display: block; 
     padding: 0 10px;
-    margin: 1rem auto;
-    max-width: 1200px; /* Consistent with other wide elements */
-    text-align: center; /* Center button by default */
+    margin: 1rem auto; /* Default margin for centering */
+    max-width: 600px; /* Align with upload area by default */
+    text-align: center; 
 }
 
 .open-filter-modal-button {
-    /* Base styles for the button, can be refined */
     padding: 0.7rem 1.5rem;
     font-size: 1rem;
     font-weight: 600;
@@ -242,6 +241,8 @@ h4 {
     border-radius: 0.25rem;
     cursor: pointer;
     transition: background-color 0.2s ease;
+    width: auto; /* Default to auto width */
+    display: inline-block; /* Default display */
 }
 .open-filter-modal-button:hover:not(:disabled) {
     background-color: var(--button-primary-hover-bg);
@@ -254,7 +255,6 @@ h4 {
     opacity: 0.6;
 }
 
-/* Original Filter Area is now always hidden, modal is primary */
 #filterArea.desktop-filters { 
     display: none !important; 
 }
@@ -380,7 +380,7 @@ h4 {
 .select-button { padding: 0.2rem 0.5rem; font-size: 0.75em; background-color: var(--button-bg); color: var(--button-text); border: 1px solid var(--button-border); border-radius: 3px; cursor: pointer; }
 .select-button:hover:not(:disabled) { background-color: var(--button-hover-bg); color: var(--button-hover-text); }
 #storeSearch { margin-bottom: 0.3rem; }
-.filter-group-store { grid-column: span 2; } /* Default for wider screens if used outside modal */
+.filter-group-store { grid-column: span 2; } 
 
 /* --- Flag Filters & Focus Points --- */
 .filter-group-flags { grid-column: 1 / -1; margin-top: 0.5rem; }
@@ -390,12 +390,8 @@ h4 {
 .flag-toggles input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent-color-checkbox); cursor: pointer; margin: 0; }
 .flag-toggles label:has(input:disabled) { cursor: not-allowed; color: var(--disabled-text); }
 
-.apply-filters-button { /* General style for Apply Filters button, used in modal footer */
-    /* padding, background, etc. already defined */
-}
-.reset-filters-button { /* General style for Reset Filters button, used in modal footer */
-   /* padding, background, etc. already defined */
-}
+.apply-filters-button { /* General style for Apply Filters button, used in modal footer */ }
+.reset-filters-button { /* General style for Reset Filters button, used in modal footer */ }
 
 
 /* --- Results Area --- */
@@ -586,6 +582,10 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     .filter-modal-body .filter-group-store {
         grid-column: 1 / -1; 
     }
+     .filter-modal-footer .apply-filters-button,
+    .filter-modal-footer .reset-filters-button {
+        max-width: none; /* Allow full width for two buttons on small screens */
+    }
 }
 
 @media (min-width: 768px) { 
@@ -603,13 +603,13 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     .share-controls label { margin-bottom: 0; }
     
     .mobile-filter-trigger-container {
-        text-align: right; /* Align button to the right on desktop */
-        max-width: 1400px; /* Allow it to span wider */
-        margin-bottom: 0.5rem; /* Reduce bottom margin */
+        text-align: center; /* Center button container */
+        max-width: 600px; /* Align with upload area */
+        margin: 1rem auto; 
     }
     .open-filter-modal-button {
-        width: auto; /* Auto width for desktop */
-        display: inline-block; /* Inline-block for desktop */
+        width: auto; 
+        display: inline-block; 
     }
     .filter-modal-body .filter-controls {
         grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -618,6 +618,12 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
         grid-column: span 1; 
     }
      .focus-point-card table { font-size: 0.9rem; }
+
+    .filter-modal-footer .apply-filters-button,
+    .filter-modal-footer .reset-filters-button {
+        flex-grow: 0; 
+        max-width: 200px;
+    }
 }
 
 @media (min-width: 1200px) { 
@@ -625,7 +631,6 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     h2 { font-size: 1.5rem; margin-bottom: 1.5rem; }
     .card { padding: 1.5rem; margin: 1.5rem auto; }
     .top-bottom-container.card { padding: 1.5rem; }
-    /* .filter-controls { gap: 1.2rem 2rem; } */ /* Original desktop card controls, not primary now */
     .chart-container { height: 450px; }
     #mapid { height: 550px; }
     #attachRateTable { font-size: 0.9rem; }
@@ -633,7 +638,7 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     #attachRateTable th, #attachRateTable td { padding: 0.75rem 1rem; }
     
     .filter-modal-body .filter-group-store {
-        grid-column: span 2; /* Span 2 for very large screens in modal */
+        grid-column: span 2; 
     }
     .top5-card, .bottom5-card { min-width: 0; }
 }
