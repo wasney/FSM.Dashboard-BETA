@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-24T17:00:00EDT
-//    Summary: Added Print/Save as PDF report feature; email share now conditional on summary length.
+//    Timestamp: 2025-05-25T00:55:00EDT
+//    Summary: Made Geographic Map View optional via checkbox in renamed 'Additional Tools' section.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -128,8 +128,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareStatus = document.getElementById('shareStatus');
     const emailShareHint = document.getElementById('emailShareHint');
 
-
-    // --- Focus Point DOM Elements ---
+    // --- "Additional Tools" (formerly Focus Points) DOM Elements ---
+    const showMapViewFilter = document.getElementById('showMapViewFilter'); // New checkbox for map
     const focusEliteFilter = document.getElementById('focusEliteFilter');
     const focusConnectivityFilter = document.getElementById('focusConnectivityFilter');
     const focusRepSkillFilter = document.getElementById('focusRepSkillFilter');
@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 mapMarkersLayer.addTo(mapInstance);
                 console.log('[Map View] Map and mapMarkersLayer initialized successfully.');
 
-                if (mapStatus) mapStatus.textContent = 'Map ready. Apply filters to see stores.';
+                if (mapStatus) mapStatus.textContent = 'Map ready. Enable via "Additional Tools" and apply filters to see stores.';
             } catch (e) {
                 console.error("Error initializing Leaflet map:", e);
                 if (mapStatus) mapStatus.textContent = 'Error initializing map.';
@@ -321,10 +321,18 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateMapView = (data) => {
+        if (!showMapViewFilter || !showMapViewFilter.checked) {
+            if (mapViewContainer) mapViewContainer.style.display = 'none';
+            if (mapInstance && mapMarkersLayer && typeof mapMarkersLayer.clearLayers === 'function') {
+                 mapMarkersLayer.clearLayers(); // Clear markers if map is hidden by checkbox
+            }
+            return; // Don't update map if checkbox isn't checked
+        }
+        
         if (!mapInstance || !document.getElementById('mapid')) {
             if (mapStatus) mapStatus.textContent = 'Map is not initialized or container is missing.';
             console.warn('[Map View] updateMapView called but mapInstance is null or mapid div is missing.');
-            if (mapViewContainer) mapViewContainer.style.display = 'none';
+            if (mapViewContainer) mapViewContainer.style.display = 'block'; // Keep container visible to show status
             return;
         }
 
@@ -350,7 +358,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0  && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
         });
 
-        if (mapViewContainer) mapViewContainer.style.display = 'block';
+        if (mapViewContainer) mapViewContainer.style.display = 'block'; // Ensure container is visible if checkbox is checked
 
         if (validStoresWithCoords.length === 0) {
             if (mapStatus) mapStatus.textContent = 'No stores with valid coordinates in filtered data. Showing default map area.';
@@ -428,6 +436,9 @@ document.addEventListener('DOMContentLoaded', () => {
         setOptions(regionFilter, getUniqueValues(data, 'REGION')); setOptions(districtFilter, getUniqueValues(data, 'DISTRICT')); setMultiSelectOptions(territoryFilter, getUniqueValues(data, 'Q2 Territory').slice(1));
         setOptions(fsmFilter, getUniqueValues(data, 'FSM NAME')); setOptions(channelFilter, getUniqueValues(data, 'CHANNEL')); setOptions(subchannelFilter, getUniqueValues(data, 'SUB_CHANNEL')); setOptions(dealerFilter, getUniqueValues(data, 'DEALER_NAME'));
         Object.values(flagFiltersCheckboxes).forEach(input => { if(input) input.disabled = false; });
+        
+        // Enable "Additional Tools" checkboxes
+        if(showMapViewFilter) showMapViewFilter.disabled = false;
         if(focusEliteFilter) focusEliteFilter.disabled = false;
         if(focusConnectivityFilter) focusConnectivityFilter.disabled = false;
         if(focusRepSkillFilter) focusRepSkillFilter.disabled = false;
@@ -523,16 +534,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     return true;
                 });
                 updateSummary(filteredData); updateTopBottomTables(filteredData); updateCharts(filteredData); updateAttachRateTable(filteredData); 
-                updateMapView(filteredData); 
+                
+                // Map view update based on checkbox
+                if (showMapViewFilter && showMapViewFilter.checked) {
+                    updateMapView(filteredData);
+                } else {
+                    if (mapViewContainer) mapViewContainer.style.display = 'none';
+                    if (mapInstance && mapMarkersLayer && typeof mapMarkersLayer.clearLayers === 'function') {
+                        mapMarkersLayer.clearLayers();
+                    }
+                }
+                
                 updateFocusPointSections(filteredData);
-                updateShareOptions(); // Update share options based on new filtered data
+                updateShareOptions(); 
 
                 if (filteredData.length === 1) { showStoreDetails(filteredData[0]); highlightTableRow(safeGet(filteredData[0], 'Store', null)); } else { hideStoreDetails(); }
                 if (statusDiv) statusDiv.textContent = `Displaying ${filteredData.length} of ${rawData.length} rows based on filters.`;
                 if (resultsArea) resultsArea.style.display = 'block'; 
                 if (exportCsvButton) exportCsvButton.disabled = filteredData.length === 0;
                 if (printReportButton) printReportButton.disabled = filteredData.length === 0;
-
 
             } catch (error) {
                 console.error("Error applying filters:", error); if (statusDiv) statusDiv.textContent = "Error applying filters. Check console for details.";
@@ -560,6 +580,9 @@ document.addEventListener('DOMContentLoaded', () => {
          if (storeSearch) { storeSearch.value = ''; storeSearch.disabled = true; }
          storeOptions = []; 
          Object.values(flagFiltersCheckboxes).forEach(input => { if(input) {input.checked = false; input.disabled = true;} });
+        
+        // Reset "Additional Tools" checkboxes
+        if(showMapViewFilter) { showMapViewFilter.checked = false; showMapViewFilter.disabled = true; }
         if(focusEliteFilter) { focusEliteFilter.checked = false; focusEliteFilter.disabled = true; }
         if(focusConnectivityFilter) { focusConnectivityFilter.checked = false; focusConnectivityFilter.disabled = true; }
         if(focusRepSkillFilter) { focusRepSkillFilter.checked = false; focusRepSkillFilter.disabled = true; }
@@ -593,7 +616,7 @@ document.addEventListener('DOMContentLoaded', () => {
          }
 
          if (mapViewContainer) mapViewContainer.style.display = 'none';
-         if (mapStatus) mapStatus.textContent = 'Load a file and apply filters to see map data.';
+         if (mapStatus) mapStatus.textContent = 'Enable via "Additional Tools" and apply filters to see map.';
 
 
          if (attachRateTableBody) attachRateTableBody.innerHTML = ''; 
@@ -615,6 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
          allPossibleStores = []; 
          rawData = []; 
          filteredData = [];
+         updateShareOptions(); // Update share options on full UI reset
      };
 
     const handleResetFiltersClick = () => {
@@ -625,6 +649,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (storeFilter) storeFilter.selectedIndex = -1; 
         if (storeSearch) storeSearch.value = ''; 
         Object.values(flagFiltersCheckboxes).forEach(input => { if(input) input.checked = false; });
+        
+        // Uncheck "Additional Tools" checkboxes
+        if(showMapViewFilter) showMapViewFilter.checked = false;
         if(focusEliteFilter) focusEliteFilter.checked = false;
         if(focusConnectivityFilter) focusConnectivityFilter.checked = false;
         if(focusRepSkillFilter) focusRepSkillFilter.checked = false;
@@ -654,7 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (mapViewContainer) mapViewContainer.style.display = 'none'; 
-        if (mapStatus) mapStatus.textContent = 'Apply filters to see map data.';
+        if (mapStatus) mapStatus.textContent = 'Enable via "Additional Tools" and apply filters to see map.';
 
         if (attachRateTableBody) attachRateTableBody.innerHTML = '';
         if (attachRateTableFooter) attachRateTableFooter.innerHTML = '';
@@ -670,6 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
         filteredData = []; 
         if (exportCsvButton) exportCsvButton.disabled = true;
         if (printReportButton) printReportButton.disabled = true;
+        updateShareOptions();
 
 
         if (statusDiv) {
@@ -780,7 +808,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!tableHead) { console.error("Attach rate table head not found!"); return; }
         let headerRow = tableHead.querySelector('tr');
         if (!headerRow) { headerRow = tableHead.insertRow(); }
-        headerRow.innerHTML = ''; // Clear existing headers
+        headerRow.innerHTML = ''; 
     
         if (dataForTable.length === 0) {
             if (attachTableStatus) attachTableStatus.textContent = 'No stores with complete & valid attach rate data based on current filters.';
@@ -830,10 +858,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if(isAttachRateKey) {
                 numA = parsePercent(valA);
                 numB = parsePercent(valB);
-            } else if (!isStoreOrTerritoryKey) { // Other potential numeric columns
+            } else if (!isStoreOrTerritoryKey) { 
                 numA = parseNumber(valA);
                 numB = parseNumber(valB);
-            } else { // Store or Territory, treat as string for sorting
+            } else { 
                 valA = String(valA).toLowerCase();
                 valB = String(valB).toLowerCase();
                 return currentSort.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
@@ -842,7 +870,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (typeof numA === 'number' && typeof numB === 'number' && !isNaN(numA) && !isNaN(numB)) {
                  return currentSort.ascending ? numA - numB : numB - numA;
             }
-            // Fallback for non-numeric or mixed types if not Store/Territory
             valA = String(valA).toLowerCase();
             valB = String(valB).toLowerCase();
             return currentSort.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
@@ -1043,22 +1070,27 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- Share and Report Functions ---
     const updateShareOptions = () => {
-        if (!emailShareSection || !shareEmailButton || !emailShareHint) return;
+        if (!emailShareSection || !shareEmailButton || !emailShareHint || !printReportButton) return;
 
-        const emailBody = generateEmailBody(); // Generate the text summary
-        if (emailBody.length < 2000 && filteredData.length > 0) {
+        if (filteredData.length === 0) {
+            printReportButton.disabled = true;
+            emailShareSection.style.display = 'none';
+            return;
+        }
+        printReportButton.disabled = false;
+
+        const emailBody = generateEmailBody(); 
+        if (emailBody.length < 2000) {
             emailShareSection.style.display = 'block';
+            if(emailShareControls) emailShareControls.style.display = 'flex'; // Or 'block' based on your CSS
             shareEmailButton.disabled = false;
             emailShareHint.textContent = 'Note: This will open your default desktop email client. Available for summaries under 2000 characters.';
-        } else if (filteredData.length === 0) {
-            emailShareSection.style.display = 'none';
         } else {
-            emailShareSection.style.display = 'block'; // Show section to display the hint
-            if (emailShareControls) emailShareControls.style.display = 'none'; // Hide input and button
+            emailShareSection.style.display = 'block';
+            if(emailShareControls) emailShareControls.style.display = 'none';
             shareEmailButton.disabled = true;
             emailShareHint.textContent = 'Email summary is too long for direct sharing. Please use "Print / Save as PDF" for a full report.';
         }
-        if(printReportButton) printReportButton.disabled = filteredData.length === 0;
     };
 
     const generateReportHTML = () => {
@@ -1066,52 +1098,64 @@ document.addEventListener('DOMContentLoaded', () => {
         html += `<p><strong>Report Generated:</strong> ${new Date().toLocaleString()}</p>`;
         html += `<div class="report-filter-summary"><p><strong>Filters Applied:</strong> ${getFilterSummary() || 'None'}</p></div>`;
 
-        // 1. Summary Data
+        // Performance Summary
         const summaryDataEl = document.getElementById('summaryData');
         if (summaryDataEl) {
             html += `<h2>Performance Summary</h2>`;
             const summaryGrid = summaryDataEl.querySelector('.summary-grid');
             if (summaryGrid) {
-                html += '<ul>';
+                html += '<ul style="list-style-type: none; padding-left: 0;">';
                 summaryGrid.querySelectorAll('p').forEach(p => {
                     if (p.style.display !== 'none') {
-                         const label = p.childNodes[0].nodeValue || '';
+                         const labelNode = p.childNodes[0];
+                         const label = labelNode ? labelNode.nodeValue.trim() : '';
                          const value = p.querySelector('strong')?.textContent || '';
-                         html += `<li>${label.trim()} <strong>${value}</strong></li>`;
+                         if(label) html += `<li style="margin-bottom: 5px;">${label} <strong>${value}</strong></li>`;
                     }
                 });
                 html += '</ul>';
             }
         }
         
-        // 2. Main Chart Image
+        // Main Chart Image
         if (mainChartInstance) {
             try {
                 const chartImageURL = mainChartInstance.toBase64Image();
-                html += `<h2>Revenue Performance Chart</h2><div class="report-chart-container"><img src="${chartImageURL}" alt="Revenue Performance Chart"></div>`;
+                html += `<h2>Revenue Performance Chart</h2><div class="report-chart-container"><img src="${chartImageURL}" alt="Revenue Performance Chart" style="max-width: 100%; height: auto; border: 1px solid #ddd;"></div>`;
             } catch(e) {
                 console.error("Error converting chart to image for report:", e);
                 html += `<p><em>Main chart could not be included.</em></p>`;
             }
         }
 
-        // Function to generate HTML for a generic table
-        const generateTableHTML = (tableId, title) => {
-            const tableElement = document.getElementById(tableId);
-            if (!tableElement || tableElement.style.display === 'none' ) return '';
+        // Function to generate HTML for a generic table from the DOM
+        const generateTableHTMLFromDOM = (tableElementId, title) => {
+            const tableElement = document.getElementById(tableElementId);
+            // Check if the parent section of the table is visible
+            let parentSection = tableElement ? tableElement.closest('.card') : null;
+            if (tableElementId === 'top5Table' || tableElementId === 'bottom5Table') { // These are within topBottomSection
+                parentSection = document.getElementById('topBottomSection');
+            } else if (tableElementId.includes('OpportunitiesTable')) { // Focus point tables
+                 parentSection = tableElement.closest('.focus-point-card');
+            } else if (tableElementId === 'attachRateTable') {
+                 parentSection = document.getElementById('attachRateTableContainer');
+            }
+
+            if (!tableElement || (parentSection && parentSection.style.display === 'none') ) return '';
+            
             const tableBody = tableElement.querySelector('tbody');
             if (!tableBody || tableBody.children.length === 0) return '';
 
             let tableHTML = `<h2>${title}</h2><table>`;
             const header = tableElement.querySelector('thead');
-            if (header) tableHTML += `<thead>${header.innerHTML}</thead>`;
+            if (header) tableHTML += `<thead>${header.innerHTML}</thead>`; // innerHTML to capture current headers
             
             tableHTML += `<tbody>`;
-            // Use current rows from the displayed table to maintain sort order and filtering
             Array.from(tableBody.rows).forEach(row => {
                 tableHTML += `<tr>`;
                 Array.from(row.cells).forEach(cell => {
-                    tableHTML += `<td>${cell.innerHTML}</td>`; // Use innerHTML to keep potential formatting like sort arrows (though they won't sort in PDF)
+                    // For print, using textContent might be cleaner than innerHTML which could carry over unwanted spans (like sort arrows)
+                    tableHTML += `<td style="text-align: ${cell.style.textAlign || 'left'};">${cell.textContent}</td>`;
                 });
                 tableHTML += `</tr>`;
             });
@@ -1124,16 +1168,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return tableHTML;
         };
         
-        // 3. Top/Bottom 5 Tables (if visible)
         if (topBottomSection && topBottomSection.style.display !== 'none') {
-            html += generateTableHTML('top5Table', 'Top 5 (Revenue)');
-            html += generateTableHTML('bottom5Table', 'Bottom 5 (Opportunities by QTD Gap)');
+            html += generateTableHTMLFromDOM('top5Table', 'Top 5 (Revenue)');
+            html += generateTableHTMLFromDOM('bottom5Table', 'Bottom 5 (Opportunities by QTD Gap)');
         }
-
-        // 4. Attach Rate Table
-        html += generateTableHTML('attachRateTable', 'Attach Rates');
-
-        // 5. Focus Point Tables (if active)
+        html += generateTableHTMLFromDOM('attachRateTable', 'Attach Rates');
         const focusSections = [
             { id: 'eliteOpportunitiesTable', title: 'Elite Opportunities', sectionId: 'eliteOpportunitiesSection' },
             { id: 'connectivityOpportunitiesTable', title: 'Connectivity Opportunities', sectionId: 'connectivityOpportunitiesSection' },
@@ -1141,10 +1180,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { id: 'vpmrOpportunitiesTable', title: 'VPMR Opportunities', sectionId: 'vpmrOpportunitiesSection' }
         ];
         focusSections.forEach(fs => {
-            const sectionElement = document.getElementById(fs.sectionId);
-            if (sectionElement && sectionElement.style.display !== 'none') {
-                html += generateTableHTML(fs.id, fs.title);
-            }
+            html += generateTableHTMLFromDOM(fs.id, fs.title);
         });
         
         return html;
@@ -1163,44 +1199,39 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
+        // Basic print styles (can be expanded or linked to a separate print.css)
+        const printStyles = `
+            body { font-family: Arial, sans-serif; margin: 20px; color: #000; }
+            h1 { font-size: 20pt; text-align: center; margin-bottom: 10px; color: #000;}
+            h2 { font-size: 16pt; margin-top: 25px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px; color: #000; page-break-after: avoid; }
+            p, li { font-size: 10pt; color: #000;}
+            ul { padding-left: 20px; margin-top: 5px; list-style-type: none; }
+            ul li { margin-bottom: 5px; }
+            .report-filter-summary { margin-bottom: 20px; padding: 10px; border: 1px solid #eee; background-color: #f9f9f9 !important; page-break-inside: avoid; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 9pt; page-break-inside: auto; }
+            th, td { border: 1px solid #ccc !important; padding: 6px; text-align: left; color: #000 !important; background-color: #fff !important; page-break-inside: avoid;}
+            th { background-color: #f2f2f2 !important; font-weight: bold; }
+            .report-chart-container img { max-width: 100%; height: auto; display: block; margin: 15px auto; border: 1px solid #eee; page-break-inside: avoid; }
+            @media print {
+                body { margin: 0.5in; font-size: 9pt; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                h1 { font-size: 18pt; } h2 { font-size: 14pt; }
+                table { font-size: 8pt; } th, td { padding: 4px; }
+            }
+        `;
+
         reportWindow.document.write(`
             <html>
                 <head>
                     <title>FSM Dashboard Report - ${new Date().toLocaleDateString()}</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; margin: 20px; }
-                        h1 { font-size: 20pt; text-align: center; margin-bottom: 10px; }
-                        h2 { font-size: 16pt; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
-                        p, li { font-size: 10pt; }
-                        ul { padding-left: 20px; margin-top: 5px; }
-                        .report-filter-summary { margin-bottom: 20px; padding: 10px; border: 1px solid #eee; background-color: #f9f9f9; }
-                        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 9pt; }
-                        th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
-                        th { background-color: #f2f2f2; font-weight: bold; }
-                        td:nth-child(n+2):not(:nth-child(1):nth-last-child(1)) { text-align: right; } /* Right align numeric data, except first/last if it's text */
-                        #attachRateTable td:nth-child(2), /* Territory column cells */
-                        .focus-point-card table td:nth-child(2) { /* Territory column cells */
-                           text-align: left !important; 
-                        }
-                        .report-chart-container img { max-width: 100%; height: auto; display: block; margin: 15px auto; border: 1px solid #eee;}
-                        @media print {
-                            body { margin: 0.5in; font-size: 9pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                            h1 { font-size: 18pt; } h2 { font-size: 14pt; }
-                            table { font-size: 8pt; } th, td { padding: 4px; }
-                            .report-filter-summary { background-color: #f9f9f9 !important; } /* Ensure background prints */
-                            th { background-color: #f2f2f2 !important; }
-                            .no-print-in-report { display: none !important; }
-                        }
-                    </style>
+                    <style>${printStyles}</style>
                 </head>
                 <body>${reportHTML}</body>
             </html>
         `);
         reportWindow.document.close();
-        setTimeout(() => { // Allow content to render before printing
+        setTimeout(() => { 
             reportWindow.focus();
             reportWindow.print();
-            // reportWindow.close(); // Optional: close after print dialog
         }, 500);
     };
 
@@ -1268,12 +1299,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (subchannelFilter?.value !== 'ALL') summary.push(`Subchannel: ${subchannelFilter.value}`); if (dealerFilter?.value !== 'ALL') summary.push(`Dealer: ${dealerFilter.value}`);
         const stores = storeFilter ? Array.from(storeFilter.selectedOptions).map(o => o.value) : []; if (stores.length > 0) summary.push(`Stores: ${stores.length === 1 ? stores[0] : `${stores.length} selected`}`);
         const flags = Object.entries(flagFiltersCheckboxes).filter(([, input]) => input?.checked).map(([key])=> key.replace(/_/g, ' ')); if (flags.length > 0) summary.push(`Attributes: ${flags.join(', ')}`);
-        const focusPointsSummary = [];
-        if(focusEliteFilter?.checked) focusPointsSummary.push("Elite Opps");
-        if(focusConnectivityFilter?.checked) focusPointsSummary.push("Connectivity Opps");
-        if(focusRepSkillFilter?.checked) focusPointsSummary.push("Rep Skill Opps");
-        if(focusVpmrFilter?.checked) focusPointsSummary.push("VPMR Opps");
-        if(focusPointsSummary.length > 0) summary.push(`Focus Points: ${focusPointsSummary.join(', ')}`);
+        
+        const additionalToolsSummary = [];
+        if(showMapViewFilter?.checked) additionalToolsSummary.push("Map View");
+        if(focusEliteFilter?.checked) additionalToolsSummary.push("Elite Opps");
+        if(focusConnectivityFilter?.checked) additionalToolsSummary.push("Connectivity Opps");
+        if(focusRepSkillFilter?.checked) additionalToolsSummary.push("Rep Skill Opps");
+        if(focusVpmrFilter?.checked) additionalToolsSummary.push("VPMR Opps");
+        if(additionalToolsSummary.length > 0) summary.push(`Tools: ${additionalToolsSummary.join(', ')}`);
 
         return summary.length > 0 ? summary.join('; ') : 'None';
     };
@@ -1334,6 +1367,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     resetUI(); 
     if (!mainChartCanvas) console.warn("Main chart canvas context not found on load. Chart will not render.");
-    updateShareOptions(); // Initial check for share options visibility
+    updateShareOptions(); 
 
 }); // End DOMContentLoaded

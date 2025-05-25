@@ -89,9 +89,9 @@
                  </div>
             </div>
 
-            <div class="filter-group-flags">
-                <label class="flags-label">Focus Points:</label>
+            <div class="filter-group-flags"> <label class="flags-label">Additional Tools:</label>
                 <div class="flag-toggles">
+                   <label><input type="checkbox" id="showMapViewFilter" disabled> Geographic Store View</label>
                    <label><input type="checkbox" id="focusEliteFilter" disabled> Elite Opportunities (>1% <100%)</label>
                    <label><input type="checkbox" id="focusConnectivityFilter" disabled> Connectivity Opportunities (<100%)</label>
                    <label><input type="checkbox" id="focusRepSkillFilter" disabled> Rep Skill Opportunities (<100%, valid data)</label>
@@ -202,10 +202,9 @@
              <p style="text-align:center; font-size: 0.9em; color: #a0a0a0;">Chart options coming soon.</p>
         </div>
 
-        <div id="mapViewContainer" class="card" style="display: none;">
-            <h3>Geographic Store View</h3>
+        <div id="mapViewContainer" class="card" style="display: none;"> <h3>Geographic Store View</h3>
             <div id="mapid"></div>
-            <p id="mapStatus" class="map-status-message">Loading map...</p>
+            <p id="mapStatus" class="map-status-message">Enable via "Additional Tools" to see map.</p>
         </div>
 
         <div class="table-container card" id="attachRateTableContainer">
@@ -281,7 +280,8 @@
             <h3>Share / Export Report</h3>
             <button id="printReportButton" class="share-button primary-share-button" title="Generate a printable PDF report of the current view">Print / Save as PDF</button>
             
-            <div id="emailShareSection" style="margin-top: 1rem; display: none;"> <h4 style="margin-bottom: 0.5rem;">Quick Share Summary via Email</h4>
+            <div id="emailShareSection" style="margin-top: 1rem; display: none;"> 
+                <h4 style="margin-bottom: 0.5rem;">Quick Share Summary via Email</h4>
                 <div id="emailShareControls" class="share-controls">
                     <label for="emailRecipient">Recipient Email:</label>
                     <input type="email" id="emailRecipient" placeholder="Enter email address">
