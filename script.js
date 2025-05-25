@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-25T16:55:12EDT
-//    Summary: Added auto-open for filter modal on file upload and ensured auto-close on applying filters from modal.
+//    Timestamp: 2025-05-25T17:12:55EDT
+//    Summary: Ensured filter modal opens automatically after file upload by adding a slight delay.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -27,7 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const applyFiltersButtonModal = document.getElementById('applyFiltersButtonModal');
     const resetFiltersButtonModal = document.getElementById('resetFiltersButtonModal');
     const filterLoadingIndicatorModal = document.getElementById('filterLoadingIndicatorModal');
-    // const desktopFilterArea = document.getElementById('filterArea'); // No longer primary, hidden by CSS
 
 
     // --- Configuration ---
@@ -480,11 +479,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: null });
             if (jsonData.length > 0) { const headers = Object.keys(jsonData[0]); const missingHeaders = REQUIRED_HEADERS.filter(h => !headers.includes(h)); if (missingHeaders.length > 0) { console.warn(`Warning: Missing expected columns: ${missingHeaders.join(', ')}.`); }
             } else { throw new Error("Excel sheet appears to be empty."); }
-            rawData = jsonData; allPossibleStores = [...new Set(rawData.map(r => safeGet(r, 'Store', null)).filter(s => s && String(s).trim() !== ''))].sort().map(s => ({ value: s, text: s }));
-            if (statusDiv) statusDiv.textContent = `Loaded ${rawData.length} rows. Filters opened automatically.`;
+            
+            rawData = jsonData; 
+            allPossibleStores = [...new Set(rawData.map(r => safeGet(r, 'Store', null)).filter(s => s && String(s).trim() !== ''))].sort().map(s => ({ value: s, text: s }));
+            
             populateFilters(rawData); 
             if (openFilterModalBtn) openFilterModalBtn.disabled = false;
-            openFilterModal(); // Auto-open filter modal
+            
+            if (statusDiv) statusDiv.textContent = `Loaded ${rawData.length} rows. Filters opened automatically.`;
+
+            // Auto-open filter modal with a slight delay
+            setTimeout(() => {
+                openFilterModal(); 
+            }, 100); // Increased delay slightly to ensure all prior DOM updates are settled
         } catch (error) {
             console.error('Error processing file:', error); if (statusDiv) statusDiv.textContent = `Error: ${error.message}`;
             rawData = []; allPossibleStores = []; filteredData = []; resetUI();
@@ -703,7 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
          filteredData = [];
          updateShareOptions(); 
          if (openFilterModalBtn) openFilterModalBtn.disabled = true;
-         closeFilterModal(); // Ensure modal is closed on full UI reset
+         closeFilterModal(); 
      };
 
     const handleResetFiltersClick = (isFromModal = false) => {
@@ -766,8 +773,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusDiv.textContent = 'No file selected. Load a file to use filters.';
             }
         }
-        // If reset is called from modal, re-apply filters (which effectively shows all data or data based on cleared filters)
-        // and then the applyFilters function will close the modal.
         if (isFromModal) {
             applyFilters(true); 
         }
