@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FSM Dashboard Enhanced BETA</title>
     <link rel="manifest" href="manifest.json">
+
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <link rel="stylesheet" href="style.css">
     <meta name="theme-color" content="#2c2c2c"> 
@@ -54,90 +57,104 @@
         </div>
     </div>
 
-    <div id="filterArea" class="card" style="display: none;">
-        <h2>Filters</h2>
-        <div class="filter-controls">
-            <div class="filter-group">
-                <label for="regionFilter">Region:</label>
-                <select id="regionFilter" disabled><option value="ALL">-- Load File First --</option></select>
-            </div>
-            <div class="filter-group">
-                <label for="districtFilter">District:</label>
-                <select id="districtFilter" disabled><option value="ALL">-- Load File First --</option></select>
-            </div>
-            <div class="filter-group">
-                <label for="territoryFilter">Q2 Territory:</label>
-                 <div class="multi-select-controls">
-                    <button class="select-button" id="territorySelectAll" disabled>Select All</button>
-                    <button class="select-button" id="territoryDeselectAll" disabled>Deselect All</button>
-                 </div>
-                <small class="multi-select-info">(Hold Ctrl/Cmd to select multiple)</small>
-                <select id="territoryFilter" disabled multiple size="6">
-                    <option value="ALL">-- Load File First --</option>
-                </select>
-            </div>
-             <div class="filter-group">
-                <label for="fsmFilter">FSM Name:</label>
-                <select id="fsmFilter" disabled><option value="ALL">-- Load File First --</option></select>
-            </div>
-
-            <div class="filter-group">
-                <label for="channelFilter">Channel:</label>
-                <select id="channelFilter" disabled><option value="ALL">-- Load File First --</option></select>
-            </div>
-            <div class="filter-group">
-                <label for="subchannelFilter">Subchannel:</label>
-                <select id="subchannelFilter" disabled><option value="ALL">-- Load File First --</option></select>
-            </div>
-             <div class="filter-group">
-                <label for="dealerFilter">Dealer Name:</label>
-                <select id="dealerFilter" disabled><option value="ALL">-- Load File First --</option></select>
-            </div>
-
-             <div class="filter-group filter-group-store">
-                <label for="storeFilter">Store:</label>
-                 <input type="text" id="storeSearch" placeholder="Search stores..." disabled>
-                 <div class="multi-select-controls">
-                     <button class="select-button" id="storeSelectAll" disabled>Select All</button>
-                    <button class="select-button" id="storeDeselectAll" disabled>Deselect All</button>
-                 </div>
-                <small class="multi-select-info">(Hold Ctrl/Cmd to select multiple)</small>
-                <select id="storeFilter" disabled multiple size="8">
-                     <option value="ALL">-- Load File First --</option>
-                </select>
-            </div>
-
-            <div class="filter-group-flags">
-                 <label class="flags-label">Store Attributes:</label>
-                 <div class="flag-toggles">
-                    <label><input type="checkbox" id="superStoreFilter" value="SUPER STORE" disabled> Super Store</label>
-                    <label><input type="checkbox" id="goldenRhinoFilter" value="GOLDEN RHINO" disabled> Golden Rhino</label>
-                    <label><input type="checkbox" id="gceFilter" value="GCE" disabled> GCE</label>
-                    <label><input type="checkbox" id="aiZoneFilter" value="AI_Zone" disabled> AI Zone</label>
-                    <label><input type="checkbox" id="hispanicMarketFilter" value="Hispanic_Market" disabled> Hispanic Market</label>
-                    <label><input type="checkbox" id="evRouteFilter" value="EV ROUTE" disabled> EV Route</label>
-                 </div>
-            </div>
-
-            <div class="filter-group-flags"> <label class="flags-label">Additional Tools:</label>
-                <div class="flag-toggles">
-                   <label><input type="checkbox" id="showMapViewFilter" disabled> Geographic Store View</label>
-                   <label><input type="checkbox" id="focusEliteFilter" disabled> Elite Opportunities (>1% <100%)</label>
-                   <label><input type="checkbox" id="focusConnectivityFilter" disabled> Connectivity Opportunities (<100%)</label>
-                   <label><input type="checkbox" id="focusRepSkillFilter" disabled> Rep Skill Opportunities (<100%, valid data)</label>
-                   <label><input type="checkbox" id="focusVpmrFilter" disabled> VPMR Opportunities (<100%, valid data)</label>
-                </div>
-           </div>
-
-        </div>
-        <div class="filter-actions-container">
-            <button id="resetFiltersButton" class="reset-filters-button" disabled>Reset Filters</button>
-            <button id="applyFiltersButton" class="apply-filters-button" disabled>Apply Filters</button>
-        </div>
-         <div id="filterLoadingIndicator" style="display: none;">
-            <div class="spinner-small"></div> Applying filters...
-         </div>
+    <div class="mobile-filter-trigger-container">
+        <button id="openFilterModalBtn" class="button-primary open-filter-modal-button">Show Filters</button>
     </div>
+
+    <div id="filterArea" class="card desktop-filters" style="display: none;">
+        </div>
+    
+    <div id="filterModal" class="filter-modal-overlay" style="display: none;">
+        <div class="filter-modal-content">
+            <div class="filter-modal-header">
+                <h2>Filters</h2>
+                <button id="closeFilterModalBtn" class="filter-modal-close-button" title="Close Filters">×</button>
+            </div>
+            <div class="filter-modal-body">
+                <div class="filter-controls">
+                    <div class="filter-group">
+                        <label for="regionFilter">Region:</label>
+                        <select id="regionFilter" disabled><option value="ALL">-- Load File First --</option></select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="districtFilter">District:</label>
+                        <select id="districtFilter" disabled><option value="ALL">-- Load File First --</option></select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="territoryFilter">Q2 Territory:</label>
+                         <div class="multi-select-controls">
+                            <button class="select-button" id="territorySelectAll" disabled>Select All</button>
+                            <button class="select-button" id="territoryDeselectAll" disabled>Deselect All</button>
+                         </div>
+                        <small class="multi-select-info">(Hold Ctrl/Cmd to select multiple)</small>
+                        <select id="territoryFilter" disabled multiple size="6">
+                            <option value="ALL">-- Load File First --</option>
+                        </select>
+                    </div>
+                     <div class="filter-group">
+                        <label for="fsmFilter">FSM Name:</label>
+                        <select id="fsmFilter" disabled><option value="ALL">-- Load File First --</option></select>
+                    </div>
+        
+                    <div class="filter-group">
+                        <label for="channelFilter">Channel:</label>
+                        <select id="channelFilter" disabled><option value="ALL">-- Load File First --</option></select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="subchannelFilter">Subchannel:</label>
+                        <select id="subchannelFilter" disabled><option value="ALL">-- Load File First --</option></select>
+                    </div>
+                     <div class="filter-group">
+                        <label for="dealerFilter">Dealer Name:</label>
+                        <select id="dealerFilter" disabled><option value="ALL">-- Load File First --</option></select>
+                    </div>
+        
+                     <div class="filter-group filter-group-store">
+                        <label for="storeFilter">Store:</label>
+                         <input type="text" id="storeSearch" placeholder="Search stores..." disabled>
+                         <div class="multi-select-controls">
+                             <button class="select-button" id="storeSelectAll" disabled>Select All</button>
+                            <button class="select-button" id="storeDeselectAll" disabled>Deselect All</button>
+                         </div>
+                        <small class="multi-select-info">(Hold Ctrl/Cmd to select multiple)</small>
+                        <select id="storeFilter" disabled multiple size="8">
+                             <option value="ALL">-- Load File First --</option>
+                        </select>
+                    </div>
+        
+                    <div class="filter-group-flags">
+                         <label class="flags-label">Store Attributes:</label>
+                         <div class="flag-toggles">
+                            <label><input type="checkbox" id="superStoreFilter" value="SUPER STORE" disabled> Super Store</label>
+                            <label><input type="checkbox" id="goldenRhinoFilter" value="GOLDEN RHINO" disabled> Golden Rhino</label>
+                            <label><input type="checkbox" id="gceFilter" value="GCE" disabled> GCE</label>
+                            <label><input type="checkbox" id="aiZoneFilter" value="AI_Zone" disabled> AI Zone</label>
+                            <label><input type="checkbox" id="hispanicMarketFilter" value="Hispanic_Market" disabled> Hispanic Market</label>
+                            <label><input type="checkbox" id="evRouteFilter" value="EV ROUTE" disabled> EV Route</label>
+                         </div>
+                    </div>
+        
+                    <div class="filter-group-flags"> <label class="flags-label">Additional Tools:</label>
+                        <div class="flag-toggles">
+                           <label><input type="checkbox" id="showMapViewFilter" disabled> Geographic Store View</label>
+                           <label><input type="checkbox" id="focusEliteFilter" disabled> Elite Opportunities (>1% <100%)</label>
+                           <label><input type="checkbox" id="focusConnectivityFilter" disabled> Connectivity Opportunities (<100%)</label>
+                           <label><input type="checkbox" id="focusRepSkillFilter" disabled> Rep Skill Opportunities (<100%, valid data)</label>
+                           <label><input type="checkbox" id="focusVpmrFilter" disabled> VPMR Opportunities (<100%, valid data)</label>
+                        </div>
+                   </div>
+                </div>
+            </div>
+            <div class="filter-modal-footer">
+                <button id="resetFiltersButtonModal" class="reset-filters-button" disabled>Reset Filters</button>
+                <button id="applyFiltersButtonModal" class="apply-filters-button" disabled>Apply Filters</button>
+            </div>
+            <div id="filterLoadingIndicatorModal" style="display: none; justify-content: center; margin-top: 10px;">
+                <div class="spinner-small"></div> Applying filters...
+            </div>
+        </div>
+    </div>
+
     <p id="status" class="status-message" aria-live="polite">No file selected.</p>
 
     <div id="resultsArea" class="results-container" style="display: none;">
