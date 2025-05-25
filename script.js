@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-25T13:38:00EDT
-//    Summary: Modified Attach Rate table to use three-tier color highlighting (red, yellow, green) based on +/- 10% of average.
+//    Timestamp: 2025-05-25T14:00:00EDT
+//    Summary: Added 'What's New' pop-up functionality with cookie management.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -13,6 +13,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const themeToggleBtn = document.getElementById('themeToggleBtn');
     const metaThemeColorTag = document.querySelector('meta[name="theme-color"]');
+
+    // --- "What's New" Modal Elements ---
+    const whatsNewModal = document.getElementById('whatsNewModal');
+    const closeWhatsNewModalBtn = document.getElementById('closeWhatsNewModalBtn');
+    const gotItWhatsNewBtn = document.getElementById('gotItWhatsNewBtn');
+    const BETA_FEATURES_POPUP_COOKIE = 'betaFeaturesPopupShown_v1.3'; // Updated cookie name for new features
 
     // --- Configuration ---
     const MICHIGAN_AREA_VIEW = { lat: 43.8, lon: -84.8, zoom: 7 }; 
@@ -160,6 +166,64 @@ document.addEventListener('DOMContentLoaded', () => {
     let allPossibleStores = [];
     let currentSort = { column: 'Store', ascending: true };
     let selectedStoreRow = null;
+
+    // --- "What's New" Modal Logic ---
+    const showWhatsNewModal = () => {
+        if (whatsNewModal) {
+            whatsNewModal.style.display = 'flex';
+            setTimeout(() => whatsNewModal.classList.add('active'), 10); // For transition
+        }
+    };
+
+    const hideWhatsNewModal = () => {
+        if (whatsNewModal) {
+            whatsNewModal.classList.remove('active');
+            setTimeout(() => whatsNewModal.style.display = 'none', 300); // Match transition duration
+        }
+    };
+
+    const checkAndShowWhatsNew = () => {
+        if (!getCookie(BETA_FEATURES_POPUP_COOKIE)) {
+            showWhatsNewModal();
+        }
+    };
+
+    const setCookie = (name, value, days) => {
+        let expires = "";
+        if (days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "") + expires + "; path=/; SameSite=Lax";
+    };
+
+    const getCookie = (name) => {
+        const nameEQ = name + "=";
+        const ca = document.cookie.split(';');
+        for (let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+            if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    };
+    
+    if (closeWhatsNewModalBtn) {
+        closeWhatsNewModalBtn.addEventListener('click', () => {
+            hideWhatsNewModal();
+            setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365); // Cookie for 1 year
+        });
+    }
+    if (gotItWhatsNewBtn) {
+        gotItWhatsNewBtn.addEventListener('click', () => {
+            hideWhatsNewModal();
+            setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365);
+        });
+    }
+     // Call to check if the "What's New" pop-up should be shown
+     checkAndShowWhatsNew();
+
 
     // --- Theme Management ---
     const applyTheme = (theme) => {
@@ -1380,5 +1444,6 @@ document.addEventListener('DOMContentLoaded', () => {
     resetUI(); 
     if (!mainChartCanvas) console.warn("Main chart canvas context not found on load. Chart will not render.");
     updateShareOptions(); 
+    checkAndShowWhatsNew(); // Check for "What's New" pop-up on load
 
 }); // End DOMContentLoaded
