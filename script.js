@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-24T16:35:00EDT
-//    Summary: Attach Rates table now dynamically includes a 'Territory' column if multiple territories are present in filtered data.
+//    Timestamp: 2025-05-24T17:00:00EDT
+//    Summary: Added Print/Save as PDF report feature; email share now conditional on summary length.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const metaThemeColorTag = document.querySelector('meta[name="theme-color"]');
 
     // --- Configuration ---
-    const MICHIGAN_AREA_VIEW = { lat: 43.8, lon: -84.8, zoom: 7 }; // Centered on Michigan
+    const MICHIGAN_AREA_VIEW = { lat: 43.8, lon: -84.8, zoom: 7 }; 
 
     const REQUIRED_HEADERS = [ 
         'Store', 'REGION', 'DISTRICT', 'Q2 Territory', 'FSM NAME', 'CHANNEL',
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
         '%Quarterly Territory Rev Target', 'Region Rev%', 'District Rev%', 'Territory Rev%'
     ]; 
     const FLAG_HEADERS = ['SUPER STORE', 'GOLDEN RHINO', 'GCE', 'AI_Zone', 'Hispanic_Market', 'EV ROUTE'];
-    const ATTACH_RATE_COLUMNS = [ // Used for identifying which columns are attach rates for averages etc.
+    const ATTACH_RATE_COLUMNS = [ 
         'Tablet Attach Rate', 'PC Attach Rate', 'NC Attach Rate', 
         'TWS Attach Rate', 'WW Attach Rate', 'ME Attach Rate', 'NCME Attach Rate'
     ];
@@ -118,9 +118,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const storeDetailsSection = document.getElementById('storeDetailsSection');
     const storeDetailsContent = document.getElementById('storeDetailsContent');
     const closeStoreDetailsButton = document.getElementById('closeStoreDetailsButton');
+    
+    // Share Section Elements
+    const printReportButton = document.getElementById('printReportButton');
+    const emailShareSection = document.getElementById('emailShareSection');
+    const emailShareControls = document.getElementById('emailShareControls');
     const emailRecipientInput = document.getElementById('emailRecipient');
     const shareEmailButton = document.getElementById('shareEmailButton');
     const shareStatus = document.getElementById('shareStatus');
+    const emailShareHint = document.getElementById('emailShareHint');
+
 
     // --- Focus Point DOM Elements ---
     const focusEliteFilter = document.getElementById('focusEliteFilter');
@@ -518,13 +525,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateSummary(filteredData); updateTopBottomTables(filteredData); updateCharts(filteredData); updateAttachRateTable(filteredData); 
                 updateMapView(filteredData); 
                 updateFocusPointSections(filteredData);
+                updateShareOptions(); // Update share options based on new filtered data
 
                 if (filteredData.length === 1) { showStoreDetails(filteredData[0]); highlightTableRow(safeGet(filteredData[0], 'Store', null)); } else { hideStoreDetails(); }
                 if (statusDiv) statusDiv.textContent = `Displaying ${filteredData.length} of ${rawData.length} rows based on filters.`;
-                if (resultsArea) resultsArea.style.display = 'block'; if (exportCsvButton) exportCsvButton.disabled = filteredData.length === 0;
+                if (resultsArea) resultsArea.style.display = 'block'; 
+                if (exportCsvButton) exportCsvButton.disabled = filteredData.length === 0;
+                if (printReportButton) printReportButton.disabled = filteredData.length === 0;
+
+
             } catch (error) {
                 console.error("Error applying filters:", error); if (statusDiv) statusDiv.textContent = "Error applying filters. Check console for details.";
-                filteredData = []; if (resultsArea) resultsArea.style.display = 'none'; if (exportCsvButton) exportCsvButton.disabled = true;
+                filteredData = []; if (resultsArea) resultsArea.style.display = 'none'; 
+                if (exportCsvButton) exportCsvButton.disabled = true;
+                if (printReportButton) printReportButton.disabled = true;
+                if (emailShareSection) emailShareSection.style.display = 'none';
                 updateSummary([]); updateTopBottomTables([]); updateCharts([]); updateAttachRateTable([]); updateMapView([]); hideStoreDetails();
                 if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none';
                 if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
@@ -555,6 +570,8 @@ document.addEventListener('DOMContentLoaded', () => {
          if (territorySelectAll) territorySelectAll.disabled = true; if (territoryDeselectAll) territoryDeselectAll.disabled = true;
          if (storeSelectAll) storeSelectAll.disabled = true; if (storeDeselectAll) storeDeselectAll.disabled = true;
          if (exportCsvButton) exportCsvButton.disabled = true;
+         if (printReportButton) printReportButton.disabled = true;
+         if (emailShareSection) emailShareSection.style.display = 'none';
          const handler = updateStoreFilterOptionsBasedOnHierarchy;
          [regionFilter, districtFilter, territoryFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(filter => { if (filter) filter.removeEventListener('change', handler); });
          Object.values(flagFiltersCheckboxes).forEach(input => { if (input) input.removeEventListener('change', handler); });
@@ -591,6 +608,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
         if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
         if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
+        if (emailShareSection) emailShareSection.style.display = 'none';
+
 
          if(statusDiv) statusDiv.textContent = 'No file selected.';
          allPossibleStores = []; 
@@ -645,10 +664,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
         if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
         if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
+        if (emailShareSection) emailShareSection.style.display = 'none';
 
 
         filteredData = []; 
         if (exportCsvButton) exportCsvButton.disabled = true;
+        if (printReportButton) printReportButton.disabled = true;
+
 
         if (statusDiv) {
             if (rawData.length > 0) {
@@ -754,30 +776,22 @@ document.addEventListener('DOMContentLoaded', () => {
             return ATTACH_RATE_COLUMNS.every(colKey => isValidNumericForFocus(safeGet(row, colKey, null)));
         });
     
-        if (dataForTable.length === 0) {
-            if (attachTableStatus) attachTableStatus.textContent = 'No stores with complete & valid attach rate data based on current filters.';
-            // Clear headers if table is empty
-            const tableHead = attachRateTable.querySelector('thead');
-            if (tableHead) {
-                let headerRow = tableHead.querySelector('tr');
-                if (headerRow) headerRow.innerHTML = '';
-            }
-            return;
-        }
-    
-        const uniqueTerritories = new Set(dataForTable.map(row => safeGet(row, 'Q2 Territory', 'N/A_TERRITORY')));
-        const showTerritoryColumn = uniqueTerritories.size > 1;
-    
-        // Dynamically build headers
         const tableHead = attachRateTable.querySelector('thead');
         if (!tableHead) { console.error("Attach rate table head not found!"); return; }
         let headerRow = tableHead.querySelector('tr');
         if (!headerRow) { headerRow = tableHead.insertRow(); }
         headerRow.innerHTML = ''; // Clear existing headers
     
+        if (dataForTable.length === 0) {
+            if (attachTableStatus) attachTableStatus.textContent = 'No stores with complete & valid attach rate data based on current filters.';
+            return;
+        }
+    
+        const uniqueTerritories = new Set(dataForTable.map(row => safeGet(row, 'Q2 Territory', 'N/A_TERRITORY')));
+        const showTerritoryColumn = uniqueTerritories.size > 1;
+    
         const baseHeaderConfig = [
             { label: 'Store', sortKey: 'Store', title: 'Store Name' },
-            // Territory will be inserted here conditionally
             { label: 'Tablet', sortKey: 'Tablet Attach Rate', title: 'Tablet Attach Rate' },
             { label: 'PC', sortKey: 'PC Attach Rate', title: 'PC Attach Rate' },
             { label: 'NC', sortKey: 'NC Attach Rate', title: 'NC = Tablet + PC Attach Rate' },
@@ -802,7 +816,6 @@ document.addEventListener('DOMContentLoaded', () => {
             headerRow.appendChild(th);
         });
     
-        // Sort data (dataForTable is already filtered for valid attach rates)
         const sortedData = [...dataForTable].sort((a, b) => {
             let valA = safeGet(a, currentSort.column, null);
             let valB = safeGet(b, currentSort.column, null);
@@ -810,26 +823,37 @@ document.addEventListener('DOMContentLoaded', () => {
             if (valA === null) return currentSort.ascending ? -1 : 1;
             if (valB === null) return currentSort.ascending ? 1 : -1;
     
-            const isPercentCol = ATTACH_RATE_COLUMNS.includes(currentSort.column);
-            const numA = isPercentCol ? parsePercent(valA) : (currentSort.column === 'Store' || currentSort.column === 'Q2 Territory' ? valA : parseNumber(valA));
-            const numB = isPercentCol ? parsePercent(valB) : (currentSort.column === 'Store' || currentSort.column === 'Q2 Territory' ? valB : parseNumber(valB));
+            const isAttachRateKey = ATTACH_RATE_COLUMNS.includes(currentSort.column);
+            const isStoreOrTerritoryKey = currentSort.column === 'Store' || currentSort.column === 'Q2 Territory';
+            
+            let numA, numB;
+            if(isAttachRateKey) {
+                numA = parsePercent(valA);
+                numB = parsePercent(valB);
+            } else if (!isStoreOrTerritoryKey) { // Other potential numeric columns
+                numA = parseNumber(valA);
+                numB = parseNumber(valB);
+            } else { // Store or Territory, treat as string for sorting
+                valA = String(valA).toLowerCase();
+                valB = String(valB).toLowerCase();
+                return currentSort.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            }
 
             if (typeof numA === 'number' && typeof numB === 'number' && !isNaN(numA) && !isNaN(numB)) {
                  return currentSort.ascending ? numA - numB : numB - numA;
-            } else { // String comparison for Store and Territory or if parsing failed
-                 valA = String(valA).toLowerCase();
-                 valB = String(valB).toLowerCase();
-                 return currentSort.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
             }
+            // Fallback for non-numeric or mixed types if not Store/Territory
+            valA = String(valA).toLowerCase();
+            valB = String(valB).toLowerCase();
+            return currentSort.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
         });
     
-        // Calculate averages (based on dataForTable)
         const averages = {};
         ATTACH_RATE_COLUMNS.forEach(key => {
             let sum = 0, count = 0;
             dataForTable.forEach(row => {
                 const valStr = safeGet(row, key, null);
-                if (isValidNumericForFocus(valStr)) { // Use this for consistency
+                if (isValidNumericForFocus(valStr)) { 
                     sum += parsePercent(valStr);
                     count++;
                 }
@@ -837,7 +861,6 @@ document.addEventListener('DOMContentLoaded', () => {
             averages[key] = count > 0 ? sum / count : NaN;
         });
     
-        // Populate table body
         sortedData.forEach(row => {
             const tr = attachRateTableBody.insertRow();
             const storeName = safeGet(row, 'Store', 'N/A');
@@ -853,7 +876,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     cellValue = storeName;
                 } else if (headerInfo.sortKey === 'Q2 Territory') {
                     cellValue = safeGet(row, 'Q2 Territory', 'N/A');
-                } else { // Attach Rate columns
+                } else { 
                     const numericValue = parsePercent(rawValueForMetric);
                     cellValue = isNaN(numericValue) ? 'N/A' : formatPercent(numericValue);
                     td.style.textAlign = "right";
@@ -863,21 +886,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 td.textContent = cellValue;
-                td.title = cellValue; // Simple title, could be more descriptive like header title
+                td.title = cellValue; 
             });
         });
     
-        // Populate table footer
         if (dataForTable.length > 0) {
-            const footerRow = attachRateTableFooter.insertRow();
+            const footerRowNew = attachRateTableFooter.insertRow();
             actualTableHeaders.forEach((headerInfo, index) => {
-                const td = footerRow.insertCell();
-                if (index === 0) { // Store column
+                const td = footerRowNew.insertCell();
+                 if (index === 0) { 
                     td.textContent = 'Filtered Avg*';
                     td.style.fontWeight = "bold";
                     td.title = 'Average calculated only using stores with complete and valid attach rate data';
                 } else if (showTerritoryColumn && index === 1 && headerInfo.sortKey === 'Q2 Territory') {
-                    td.textContent = ''; // Empty cell for Territory average
+                    td.textContent = ''; 
                 } else if (ATTACH_RATE_COLUMNS.includes(headerInfo.sortKey)) {
                     const avgValue = averages[headerInfo.sortKey];
                     td.textContent = formatPercent(avgValue);
@@ -974,8 +996,7 @@ document.addEventListener('DOMContentLoaded', () => {
          const headerCell = event.target.closest('th'); if (!headerCell?.classList.contains('sortable')) return;
          const sortKey = headerCell.dataset.sort; if (!sortKey) return;
          if (currentSort.column === sortKey) { currentSort.ascending = !currentSort.ascending; } else { currentSort.column = sortKey; currentSort.ascending = true; }
-         // Re-render the attach rate table with new sort
-         updateAttachRateTable(filteredData); // Pass the main filteredData
+         updateAttachRateTable(filteredData); 
     };
 
     const updateSortArrows = () => {
@@ -1019,30 +1040,186 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     };
+    
+    // --- Share and Report Functions ---
+    const updateShareOptions = () => {
+        if (!emailShareSection || !shareEmailButton || !emailShareHint) return;
+
+        const emailBody = generateEmailBody(); // Generate the text summary
+        if (emailBody.length < 2000 && filteredData.length > 0) {
+            emailShareSection.style.display = 'block';
+            shareEmailButton.disabled = false;
+            emailShareHint.textContent = 'Note: This will open your default desktop email client. Available for summaries under 2000 characters.';
+        } else if (filteredData.length === 0) {
+            emailShareSection.style.display = 'none';
+        } else {
+            emailShareSection.style.display = 'block'; // Show section to display the hint
+            if (emailShareControls) emailShareControls.style.display = 'none'; // Hide input and button
+            shareEmailButton.disabled = true;
+            emailShareHint.textContent = 'Email summary is too long for direct sharing. Please use "Print / Save as PDF" for a full report.';
+        }
+        if(printReportButton) printReportButton.disabled = filteredData.length === 0;
+    };
+
+    const generateReportHTML = () => {
+        let html = `<h1>FSM Performance Dashboard Report</h1>`;
+        html += `<p><strong>Report Generated:</strong> ${new Date().toLocaleString()}</p>`;
+        html += `<div class="report-filter-summary"><p><strong>Filters Applied:</strong> ${getFilterSummary() || 'None'}</p></div>`;
+
+        // 1. Summary Data
+        const summaryDataEl = document.getElementById('summaryData');
+        if (summaryDataEl) {
+            html += `<h2>Performance Summary</h2>`;
+            const summaryGrid = summaryDataEl.querySelector('.summary-grid');
+            if (summaryGrid) {
+                html += '<ul>';
+                summaryGrid.querySelectorAll('p').forEach(p => {
+                    if (p.style.display !== 'none') {
+                         const label = p.childNodes[0].nodeValue || '';
+                         const value = p.querySelector('strong')?.textContent || '';
+                         html += `<li>${label.trim()} <strong>${value}</strong></li>`;
+                    }
+                });
+                html += '</ul>';
+            }
+        }
+        
+        // 2. Main Chart Image
+        if (mainChartInstance) {
+            try {
+                const chartImageURL = mainChartInstance.toBase64Image();
+                html += `<h2>Revenue Performance Chart</h2><div class="report-chart-container"><img src="${chartImageURL}" alt="Revenue Performance Chart"></div>`;
+            } catch(e) {
+                console.error("Error converting chart to image for report:", e);
+                html += `<p><em>Main chart could not be included.</em></p>`;
+            }
+        }
+
+        // Function to generate HTML for a generic table
+        const generateTableHTML = (tableId, title) => {
+            const tableElement = document.getElementById(tableId);
+            if (!tableElement || tableElement.style.display === 'none' ) return '';
+            const tableBody = tableElement.querySelector('tbody');
+            if (!tableBody || tableBody.children.length === 0) return '';
+
+            let tableHTML = `<h2>${title}</h2><table>`;
+            const header = tableElement.querySelector('thead');
+            if (header) tableHTML += `<thead>${header.innerHTML}</thead>`;
+            
+            tableHTML += `<tbody>`;
+            // Use current rows from the displayed table to maintain sort order and filtering
+            Array.from(tableBody.rows).forEach(row => {
+                tableHTML += `<tr>`;
+                Array.from(row.cells).forEach(cell => {
+                    tableHTML += `<td>${cell.innerHTML}</td>`; // Use innerHTML to keep potential formatting like sort arrows (though they won't sort in PDF)
+                });
+                tableHTML += `</tr>`;
+            });
+            tableHTML += `</tbody>`;
+
+            const footer = tableElement.querySelector('tfoot');
+            if (footer && footer.innerHTML.trim() !== '') tableHTML += `<tfoot>${footer.innerHTML}</tfoot>`;
+            
+            tableHTML += `</table>`;
+            return tableHTML;
+        };
+        
+        // 3. Top/Bottom 5 Tables (if visible)
+        if (topBottomSection && topBottomSection.style.display !== 'none') {
+            html += generateTableHTML('top5Table', 'Top 5 (Revenue)');
+            html += generateTableHTML('bottom5Table', 'Bottom 5 (Opportunities by QTD Gap)');
+        }
+
+        // 4. Attach Rate Table
+        html += generateTableHTML('attachRateTable', 'Attach Rates');
+
+        // 5. Focus Point Tables (if active)
+        const focusSections = [
+            { id: 'eliteOpportunitiesTable', title: 'Elite Opportunities', sectionId: 'eliteOpportunitiesSection' },
+            { id: 'connectivityOpportunitiesTable', title: 'Connectivity Opportunities', sectionId: 'connectivityOpportunitiesSection' },
+            { id: 'repSkillOpportunitiesTable', title: 'Rep Skill Opportunities', sectionId: 'repSkillOpportunitiesSection' },
+            { id: 'vpmrOpportunitiesTable', title: 'VPMR Opportunities', sectionId: 'vpmrOpportunitiesSection' }
+        ];
+        focusSections.forEach(fs => {
+            const sectionElement = document.getElementById(fs.sectionId);
+            if (sectionElement && sectionElement.style.display !== 'none') {
+                html += generateTableHTML(fs.id, fs.title);
+            }
+        });
+        
+        return html;
+    };
+
+    const handlePrintReport = () => {
+        if (filteredData.length === 0) {
+            alert("No data to generate a report. Please apply filters first.");
+            return;
+        }
+
+        const reportHTML = generateReportHTML();
+        const reportWindow = window.open('', '_blank');
+        if (!reportWindow) {
+            alert("Please allow popups for this site to generate the report.");
+            return;
+        }
+        
+        reportWindow.document.write(`
+            <html>
+                <head>
+                    <title>FSM Dashboard Report - ${new Date().toLocaleDateString()}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        h1 { font-size: 20pt; text-align: center; margin-bottom: 10px; }
+                        h2 { font-size: 16pt; margin-top: 20px; margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+                        p, li { font-size: 10pt; }
+                        ul { padding-left: 20px; margin-top: 5px; }
+                        .report-filter-summary { margin-bottom: 20px; padding: 10px; border: 1px solid #eee; background-color: #f9f9f9; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 9pt; }
+                        th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+                        th { background-color: #f2f2f2; font-weight: bold; }
+                        td:nth-child(n+2):not(:nth-child(1):nth-last-child(1)) { text-align: right; } /* Right align numeric data, except first/last if it's text */
+                        #attachRateTable td:nth-child(2), /* Territory column cells */
+                        .focus-point-card table td:nth-child(2) { /* Territory column cells */
+                           text-align: left !important; 
+                        }
+                        .report-chart-container img { max-width: 100%; height: auto; display: block; margin: 15px auto; border: 1px solid #eee;}
+                        @media print {
+                            body { margin: 0.5in; font-size: 9pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                            h1 { font-size: 18pt; } h2 { font-size: 14pt; }
+                            table { font-size: 8pt; } th, td { padding: 4px; }
+                            .report-filter-summary { background-color: #f9f9f9 !important; } /* Ensure background prints */
+                            th { background-color: #f2f2f2 !important; }
+                            .no-print-in-report { display: none !important; }
+                        }
+                    </style>
+                </head>
+                <body>${reportHTML}</body>
+            </html>
+        `);
+        reportWindow.document.close();
+        setTimeout(() => { // Allow content to render before printing
+            reportWindow.focus();
+            reportWindow.print();
+            // reportWindow.close(); // Optional: close after print dialog
+        }, 500);
+    };
+
 
     const exportData = () => {
         if (filteredData.length === 0) { alert("No filtered data to export."); return; }
         try {
-            // Use the currently rendered headers in the attachRateTable for export
             const currentHeaders = Array.from(attachRateTable.querySelectorAll('thead th'))
                                  .map(th => th.dataset.sort || th.textContent.replace(/ [▲▼]$/, '').trim());
             
-            // Filter the main filteredData for stores that appear in the attach rate table (valid numeric attach rates)
             const dataForExport = filteredData.filter(row => {
                 return ATTACH_RATE_COLUMNS.every(colKey => isValidNumericForFocus(safeGet(row, colKey, null)));
             }).map(row => {
                 return currentHeaders.map(headerKey => { 
-                    // For "Territory", data source is "Q2 Territory"
                     const dataKey = headerKey === 'Territory' ? 'Q2 Territory' : headerKey;
                     let value = safeGet(row, dataKey, ''); 
-                    
                     const isPercentLike = ATTACH_RATE_COLUMNS.includes(dataKey) || dataKey.includes('%') || dataKey.includes('Ach') || dataKey.includes('Connectivity') || dataKey.includes('Elite');
-
                     if (isPercentLike) { 
                         const numVal = parsePercent(value); 
-                        // For CSV export, often better to export raw numbers (0.5) than formatted strings ("50.0%")
-                        // However, to match table, let's keep it as is for now, or make it an option.
-                        // For simplicity, if it's a percentage, let's export the decimal value.
                         return isNaN(numVal) ? '' : numVal; 
                     } else { 
                         const numVal = parseNumber(value); 
@@ -1056,8 +1233,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             });
-
-            // Use the currentHeaders for the CSV header row
             let csvContent = "data:text/csv;charset=utf-8," + currentHeaders.join(",") + "\n" + dataForExport.map(e => e.join(",")).join("\n");
             const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", "fsm_dashboard_export.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link);
         } catch (error) { console.error("Error exporting CSV:", error); alert("Error generating CSV export. See console for details."); }
@@ -1105,13 +1280,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const handleShareEmail = () => {
         if (!emailRecipientInput || !shareStatus) return; const recipient = emailRecipientInput.value;
-        if (!recipient || !/\S+@\S+\.\S+/.test(recipient)) { shareStatus.textContent = "Please enter a valid recipient email address."; return; }
+        if (!recipient || !/\S+@\S+\.\S+/.test(recipient)) { 
+            if(shareStatus) shareStatus.textContent = "Please enter a valid recipient email address."; 
+            return; 
+        }
         try {
             const subject = `FSM Dashboard Summary - ${new Date().toLocaleDateString()}`; const bodyContent = generateEmailBody();
             const mailtoLink = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyContent)}`;
-            if (mailtoLink.length > 2000) { shareStatus.textContent = "Generated email body is too long for a mailto link. Try applying more filters or copy the content manually."; console.warn("Mailto link length exceeds 2000 characters:", mailtoLink.length); return; }
-            window.location.href = mailtoLink; shareStatus.textContent = "Your email client should open. Please review and send the email.";
-        } catch (error) { console.error("Error generating mailto link:", error); shareStatus.textContent = "Error generating email content. Check console for details."; }
+            if (mailtoLink.length > 2000) { 
+                if(shareStatus) shareStatus.textContent = "Generated email body is too long for a mailto link. Please use Print/Save as PDF."; 
+                console.warn("Mailto link length exceeds 2000 characters:", mailtoLink.length); 
+                return; 
+            }
+            window.location.href = mailtoLink; 
+            if(shareStatus) shareStatus.textContent = "Your email client should open. Please review and send the email.";
+        } catch (error) { 
+            console.error("Error generating mailto link:", error); 
+            if(shareStatus) shareStatus.textContent = "Error generating email content. Check console for details."; 
+        }
     };
 
      const selectAllOptions = (selectElement) => {
@@ -1132,7 +1318,8 @@ document.addEventListener('DOMContentLoaded', () => {
     applyFiltersButton?.addEventListener('click', applyFilters);
     storeSearch?.addEventListener('input', filterStoreOptions);
     exportCsvButton?.addEventListener('click', exportData);
-    shareEmailButton?.addEventListener('click', handleShareEmail);
+    if (printReportButton) printReportButton.addEventListener('click', handlePrintReport);
+    if (shareEmailButton) shareEmailButton.addEventListener('click', handleShareEmail);
     closeStoreDetailsButton?.addEventListener('click', hideStoreDetails);
     territorySelectAll?.addEventListener('click', () => selectAllOptions(territoryFilter));
     territoryDeselectAll?.addEventListener('click', () => deselectAllOptions(territoryFilter));
@@ -1147,5 +1334,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     resetUI(); 
     if (!mainChartCanvas) console.warn("Main chart canvas context not found on load. Chart will not render.");
+    updateShareOptions(); // Initial check for share options visibility
 
 }); // End DOMContentLoaded

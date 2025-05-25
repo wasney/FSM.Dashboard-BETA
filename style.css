@@ -1,6 +1,6 @@
 /*
-    Timestamp: 2025-05-24T15:10:00EDT
-    Summary: Added Geographic Map View (Leaflet.js) and minorz UI consistency improvements.
+    Timestamp: 2025-05-24T17:00:00EDT
+    Summary: Added Print/Save as PDF report feature; email share now conditional on summary length.
 */
 
 :root {
@@ -25,7 +25,7 @@
     --button-border: #666;
     --button-hover-bg: #5a5a5a;
     --button-hover-text: #eee;
-    --button-primary-bg: #3081d2; /* Apply Filters button */
+    --button-primary-bg: #3081d2; /* Apply Filters button, primary share */
     --button-primary-text: #ffffff;
     --button-primary-hover-bg: #58a6ff;
     --table-header-bg: #3a3a3a;
@@ -134,7 +134,7 @@ body {
     position: fixed;
     top: 15px;
     right: 15px;
-    z-index: 10001; /* Higher than Leaflet controls */
+    z-index: 10001; 
     background-color: var(--card-bg);
     color: var(--text-color);
     border: 1px solid var(--border-color);
@@ -154,7 +154,7 @@ body {
 h1 { color: var(--heading-color); text-align: center; margin-top: 1rem; margin-bottom: 1.5rem; font-weight: 600; font-size: 1.8rem; }
 h2 { color: var(--sub-heading-color); text-align: center; margin-top: 0; margin-bottom: 1rem; font-weight: 500; font-size: 1.4rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
 h3 { margin-top: 0; margin-bottom: 1rem; color: var(--heading-color); font-weight: 500; font-size: 1.15rem; text-align: center; }
-h4 { /* For Focus Point Sections */
+h4 { 
     margin-top: 0;
     margin-bottom: 0.75rem;
     color: var(--sub-heading-color);
@@ -304,7 +304,7 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
 #top5Table, #bottom5Table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; font-size: 0.85rem; }
 #top5Table th, #top5Table td, #bottom5Table th, #bottom5Table td { border: 1px solid var(--table-cell-border); padding: 0.5rem 0.75rem; text-align: left; white-space: nowrap; color: var(--table-cell-text); }
 #top5Table th, #bottom5Table th { background-color: var(--table-header-bg); font-weight: 600; color: var(--table-header-text); text-transform: capitalize; font-size: 0.8rem; }
-#top5Table tbody tr, #bottom5Table tbody tr { cursor: pointer; background-color: var(--table-row-bg); /* Ensure explicit bg for theme */ }
+#top5Table tbody tr, #bottom5Table tbody tr { cursor: pointer; background-color: var(--table-row-bg); }
 #top5Table tbody tr:hover, #bottom5Table tbody tr:hover { background-color: var(--table-row-hover-bg); }
 #top5Table td:not(:first-child), #bottom5Table td:not(:first-child) { text-align: right; }
 
@@ -322,7 +322,6 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
 #mapViewContainer { max-width: 95%; }
 #mapid { height: 450px; width: 100%; border-radius: 0.25rem; border: 1px solid var(--border-color); }
 .map-status-message { text-align: center; color: var(--text-color-muted); margin-top: 0.5rem; }
-/* Leaflet popup styling for themes */
 .leaflet-popup-content-wrapper { background: var(--leaflet-popup-bg); color: var(--leaflet-popup-text); border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 .leaflet-popup-content { margin: 10px; font-size: 0.9em; }
 .leaflet-popup-content p { margin: 0.3em 0; }
@@ -347,7 +346,11 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
 #attachRateTable tbody tr { background-color: var(--table-row-bg); cursor: pointer; } 
 #attachRateTable tbody tr:hover { background-color: var(--table-row-hover-bg); }
 #attachRateTable tbody tr.selected-row { background-color: var(--selected-row-bg) !important; color: var(--selected-row-text); }
-#attachRateTable td:not(:first-child):not(:nth-child(2)) { text-align: right; } 
+#attachRateTable td:not(:first-child):not(:nth-child(2)) { text-align: right; } /* Default for most data cells */
+#attachRateTable th:nth-child(2), /* Territory column header */
+#attachRateTable td:nth-child(2) { /* Territory column cells */
+    text-align: left; /* Ensure territory is left aligned if present */
+}
 #attachRateTable tfoot tr { background-color: var(--table-footer-bg); font-weight: bold; color: var(--table-footer-text); }
 #attachRateTable tfoot td { border-top: 2px solid var(--button-border); }
 
@@ -396,7 +399,7 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     background-color: var(--selected-row-bg) !important;
     color: var(--selected-row-text);
 }
-.focus-point-card td:last-child {
+.focus-point-card td:last-child { /* Metric value */
     text-align: right;
 }
 .focus-point-status {
@@ -408,14 +411,47 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
 
 
 /* --- Share Section --- */
-.share-container { max-width: 600px; }
-.share-controls { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1rem; }
-.share-controls label { font-weight: 600; color: var(--text-color); margin-bottom: 0.25rem; }
+.share-container { max-width: 600px; text-align: center;}
+.share-button { 
+    padding: 0.6rem 1rem;
+    border: 1px solid var(--button-border);
+    border-radius: 0.25rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    background-color: var(--button-bg);
+    color: var(--button-text);
+    display: inline-block; /* Make buttons block or inline-block for centering */
+    width: auto; /* Adjust width as needed or let content define it */
+    min-width: 180px; /* Ensure a decent minimum width */
+    margin: 0.25rem;
+}
+.share-button:hover:not(:disabled) { 
+    background-color: var(--button-hover-bg);
+    color: var(--button-hover-text);
+}
+.primary-share-button { /* For Print/PDF */
+    background-color: var(--button-primary-bg);
+    color: var(--button-primary-text);
+    border-color: var(--button-primary-bg);
+}
+.primary-share-button:hover:not(:disabled) {
+    background-color: var(--button-primary-hover-bg);
+}
+
+#emailShareSection h4 {
+    text-align: center;
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-top: 1.5rem;
+    font-size: 1rem;
+}
+.share-controls { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 0.5rem; margin-top: 0.5rem; }
+.share-controls label { font-weight: 600; color: var(--text-color); margin-bottom: 0.25rem; text-align: left; }
 .share-controls input[type="email"] { padding: 0.6rem 0.75rem; border: 1px solid var(--input-border); border-radius: 0.25rem; flex-grow: 1; background-color: var(--input-bg); color: var(--input-text-color); }
-.share-controls button { padding: 0.6rem 1rem; background-color: var(--button-primary-bg); color: var(--button-primary-text); border: none; border-radius: 0.25rem; font-weight: 600; cursor: pointer; transition: background-color 0.2s ease; }
-.share-controls button:hover { background-color: var(--button-primary-hover-bg); }
 .share-status { margin-top: 0.5rem; font-style: italic; color: var(--sub-heading-color); min-height: 1.2em; }
-.share-note { font-size: 0.85rem; color: var(--text-color-muted); margin-top: 1rem; text-align: center; }
+.share-note { font-size: 0.85rem; color: var(--text-color-muted); margin-top: 0rem; text-align: center; }
+
 
 /* --- MEDIA QUERIES --- */
 @media (min-width: 768px) { 
@@ -448,4 +484,104 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     #attachRateTable th, #attachRateTable td { padding: 0.75rem 1rem; }
     .filter-group-store { grid-column: span 2; }
     .top5-card, .bottom5-card { min-width: 0; }
+}
+
+/* Print Specific Styles */
+@media print {
+    body {
+        background-color: #fff !important; /* Ensure white background for printing */
+        color: #000 !important; /* Ensure black text for printing */
+        font-size: 10pt; /* Adjust base font size for print */
+        margin: 0;
+        padding: 0;
+        -webkit-print-color-adjust: exact !important; /* For Chrome/Safari to print backgrounds */
+        print-color-adjust: exact !important; /* Standard */
+    }
+    .no-print, .theme-toggle-button, .input-area, #filterArea, #excelFile, /* Hide non-report elements */
+    #shareSection button, #shareSection input, #shareSection label, #shareStatus, .share-note,
+    #closeStoreDetailsButton, .multi-select-controls, .multi-select-info,
+    .export-button /* Hide other interactive elements */
+     {
+        display: none !important;
+    }
+    .card {
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
+        margin: 10px 0 !important;
+        padding: 10px !important;
+        page-break-inside: avoid; /* Try to avoid breaking cards across pages */
+    }
+    h1, h2, h3, h4 {
+        color: #000 !important;
+        text-align: left !important;
+        border-bottom: 1px solid #ccc !important;
+        padding-bottom: 5px !important;
+        margin-top: 15px;
+        margin-bottom: 10px;
+        page-break-after: avoid;
+    }
+    h1 { font-size: 18pt; }
+    h2 { font-size: 14pt; }
+    h3 { font-size: 12pt; }
+    h4 { font-size: 11pt; }
+
+    .table-wrapper {
+        overflow-x: visible !important; /* Allow table to use full width if needed */
+    }
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 9pt !important;
+        page-break-inside: auto; /* Allow tables to break if they are too long */
+    }
+    th, td {
+        border: 1px solid #ddd !important;
+        padding: 4px 6px !important;
+        color: #000 !important;
+        background-color: #fff !important; /* Ensure no dark backgrounds print */
+    }
+    th {
+        background-color: #f0f0f0 !important; /* Light gray for table headers */
+        font-weight: bold !important;
+    }
+    /* Ensure chart images take up reasonable space */
+    .report-chart-container img {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block;
+        margin: 10px auto;
+        page-break-inside: avoid;
+    }
+    .summary-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important; /* Adjust for print */
+        gap: 5px 10px !important;
+    }
+    .summary-grid p { font-size: 9pt !important; }
+    .leaflet-map-pane, .leaflet-tile-pane, .leaflet-marker-pane, .leaflet-popup-pane, .leaflet-control-container {
+        display: none !important; /* Hide interactive map, show image if provided */
+    }
+    .report-map-image-container img {
+        max-width: 100% !important;
+        height: auto !important;
+        display: block;
+        margin: 10px auto;
+        page-break-inside: avoid;
+        border: 1px solid #ccc;
+    }
+    .report-filter-summary p {
+        font-size: 10pt;
+        margin-bottom: 10px;
+    }
+
+    /* Attempt to manage page breaks a bit better */
+    .card, .chart-container, .table-container, .focus-point-card, #mapViewContainer {
+        page-break-inside: avoid;
+    }
+    tr, td, th {
+        page-break-inside: avoid; /* Helps keep table rows together */
+    }
+    h1, h2, h3, h4, h5, h6 {
+        page-break-after: avoid;
+    }
+    p { page-break-inside: avoid; }
 }

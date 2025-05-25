@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FSM Dashboard Enhanced BETA3</title>
+    <title>FSM Dashboard Enhanced BETA</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <link rel="stylesheet" href="style.css">
@@ -12,7 +12,7 @@
 <body>
     <button id="themeToggleBtn" class="theme-toggle-button" title="Toggle theme">☀️</button>
 
-    <h1>FSM Performance Dashboard BETA3</h1>
+    <h1>FSM Performance Dashboard BETA</h1>
 
     <p class="upload-instructions">Upload the FSM data Excel file (.xlsx or .xls).</p>
 
@@ -278,14 +278,18 @@
             <p class="focus-point-status"></p>
         </div>
         <div id="shareSection" class="card share-container">
-            <h3>Share Summary via Email</h3>
-            <div class="share-controls">
-                <label for="emailRecipient">Recipient Email:</label>
-                <input type="email" id="emailRecipient" placeholder="Enter email address">
-                <button id="shareEmailButton">Generate & Share Email</button>
+            <h3>Share / Export Report</h3>
+            <button id="printReportButton" class="share-button primary-share-button" title="Generate a printable PDF report of the current view">Print / Save as PDF</button>
+            
+            <div id="emailShareSection" style="margin-top: 1rem; display: none;"> <h4 style="margin-bottom: 0.5rem;">Quick Share Summary via Email</h4>
+                <div id="emailShareControls" class="share-controls">
+                    <label for="emailRecipient">Recipient Email:</label>
+                    <input type="email" id="emailRecipient" placeholder="Enter email address">
+                    <button id="shareEmailButton" class="share-button" title="Generate and open a pre-filled email summary">Share Email</button>
+                </div>
+                <p id="shareStatus" class="share-status"></p>
+                <p id="emailShareHint" class="share-note">Note: This will open your default desktop email client. Available for summaries under 2000 characters.</p>
             </div>
-            <p id="shareStatus" class="share-status"></p>
-            <p class="share-note">Note: This will open your default desktop email client with a pre-filled summary. You must click "Send" in the email client.</p>
         </div>
 
     </div>
