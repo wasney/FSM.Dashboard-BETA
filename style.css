@@ -1,6 +1,6 @@
 /*
-    Timestamp: 2025-05-25T14:00:00EDT
-    Summary: Added styles for the 'What's New' pop-up modal.
+    Timestamp: 2025-05-25T16:24:28EDT
+    Summary: Added styles for full-screen filter modal, 'Open Filters' button, and general UI refinements.
 */
 
 :root {
@@ -68,6 +68,9 @@
     --modal-button-hover-bg: var(--button-primary-hover-bg);
     --modal-close-button-text: var(--text-color-muted);
     --modal-close-button-hover-text: var(--text-color);
+    --filter-modal-overlay-bg: rgba(0, 0, 0, 0.75);
+    --filter-modal-content-bg: var(--body-bg); 
+    --filter-modal-header-border: var(--border-color);
 }
 
 body.light-theme {
@@ -134,6 +137,9 @@ body.light-theme {
     --modal-button-hover-bg: var(--button-primary-hover-bg);
     --modal-close-button-text: #6c757d;
     --modal-close-button-hover-text: #333;
+    --filter-modal-overlay-bg: rgba(0, 0, 0, 0.6);
+    --filter-modal-content-bg: var(--body-bg);
+    --filter-modal-header-border: var(--border-color);
 }
 
 /* --- Global Resets & Body --- */
@@ -156,7 +162,7 @@ body {
     position: fixed;
     top: 15px;
     right: 15px;
-    z-index: 10001; 
+    z-index: 10002; /* Above filter modal overlay but below its content if needed */
     background-color: var(--card-bg);
     color: var(--text-color);
     border: 1px solid var(--border-color);
@@ -211,13 +217,143 @@ h4 {
 #excelFile { border: 1px solid var(--input-border); padding: 0.5rem 0.75rem; border-radius: 0.25rem; cursor: pointer; width: 100%; max-width: 350px; background-color: var(--input-bg); color: var(--input-text-color); }
 #excelFile::file-selector-button { padding: 0.5rem 0.75rem; border: 1px solid var(--input-border); border-radius: 0.25rem; background-color: var(--input-file-button-bg); color: var(--input-file-button-text); cursor: pointer; margin-right: 0.5rem; }
 #status.status-message { margin-top: 1rem; margin-bottom: 1rem; font-style: italic; color: var(--text-color-muted); text-align: center; min-height: 1.5em; padding: 0 10px; }
-#loadingIndicator, #filterLoadingIndicator { color: var(--spinner-main-color); margin-top: 0.75rem; font-size: 0.9em; display: flex; align-items: center; justify-content: center; gap: 8px; }
+#loadingIndicator, #filterLoadingIndicator, #filterLoadingIndicatorModal { color: var(--spinner-main-color); margin-top: 0.75rem; font-size: 0.9em; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .spinner { border: 4px solid var(--spinner-track-color); border-radius: 50%; border-top: 4px solid var(--spinner-main-color); width: 20px; height: 20px; animation: spin 1s linear infinite; }
 .spinner-small { border: 3px solid var(--spinner-track-color); border-radius: 50%; border-top: 3px solid var(--spinner-main-color); width: 16px; height: 16px; animation: spin 1s linear infinite; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-/* --- Filter Controls --- */
-#filterArea { max-width: 1200px; }
+/* --- Filter Controls (Original - to be hidden on mobile, content moved to modal) --- */
+#filterArea.desktop-filters { 
+    display: none; /* Initially hide, JS will control this or it's moved to modal */
+}
+.mobile-filter-trigger-container {
+    display: none; /* Hidden by default, shown on mobile via media query */
+    padding: 0 10px;
+    margin: 1rem auto;
+    max-width: 600px;
+}
+.open-filter-modal-button {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+
+/* --- Full-Screen Filter Modal Styles --- */
+.filter-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--filter-modal-overlay-bg);
+    display: flex; /* Managed by JS */
+    flex-direction: column;
+    justify-content: flex-start; /* Align to top */
+    align-items: center;
+    z-index: 10001; /* Above other content */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+}
+.filter-modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease;
+}
+.filter-modal-content {
+    background-color: var(--filter-modal-content-bg);
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Prevent body scroll when modal is open */
+}
+.filter-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--filter-modal-header-border);
+    background-color: var(--card-bg); /* Match card bg for header */
+}
+.filter-modal-header h2 {
+    margin: 0;
+    font-size: 1.3rem;
+    color: var(--sub-heading-color);
+    text-align: left;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.filter-modal-close-button {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--text-color-muted);
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.25rem;
+}
+.filter-modal-close-button:hover {
+    color: var(--text-color);
+}
+.filter-modal-body {
+    padding: 1rem 1.5rem; /* More padding for touch */
+    overflow-y: auto;
+    flex-grow: 1;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+}
+.filter-modal-body .filter-controls {
+    grid-template-columns: 1fr; /* Stack filters on mobile */
+    gap: 1.5rem; /* Increased gap for touch */
+}
+.filter-modal-body .filter-group select, 
+.filter-modal-body .filter-group input[type="text"] {
+    padding: 0.75rem; /* Larger tap targets */
+    font-size: 1rem;
+}
+.filter-modal-body .filter-group select[multiple] {
+    min-height: 120px; /* More space for multi-selects */
+}
+.filter-modal-body .filter-group-store {
+    grid-column: 1 / -1; /* Ensure it spans full width */
+}
+.filter-modal-body .flag-toggles label {
+    font-size: 1rem; /* Easier to read and tap */
+    padding: 0.3rem 0;
+}
+.filter-modal-body .flag-toggles input[type="checkbox"] {
+    width: 20px; /* Larger checkbox */
+    height: 20px;
+    margin-right: 0.5rem;
+}
+
+.filter-modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--filter-modal-header-border);
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end; /* Align buttons to the right */
+    background-color: var(--card-bg); /* Match card bg for footer */
+}
+.filter-modal-footer .apply-filters-button,
+.filter-modal-footer .reset-filters-button {
+    padding: 0.75rem 1.25rem;
+    font-size: 1rem;
+    flex-grow: 1; /* Make buttons share space */
+    max-width: 50%;
+}
+@media (min-width: 400px) {
+    .filter-modal-footer .apply-filters-button,
+    .filter-modal-footer .reset-filters-button {
+        flex-grow: 0; /* Revert on slightly larger screens */
+        max-width: 200px;
+    }
+}
+
+/* Filter controls inside the modal */
 .filter-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem 1.5rem; margin-bottom: 1.5rem; }
 .filter-group { display: flex; flex-direction: column; gap: 0.3rem; }
 .filter-group label, .flags-label { font-weight: 600; color: var(--text-color); margin-bottom: 0; width: auto; text-align: left; font-size: 0.95em; }
@@ -240,8 +376,8 @@ h4 {
 .flag-toggles input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent-color-checkbox); cursor: pointer; margin: 0; }
 .flag-toggles label:has(input:disabled) { cursor: not-allowed; color: var(--disabled-text); }
 
-/* --- Filter Action Buttons --- */
-.filter-actions-container {
+/* --- Filter Action Buttons (these are for original desktop view, now inside modal footer) --- */
+.filter-actions-container { /* This container is no longer directly used if filters always in modal */
     display: flex;
     justify-content: center; 
     align-items: center;
@@ -249,7 +385,6 @@ h4 {
     margin-top: 1.5rem; 
     flex-wrap: wrap; 
 }
-
 .apply-filters-button {
     max-width: 250px; 
     padding: 0.7rem 1rem;
@@ -267,7 +402,6 @@ h4 {
 .apply-filters-button:hover:not(:disabled) { 
     background-color: var(--button-primary-hover-bg); 
 }
-
 .reset-filters-button {
     max-width: 250px;
     padding: 0.7rem 1rem;
@@ -294,7 +428,6 @@ h4 {
     cursor: not-allowed !important;
     opacity: 0.6;
 }
-
 
 /* --- Results Area --- */
 .results-container { margin-top: 1.5rem; }
@@ -477,6 +610,18 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
 
 
 /* --- MEDIA QUERIES --- */
+@media (max-width: 767px) {
+    .mobile-filter-trigger-container {
+        display: block; /* Show the 'Open Filters' button */
+    }
+    #filterArea.desktop-filters { /* The original filter area card */
+        display: none !important; /* Ensure it's hidden on mobile */
+    }
+     .filter-modal-body .filter-group-store {
+        grid-column: 1 / -1; /* Ensure store filter takes full width in modal on mobile */
+    }
+}
+
 @media (min-width: 768px) { 
     .container { padding: 15px; }
     .input-area label { display: inline-block; margin-bottom: 0; }
@@ -490,8 +635,27 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     #attachRateTable th { font-size: 0.85rem; }
     .share-controls { flex-direction: row; align-items: center; }
     .share-controls label { margin-bottom: 0; }
-    .filter-group-store { grid-column: span 1; }
-    .focus-point-card table { font-size: 0.9rem; }
+    
+    /* Desktop: Hide mobile trigger, show inline filter card */
+    .mobile-filter-trigger-container {
+        display: none;
+    }
+    #filterArea.desktop-filters {
+        display: block; /* Show the original filter card */
+    }
+     /* Restore multi-column layout for filters in modal on larger screens if modal is used */
+    .filter-modal-body .filter-controls {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    .filter-modal-body .filter-group-store {
+        grid-column: span 1; /* Default span for desktop */
+    }
+    @media (min-width: 1200px) {
+      .filter-modal-body .filter-group-store {
+          grid-column: span 2; /* Span 2 for very large screens */
+      }
+    }
+     .focus-point-card table { font-size: 0.9rem; }
 }
 
 @media (min-width: 1200px) { 
@@ -499,17 +663,19 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     h2 { font-size: 1.5rem; margin-bottom: 1.5rem; }
     .card { padding: 1.5rem; margin: 1.5rem auto; }
     .top-bottom-container.card { padding: 1.5rem; }
-    .filter-controls { gap: 1.2rem 2rem; }
+    .filter-controls { gap: 1.2rem 2rem; } /* For original desktop filter card */
     .chart-container { height: 450px; }
     #mapid { height: 550px; }
     #attachRateTable { font-size: 0.9rem; }
     #attachRateTable th { font-size: 0.9rem; }
     #attachRateTable th, #attachRateTable td { padding: 0.75rem 1rem; }
-    .filter-group-store { grid-column: span 2; }
+    #filterArea.desktop-filters .filter-group-store { /* Target original desktop filter area */
+        grid-column: span 2;
+    }
     .top5-card, .bottom5-card { min-width: 0; }
 }
 
-/* --- "What's New" Modal Styles --- */
+/* --- "What's New" Modal Styles (from previous step) --- */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -520,7 +686,7 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 10000; /* Ensure it's on top */
+    z-index: 10000; 
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0s linear 0.3s;
@@ -572,7 +738,7 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     margin-bottom: 0.6rem;
 }
 .modal-content li strong {
-    color: var(--sub-heading-color); /* Make feature names stand out a bit */
+    color: var(--sub-heading-color); 
 }
 body.light-theme .modal-content li strong {
     color: var(--heading-color);
@@ -616,19 +782,23 @@ body.light-theme .modal-content li strong {
 /* Print Specific Styles */
 @media print {
     body {
-        background-color: #fff !important; /* Ensure white background for printing */
-        color: #000 !important; /* Ensure black text for printing */
-        font-size: 10pt; /* Adjust base font size for print */
+        background-color: #fff !important; 
+        color: #000 !important; 
+        font-size: 10pt; 
         margin: 0;
         padding: 0;
-        -webkit-print-color-adjust: exact !important; /* For Chrome/Safari to print backgrounds */
-        print-color-adjust: exact !important; /* Standard */
+        -webkit-print-color-adjust: exact !important; 
+        print-color-adjust: exact !important; 
     }
-    .no-print, .theme-toggle-button, .input-area, #filterArea, #excelFile, /* Hide non-report elements */
+    .no-print, .theme-toggle-button, .input-area, 
+    .mobile-filter-trigger-container, /* Hide mobile filter button */
+    #filterModal, /* Hide filter modal */
+    #excelFile, 
     #shareSection button, #shareSection input, #shareSection label, #shareStatus, .share-note,
     #closeStoreDetailsButton, .multi-select-controls, .multi-select-info,
-    .export-button, /* Hide other interactive elements */
-    #whatsNewModal /* Hide the modal itself when printing */
+    .export-button, 
+    #whatsNewModal,
+    #filterArea.desktop-filters /* Also hide desktop filter card if it were visible */
      {
         display: none !important;
     }
@@ -637,7 +807,7 @@ body.light-theme .modal-content li strong {
         box-shadow: none !important;
         margin: 10px 0 !important;
         padding: 10px !important;
-        page-break-inside: avoid; /* Try to avoid breaking cards across pages */
+        page-break-inside: avoid; 
     }
     h1, h2, h3, h4 {
         color: #000 !important;
@@ -654,25 +824,24 @@ body.light-theme .modal-content li strong {
     h4 { font-size: 11pt; }
 
     .table-wrapper {
-        overflow-x: visible !important; /* Allow table to use full width if needed */
+        overflow-x: visible !important; 
     }
     table {
         width: 100% !important;
         border-collapse: collapse !important;
         font-size: 9pt !important;
-        page-break-inside: auto; /* Allow tables to break if they are too long */
+        page-break-inside: auto; 
     }
     th, td {
         border: 1px solid #ddd !important;
         padding: 4px 6px !important;
         color: #000 !important;
-        background-color: #fff !important; /* Ensure no dark backgrounds print */
+        background-color: #fff !important; 
     }
     th {
-        background-color: #f0f0f0 !important; /* Light gray for table headers */
+        background-color: #f0f0f0 !important; 
         font-weight: bold !important;
     }
-    /* Ensure chart images take up reasonable space */
     .report-chart-container img {
         max-width: 100% !important;
         height: auto !important;
@@ -681,12 +850,12 @@ body.light-theme .modal-content li strong {
         page-break-inside: avoid;
     }
     .summary-grid {
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important; /* Adjust for print */
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important; 
         gap: 5px 10px !important;
     }
     .summary-grid p { font-size: 9pt !important; }
     .leaflet-map-pane, .leaflet-tile-pane, .leaflet-marker-pane, .leaflet-popup-pane, .leaflet-control-container {
-        display: none !important; /* Hide interactive map, show image if provided */
+        display: none !important; 
     }
     .report-map-image-container img {
         max-width: 100% !important;
@@ -701,12 +870,11 @@ body.light-theme .modal-content li strong {
         margin-bottom: 10px;
     }
 
-    /* Attempt to manage page breaks a bit better */
     .card, .chart-container, .table-container, .focus-point-card, #mapViewContainer {
         page-break-inside: avoid;
     }
     tr, td, th {
-        page-break-inside: avoid; /* Helps keep table rows together */
+        page-break-inside: avoid; 
     }
     h1, h2, h3, h4, h5, h6 {
         page-break-after: avoid;
