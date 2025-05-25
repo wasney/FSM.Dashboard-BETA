@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-25T17:12:55EDT
-//    Summary: Ensured filter modal opens automatically after file upload by adding a slight delay.
+//    Timestamp: 2025-05-25T19:46:21EDT
+//    Summary: Added event listener to the new floating button to re-open 'What's New' modal.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -19,10 +19,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeWhatsNewModalBtn = document.getElementById('closeWhatsNewModalBtn');
     const gotItWhatsNewBtn = document.getElementById('gotItWhatsNewBtn');
     const BETA_FEATURES_POPUP_COOKIE = 'betaFeaturesPopupShown_v1.3'; 
+    const openWhatsNewBtn = document.getElementById('openWhatsNewBtn'); // New button to re-open What's New
 
     // --- Filter Modal Elements ---
     const filterModal = document.getElementById('filterModal');
-    const openFilterModalBtn = document.getElementById('openFilterModalBtn');
+    const openFilterModalBtn = document.getElementById('openFilterModalBtn'); // This is for the main filter modal
     const closeFilterModalBtn = document.getElementById('closeFilterModalBtn');
     const applyFiltersButtonModal = document.getElementById('applyFiltersButtonModal');
     const resetFiltersButtonModal = document.getElementById('resetFiltersButtonModal');
@@ -182,7 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => whatsNewModal.style.display = 'none', 300); 
         }
     };
-    const checkAndShowWhatsNew = () => {
+    const checkAndShowWhatsNew = () => { // For initial automatic display
         if (!getCookie(BETA_FEATURES_POPUP_COOKIE)) {
             showWhatsNewModal();
         }
@@ -209,15 +210,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeWhatsNewModalBtn) {
         closeWhatsNewModalBtn.addEventListener('click', () => {
             hideWhatsNewModal();
-            setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365); 
+            setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365); // Set cookie when closed by user
         });
     }
     if (gotItWhatsNewBtn) {
         gotItWhatsNewBtn.addEventListener('click', () => {
             hideWhatsNewModal();
-            setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365);
+            setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365); // Set cookie when closed by user
         });
     }
+    // Event listener for the new floating button to re-open "What's New"
+    if (openWhatsNewBtn) { // Ensure the variable 'openWhatsNewBtn' points to the correct element ID
+        openWhatsNewBtn.addEventListener('click', showWhatsNewModal); // No cookie check here, always show
+    }
+
 
     // --- Filter Modal Logic ---
     const openFilterModal = () => {
@@ -234,8 +240,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.style.overflow = ''; 
         }
     };
-    if (openFilterModalBtn) {
-        openFilterModalBtn.addEventListener('click', openFilterModal);
+    // Note: The 'openFilterModalBtn' variable name is used for the main filter trigger button,
+    // ensure it's correctly ID'd in HTML and not confused with the 'openWhatsNewBtn'
+    const mainFilterModalTrigger = document.getElementById('openFilterModalBtn'); // Specific for main filter button
+    if (mainFilterModalTrigger) {
+        mainFilterModalTrigger.addEventListener('click', openFilterModal);
     }
     if (closeFilterModalBtn) {
         closeFilterModalBtn.addEventListener('click', closeFilterModal);
@@ -360,10 +369,12 @@ document.addEventListener('DOMContentLoaded', () => {
     
         if (isFiltering) {
             if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = isLoading;
-            if (openFilterModalBtn) openFilterModalBtn.disabled = isLoading;
+            const mainFilterBtn = document.getElementById('openFilterModalBtn'); // Get ref to main filter button
+            if (mainFilterBtn) mainFilterBtn.disabled = isLoading;
         } else {
             if (excelFileInput) excelFileInput.disabled = isLoading;
-            if (openFilterModalBtn) openFilterModalBtn.disabled = isLoading; 
+            const mainFilterBtn = document.getElementById('openFilterModalBtn'); // Get ref to main filter button
+            if (mainFilterBtn) mainFilterBtn.disabled = isLoading; 
         }
     };    
 
@@ -484,14 +495,14 @@ document.addEventListener('DOMContentLoaded', () => {
             allPossibleStores = [...new Set(rawData.map(r => safeGet(r, 'Store', null)).filter(s => s && String(s).trim() !== ''))].sort().map(s => ({ value: s, text: s }));
             
             populateFilters(rawData); 
-            if (openFilterModalBtn) openFilterModalBtn.disabled = false;
+            const mainFilterBtn = document.getElementById('openFilterModalBtn');
+            if (mainFilterBtn) mainFilterBtn.disabled = false;
             
             if (statusDiv) statusDiv.textContent = `Loaded ${rawData.length} rows. Filters opened automatically.`;
 
-            // Auto-open filter modal with a slight delay
             setTimeout(() => {
                 openFilterModal(); 
-            }, 100); // Increased delay slightly to ensure all prior DOM updates are settled
+            }, 100); 
         } catch (error) {
             console.error('Error processing file:', error); if (statusDiv) statusDiv.textContent = `Error: ${error.message}`;
             rawData = []; allPossibleStores = []; filteredData = []; resetUI();
@@ -639,7 +650,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (mapViewContainer) mapViewContainer.style.display = 'none';
             } finally { 
                 showLoading(false, true); 
-                if (openFilterModalBtn) openFilterModalBtn.disabled = rawData.length === 0;
+                const mainFilterBtn = document.getElementById('openFilterModalBtn');
+                if (mainFilterBtn) mainFilterBtn.disabled = rawData.length === 0;
             }
         }, 10);
     };
@@ -663,7 +675,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
          if (applyFiltersButtonModal) applyFiltersButtonModal.disabled = true;
          if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = true; 
-         if (openFilterModalBtn) openFilterModalBtn.disabled = true;
+         const mainFilterBtn = document.getElementById('openFilterModalBtn');
+         if (mainFilterBtn) mainFilterBtn.disabled = true;
 
          if (territorySelectAll) territorySelectAll.disabled = true; if (territoryDeselectAll) territoryDeselectAll.disabled = true;
          if (storeSelectAll) storeSelectAll.disabled = true; if (storeDeselectAll) storeDeselectAll.disabled = true;
@@ -709,7 +722,8 @@ document.addEventListener('DOMContentLoaded', () => {
          rawData = []; 
          filteredData = [];
          updateShareOptions(); 
-         if (openFilterModalBtn) openFilterModalBtn.disabled = true;
+         const mainFilterBtn = document.getElementById('openFilterModalBtn');
+         if (mainFilterBtn) mainFilterBtn.disabled = true;
          closeFilterModal(); 
      };
 
@@ -1198,6 +1212,6 @@ document.addEventListener('DOMContentLoaded', () => {
     resetUI(); 
     if (!mainChartCanvas) console.warn("Main chart canvas context not found on load. Chart will not render.");
     updateShareOptions(); 
-    checkAndShowWhatsNew(); 
+    checkAndShowWhatsNew(); // Initial check for "What's New" on page load
 
 }); // End DOMContentLoaded
