@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-25T14:00:00EDT
-//    Summary: Added 'What's New' pop-up functionality with cookie management.
+//    Timestamp: 2025-05-25T16:28:43EDT
+//    Summary: Added JavaScript logic for full-screen filter modal, including event listeners for open/close and filter actions.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -18,11 +18,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const whatsNewModal = document.getElementById('whatsNewModal');
     const closeWhatsNewModalBtn = document.getElementById('closeWhatsNewModalBtn');
     const gotItWhatsNewBtn = document.getElementById('gotItWhatsNewBtn');
-    const BETA_FEATURES_POPUP_COOKIE = 'betaFeaturesPopupShown_v1.3'; // Updated cookie name for new features
+    const BETA_FEATURES_POPUP_COOKIE = 'betaFeaturesPopupShown_v1.3'; 
+
+    // --- Filter Modal Elements ---
+    const filterModal = document.getElementById('filterModal');
+    const openFilterModalBtn = document.getElementById('openFilterModalBtn');
+    const closeFilterModalBtn = document.getElementById('closeFilterModalBtn');
+    const applyFiltersButtonModal = document.getElementById('applyFiltersButtonModal');
+    const resetFiltersButtonModal = document.getElementById('resetFiltersButtonModal');
+    const filterLoadingIndicatorModal = document.getElementById('filterLoadingIndicatorModal');
+    const desktopFilterArea = document.getElementById('filterArea');
+
 
     // --- Configuration ---
     const MICHIGAN_AREA_VIEW = { lat: 43.8, lon: -84.8, zoom: 7 }; 
-    const AVERAGE_THRESHOLD_PERCENT = 0.10; // 10% band for "average" highlighting
+    const AVERAGE_THRESHOLD_PERCENT = 0.10; 
 
     const REQUIRED_HEADERS = [ 
         'Store', 'REGION', 'DISTRICT', 'Q2 Territory', 'FSM NAME', 'CHANNEL',
@@ -51,15 +61,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const TOP_N_CHART = 15; 
     const TOP_N_TABLES = 5;
 
-    // --- DOM Elements ---
+    // --- DOM Elements (Original filter buttons are now for desktop/fallback) ---
     const excelFileInput = document.getElementById('excelFile');
     const statusDiv = document.getElementById('status');
     const loadingIndicator = document.getElementById('loadingIndicator');
-    const filterLoadingIndicator = document.getElementById('filterLoadingIndicator');
-    const filterArea = document.getElementById('filterArea');
+    // const filterLoadingIndicator = document.getElementById('filterLoadingIndicator'); // Now specific to modal: filterLoadingIndicatorModal
     const resultsArea = document.getElementById('resultsArea');
-    const applyFiltersButton = document.getElementById('applyFiltersButton');
-    const resetFiltersButton = document.getElementById('resetFiltersButton'); 
+    // const applyFiltersButton = document.getElementById('applyFiltersButton'); // Now specific to modal: applyFiltersButtonModal
+    // const resetFiltersButton = document.getElementById('resetFiltersButton'); // Now specific to modal: resetFiltersButtonModal
+    
+    // Filters (references remain the same, as they are moved into the modal in HTML)
     const regionFilter = document.getElementById('regionFilter');
     const districtFilter = document.getElementById('districtFilter');
     const territoryFilter = document.getElementById('territoryFilter');
@@ -136,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const emailShareHint = document.getElementById('emailShareHint');
 
     // --- "Additional Tools" (formerly Focus Points) DOM Elements ---
-    const showMapViewFilter = document.getElementById('showMapViewFilter'); // New checkbox for map
+    const showMapViewFilter = document.getElementById('showMapViewFilter'); 
     const focusEliteFilter = document.getElementById('focusEliteFilter');
     const focusConnectivityFilter = document.getElementById('focusConnectivityFilter');
     const focusRepSkillFilter = document.getElementById('focusRepSkillFilter');
@@ -171,14 +182,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const showWhatsNewModal = () => {
         if (whatsNewModal) {
             whatsNewModal.style.display = 'flex';
-            setTimeout(() => whatsNewModal.classList.add('active'), 10); // For transition
+            setTimeout(() => whatsNewModal.classList.add('active'), 10); 
         }
     };
 
     const hideWhatsNewModal = () => {
         if (whatsNewModal) {
             whatsNewModal.classList.remove('active');
-            setTimeout(() => whatsNewModal.style.display = 'none', 300); // Match transition duration
+            setTimeout(() => whatsNewModal.style.display = 'none', 300); 
         }
     };
 
@@ -212,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeWhatsNewModalBtn) {
         closeWhatsNewModalBtn.addEventListener('click', () => {
             hideWhatsNewModal();
-            setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365); // Cookie for 1 year
+            setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365); 
         });
     }
     if (gotItWhatsNewBtn) {
@@ -221,8 +232,31 @@ document.addEventListener('DOMContentLoaded', () => {
             setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365);
         });
     }
-     // Call to check if the "What's New" pop-up should be shown
-     checkAndShowWhatsNew();
+
+
+    // --- Filter Modal Logic ---
+    const openFilterModal = () => {
+        if (filterModal) {
+            filterModal.style.display = 'flex';
+            setTimeout(() => filterModal.classList.add('active'), 10);
+            document.body.style.overflow = 'hidden'; // Prevent background scroll
+        }
+    };
+
+    const closeFilterModal = () => {
+        if (filterModal) {
+            filterModal.classList.remove('active');
+            setTimeout(() => filterModal.style.display = 'none', 300);
+            document.body.style.overflow = ''; // Restore background scroll
+        }
+    };
+
+    if (openFilterModalBtn) {
+        openFilterModalBtn.addEventListener('click', openFilterModal);
+    }
+    if (closeFilterModalBtn) {
+        closeFilterModalBtn.addEventListener('click', closeFilterModal);
+    }
 
 
     // --- Theme Management ---
@@ -339,8 +373,18 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const showLoading = (isLoading, isFiltering = false) => {
         const displayStyle = isLoading ? 'flex' : 'none';
-        if (isFiltering) { if (filterLoadingIndicator) filterLoadingIndicator.style.display = displayStyle; if (applyFiltersButton) applyFiltersButton.disabled = isLoading; } 
-        else { if (loadingIndicator) loadingIndicator.style.display = displayStyle; if (excelFileInput) excelFileInput.disabled = isLoading; }
+        const indicator = isFiltering ? filterLoadingIndicatorModal : loadingIndicator; // Use modal indicator for filtering
+        const button = isFiltering ? applyFiltersButtonModal : excelFileInput; // Use modal button for filtering
+    
+        if (indicator) indicator.style.display = displayStyle;
+        if (button) button.disabled = isLoading;
+    
+        // Also disable the main file input if initial loading is happening
+        if (!isFiltering && excelFileInput) excelFileInput.disabled = isLoading;
+        // Also disable the open filter modal button during filtering
+        if (isFiltering && openFilterModalBtn) openFilterModalBtn.disabled = isLoading;
+        else if (!isFiltering && openFilterModalBtn) openFilterModalBtn.disabled = rawData.length === 0; // Re-enable after initial load if data exists
+
     };    
 
     // --- Map Functions ---
@@ -389,15 +433,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!showMapViewFilter || !showMapViewFilter.checked) {
             if (mapViewContainer) mapViewContainer.style.display = 'none';
             if (mapInstance && mapMarkersLayer && typeof mapMarkersLayer.clearLayers === 'function') {
-                 mapMarkersLayer.clearLayers(); // Clear markers if map is hidden by checkbox
+                 mapMarkersLayer.clearLayers(); 
             }
-            return; // Don't update map if checkbox isn't checked
+            return; 
         }
         
         if (!mapInstance || !document.getElementById('mapid')) {
             if (mapStatus) mapStatus.textContent = 'Map is not initialized or container is missing.';
             console.warn('[Map View] updateMapView called but mapInstance is null or mapid div is missing.');
-            if (mapViewContainer) mapViewContainer.style.display = 'block'; // Keep container visible to show status
+            if (mapViewContainer) mapViewContainer.style.display = 'block'; 
             return;
         }
 
@@ -423,7 +467,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0  && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
         });
 
-        if (mapViewContainer) mapViewContainer.style.display = 'block'; // Ensure container is visible if checkbox is checked
+        if (mapViewContainer) mapViewContainer.style.display = 'block'; 
 
         if (validStoresWithCoords.length === 0) {
             if (mapStatus) mapStatus.textContent = 'No stores with valid coordinates in filtered data. Showing default map area.';
@@ -483,18 +527,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = event.target.files[0];
         if (!file) { if (statusDiv) statusDiv.textContent = 'No file selected.'; return; }
         if (statusDiv) statusDiv.textContent = 'Reading file...';
-        showLoading(true); if (filterArea) filterArea.style.display = 'none'; if (resultsArea) resultsArea.style.display = 'none'; resetUI(); 
+        showLoading(true); 
+        if (desktopFilterArea) desktopFilterArea.style.display = 'none'; // Hide original filter card
+        if (resultsArea) resultsArea.style.display = 'none'; 
+        resetUI(); 
         try {
             const data = await file.arrayBuffer(); const workbook = XLSX.read(data); const firstSheetName = workbook.SheetNames[0]; const worksheet = workbook.Sheets[firstSheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: null });
             if (jsonData.length > 0) { const headers = Object.keys(jsonData[0]); const missingHeaders = REQUIRED_HEADERS.filter(h => !headers.includes(h)); if (missingHeaders.length > 0) { console.warn(`Warning: Missing expected columns: ${missingHeaders.join(', ')}.`); }
             } else { throw new Error("Excel sheet appears to be empty."); }
             rawData = jsonData; allPossibleStores = [...new Set(rawData.map(r => safeGet(r, 'Store', null)).filter(s => s && String(s).trim() !== ''))].sort().map(s => ({ value: s, text: s }));
-            if (statusDiv) statusDiv.textContent = `Loaded ${rawData.length} rows. Adjust filters and click 'Apply Filters'.`;
-            populateFilters(rawData); if (filterArea) filterArea.style.display = 'block';
+            if (statusDiv) statusDiv.textContent = `Loaded ${rawData.length} rows. Use the 'Show Filters' button to refine your view.`;
+            populateFilters(rawData); 
+            if (openFilterModalBtn) openFilterModalBtn.disabled = false; // Enable filter button
+            // Desktop filter area remains hidden by default, modal is primary
         } catch (error) {
             console.error('Error processing file:', error); if (statusDiv) statusDiv.textContent = `Error: ${error.message}`;
             rawData = []; allPossibleStores = []; filteredData = []; resetUI();
+            if (openFilterModalBtn) openFilterModalBtn.disabled = true;
         } finally { showLoading(false); if (excelFileInput) excelFileInput.value = ''; }
     };
     const populateFilters = (data) => {
@@ -502,7 +552,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setOptions(fsmFilter, getUniqueValues(data, 'FSM NAME')); setOptions(channelFilter, getUniqueValues(data, 'CHANNEL')); setOptions(subchannelFilter, getUniqueValues(data, 'SUB_CHANNEL')); setOptions(dealerFilter, getUniqueValues(data, 'DEALER_NAME'));
         Object.values(flagFiltersCheckboxes).forEach(input => { if(input) input.disabled = false; });
         
-        // Enable "Additional Tools" checkboxes
         if(showMapViewFilter) showMapViewFilter.disabled = false;
         if(focusEliteFilter) focusEliteFilter.disabled = false;
         if(focusConnectivityFilter) focusConnectivityFilter.disabled = false;
@@ -513,8 +562,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (territorySelectAll) territorySelectAll.disabled = false; if (territoryDeselectAll) territoryDeselectAll.disabled = false;
         if (storeSelectAll) storeSelectAll.disabled = false; if (storeDeselectAll) storeDeselectAll.disabled = false;
         if (storeSearch) storeSearch.disabled = false; 
-        if (applyFiltersButton) applyFiltersButton.disabled = false;
-        if (resetFiltersButton) resetFiltersButton.disabled = false; 
+        
+        // Enable modal buttons
+        if (applyFiltersButtonModal) applyFiltersButtonModal.disabled = false;
+        if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = false; 
+        
         addDependencyFilterListeners();
     };
     const addDependencyFilterListeners = () => {
@@ -582,8 +634,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const applyFilters = () => {
-        showLoading(true, true); if (resultsArea) resultsArea.style.display = 'none';
+    const applyFiltersAndCloseModal = () => {
+        applyFilters(true); // Pass true to indicate it's from modal
+        closeFilterModal();
+    };
+    
+    const applyFilters = (isFromModal = false) => {
+        showLoading(true, true); 
+        if (resultsArea) resultsArea.style.display = 'none';
+        
         setTimeout(() => {
             try {
                 const selectedRegion = regionFilter?.value; const selectedDistrict = districtFilter?.value; const selectedTerritories = territoryFilter ? Array.from(territoryFilter.selectedOptions).map(opt => opt.value) : [];
@@ -600,7 +659,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 updateSummary(filteredData); updateTopBottomTables(filteredData); updateCharts(filteredData); updateAttachRateTable(filteredData); 
                 
-                // Map view update based on checkbox
                 if (showMapViewFilter && showMapViewFilter.checked) {
                     updateMapView(filteredData);
                 } else {
@@ -618,6 +676,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (resultsArea) resultsArea.style.display = 'block'; 
                 if (exportCsvButton) exportCsvButton.disabled = filteredData.length === 0;
                 if (printReportButton) printReportButton.disabled = filteredData.length === 0;
+                if (isFromModal) closeFilterModal();
 
             } catch (error) {
                 console.error("Error applying filters:", error); if (statusDiv) statusDiv.textContent = "Error applying filters. Check console for details.";
@@ -631,7 +690,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
                 if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
                 if (mapViewContainer) mapViewContainer.style.display = 'none';
-            } finally { showLoading(false, true); }
+            } finally { 
+                showLoading(false, true); 
+                if (openFilterModalBtn) openFilterModalBtn.disabled = rawData.length === 0;
+            }
         }, 10);
     };
     
@@ -646,15 +708,16 @@ document.addEventListener('DOMContentLoaded', () => {
          storeOptions = []; 
          Object.values(flagFiltersCheckboxes).forEach(input => { if(input) {input.checked = false; input.disabled = true;} });
         
-        // Reset "Additional Tools" checkboxes
         if(showMapViewFilter) { showMapViewFilter.checked = false; showMapViewFilter.disabled = true; }
         if(focusEliteFilter) { focusEliteFilter.checked = false; focusEliteFilter.disabled = true; }
         if(focusConnectivityFilter) { focusConnectivityFilter.checked = false; focusConnectivityFilter.disabled = true; }
         if(focusRepSkillFilter) { focusRepSkillFilter.checked = false; focusRepSkillFilter.disabled = true; }
         if(focusVpmrFilter) { focusVpmrFilter.checked = false; focusVpmrFilter.disabled = true; }
 
-         if (applyFiltersButton) applyFiltersButton.disabled = true;
-         if (resetFiltersButton) resetFiltersButton.disabled = true; 
+         if (applyFiltersButtonModal) applyFiltersButtonModal.disabled = true;
+         if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = true; 
+         if (openFilterModalBtn) openFilterModalBtn.disabled = true;
+
          if (territorySelectAll) territorySelectAll.disabled = true; if (territoryDeselectAll) territoryDeselectAll.disabled = true;
          if (storeSelectAll) storeSelectAll.disabled = true; if (storeDeselectAll) storeDeselectAll.disabled = true;
          if (exportCsvButton) exportCsvButton.disabled = true;
@@ -667,7 +730,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
      const resetUI = () => {
          resetFiltersForFullUIReset(); 
-         if (filterArea) filterArea.style.display = 'none'; 
+         if (desktopFilterArea) desktopFilterArea.style.display = 'none'; 
          if (resultsArea) resultsArea.style.display = 'none';
          if (mainChartInstance) { mainChartInstance.destroy(); mainChartInstance = null; }
          
@@ -703,10 +766,11 @@ document.addEventListener('DOMContentLoaded', () => {
          allPossibleStores = []; 
          rawData = []; 
          filteredData = [];
-         updateShareOptions(); // Update share options on full UI reset
+         updateShareOptions(); 
+         if (openFilterModalBtn) openFilterModalBtn.disabled = true; // Disable filter button on full reset
      };
 
-    const handleResetFiltersClick = () => {
+    const handleResetFiltersClick = (isFromModal = false) => {
         [regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(sel => { 
             if (sel) sel.value = 'ALL'; 
         });
@@ -715,7 +779,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (storeSearch) storeSearch.value = ''; 
         Object.values(flagFiltersCheckboxes).forEach(input => { if(input) input.checked = false; });
         
-        // Uncheck "Additional Tools" checkboxes
         if(showMapViewFilter) showMapViewFilter.checked = false;
         if(focusEliteFilter) focusEliteFilter.checked = false;
         if(focusConnectivityFilter) focusConnectivityFilter.checked = false;
@@ -772,7 +835,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusDiv.textContent = 'No file selected. Load a file to use filters.';
             }
         }
+        if (isFromModal) {
+            applyFilters(true); // Re-apply with "ALL" filters to show everything, then close
+        }
     };
+
+    // Update event listeners for modal buttons
+    if (applyFiltersButtonModal) {
+        applyFiltersButtonModal.addEventListener('click', () => applyFilters(true));
+    }
+    if (resetFiltersButtonModal) {
+        resetFiltersButtonModal.addEventListener('click', () => handleResetFiltersClick(true));
+    }
+
 
     const updateSummary = (data) => {
         const totalCount = data.length;
@@ -973,7 +1048,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     cellValue = isNaN(numericValue) ? 'N/A' : formatPercent(numericValue);
                     td.style.textAlign = "right";
                     
-                    td.classList.remove('highlight-green', 'highlight-red', 'highlight-yellow'); // Clear previous
+                    td.classList.remove('highlight-green', 'highlight-red', 'highlight-yellow'); 
                     if (!isNaN(averages[headerInfo.sortKey]) && typeof numericValue === 'number' && !isNaN(numericValue)) {
                         const avg = averages[headerInfo.sortKey];
                         const lowerBound = avg * (1 - AVERAGE_THRESHOLD_PERCENT);
@@ -1158,7 +1233,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const emailBody = generateEmailBody(); 
         if (emailBody.length < 2000) {
             emailShareSection.style.display = 'block';
-            if(emailShareControls) emailShareControls.style.display = 'flex'; // Or 'block' based on your CSS
+            if(emailShareControls) emailShareControls.style.display = 'flex'; 
             shareEmailButton.disabled = false;
             emailShareHint.textContent = 'Note: This will open your default desktop email client. Available for summaries under 2000 characters.';
         } else {
@@ -1174,7 +1249,6 @@ document.addEventListener('DOMContentLoaded', () => {
         html += `<p><strong>Report Generated:</strong> ${new Date().toLocaleString()}</p>`;
         html += `<div class="report-filter-summary"><p><strong>Filters Applied:</strong> ${getFilterSummary() || 'None'}</p></div>`;
 
-        // Performance Summary
         const summaryDataEl = document.getElementById('summaryData');
         if (summaryDataEl) {
             html += `<h2>Performance Summary</h2>`;
@@ -1193,7 +1267,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        // Main Chart Image
         if (mainChartInstance) {
             try {
                 const chartImageURL = mainChartInstance.toBase64Image();
@@ -1204,14 +1277,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Function to generate HTML for a generic table from the DOM
         const generateTableHTMLFromDOM = (tableElementId, title) => {
             const tableElement = document.getElementById(tableElementId);
-            // Check if the parent section of the table is visible
             let parentSection = tableElement ? tableElement.closest('.card') : null;
-            if (tableElementId === 'top5Table' || tableElementId === 'bottom5Table') { // These are within topBottomSection
+            if (tableElementId === 'top5Table' || tableElementId === 'bottom5Table') { 
                 parentSection = document.getElementById('topBottomSection');
-            } else if (tableElementId.includes('OpportunitiesTable')) { // Focus point tables
+            } else if (tableElementId.includes('OpportunitiesTable')) { 
                  parentSection = tableElement.closest('.focus-point-card');
             } else if (tableElementId === 'attachRateTable') {
                  parentSection = document.getElementById('attachRateTableContainer');
@@ -1224,13 +1295,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let tableHTML = `<h2>${title}</h2><table>`;
             const header = tableElement.querySelector('thead');
-            if (header) tableHTML += `<thead>${header.innerHTML}</thead>`; // innerHTML to capture current headers
+            if (header) tableHTML += `<thead>${header.innerHTML}</thead>`; 
             
             tableHTML += `<tbody>`;
             Array.from(tableBody.rows).forEach(row => {
                 tableHTML += `<tr>`;
                 Array.from(row.cells).forEach(cell => {
-                    // For print, using textContent might be cleaner than innerHTML which could carry over unwanted spans (like sort arrows)
                     tableHTML += `<td style="text-align: ${cell.style.textAlign || 'left'};">${cell.textContent}</td>`;
                 });
                 tableHTML += `</tr>`;
@@ -1275,7 +1345,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        // Basic print styles (can be expanded or linked to a separate print.css)
         const printStyles = `
             body { font-family: Arial, sans-serif; margin: 20px; color: #000; }
             h1 { font-size: 20pt; text-align: center; margin-bottom: 10px; color: #000;}
@@ -1421,10 +1490,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Listeners ---
     if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
-    if (resetFiltersButton) resetFiltersButton.addEventListener('click', handleResetFiltersClick); 
     
     excelFileInput?.addEventListener('change', handleFile);
-    applyFiltersButton?.addEventListener('click', applyFilters);
     storeSearch?.addEventListener('input', filterStoreOptions);
     exportCsvButton?.addEventListener('click', exportData);
     if (printReportButton) printReportButton.addEventListener('click', handlePrintReport);
@@ -1444,6 +1511,6 @@ document.addEventListener('DOMContentLoaded', () => {
     resetUI(); 
     if (!mainChartCanvas) console.warn("Main chart canvas context not found on load. Chart will not render.");
     updateShareOptions(); 
-    checkAndShowWhatsNew(); // Check for "What's New" pop-up on load
+    checkAndShowWhatsNew(); 
 
 }); // End DOMContentLoaded
