@@ -1,6 +1,6 @@
 /*
-    Timestamp: 2025-05-25T19:45:55EDT
-    Summary: Added styles for the new floating 'Show What's New' button.
+    Timestamp: 2025-05-26T12:22:21EDT
+    Summary: Added CSS for sort arrows in table headers.
 */
 
 :root {
@@ -506,7 +506,11 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
 .highlight-green { background-color: var(--highlight-green-bg) !important; color: var(--highlight-green-text); }
 .highlight-red { background-color: var(--highlight-red-bg) !important; color: var(--highlight-red-text); }
 .highlight-yellow { background-color: var(--highlight-yellow-bg) !important; color: var(--highlight-yellow-text); } 
+
 .sort-arrow { display: inline-block; width: 12px; height: 12px; margin-left: 5px; opacity: 0.5; vertical-align: middle; }
+.sort-arrow.asc::before { content: ' ▲'; opacity: 1;}
+.sort-arrow.desc::before { content: ' ▼'; opacity: 1;}
+
 #attachTableStatus { margin-top: 0.75rem; color: var(--text-color-muted); font-size: 0.85rem; text-align: center; }
 
 
@@ -537,6 +541,11 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     font-weight: 600;
     color: var(--table-header-text);
     font-size: 0.8rem;
+    cursor: pointer; /* Added for sortable headers */
+    user-select: none; /* Added for sortable headers */
+}
+.focus-point-card th:hover {
+    background-color: var(--button-hover-bg); /* Added for sortable headers */
 }
 .focus-point-card tbody tr {
     cursor: pointer;
