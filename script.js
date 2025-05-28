@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-05-25T19:46:21EDT
-//    Summary: Added event listener to the new floating button to re-open 'What's New' modal.
+//    Timestamp: 2025-05-26T12:22:21EDT
+//    Summary: Added sort functionality to Elite, Connectivity, Rep Skill, and VPMR opportunity tables.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
@@ -148,13 +148,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const focusVpmrFilter = document.getElementById('focusVpmrFilter');
 
     const eliteOpportunitiesSection = document.getElementById('eliteOpportunitiesSection');
-    const eliteOpportunitiesTableBody = document.getElementById('eliteOpportunitiesTableBody');
+    // const eliteOpportunitiesTableBody = document.getElementById('eliteOpportunitiesTableBody'); // Already defined by ID
     const connectivityOpportunitiesSection = document.getElementById('connectivityOpportunitiesSection');
-    const connectivityOpportunitiesTableBody = document.getElementById('connectivityOpportunitiesTableBody');
+    // const connectivityOpportunitiesTableBody = document.getElementById('connectivityOpportunitiesTableBody'); // Already defined by ID
     const repSkillOpportunitiesSection = document.getElementById('repSkillOpportunitiesSection');
-    const repSkillOpportunitiesTableBody = document.getElementById('repSkillOpportunitiesTableBody');
+    // const repSkillOpportunitiesTableBody = document.getElementById('repSkillOpportunitiesTableBody'); // Already defined by ID
     const vpmrOpportunitiesSection = document.getElementById('vpmrOpportunitiesSection');
-    const vpmrOpportunitiesTableBody = document.getElementById('vpmrOpportunitiesTableBody');
+    // const vpmrOpportunitiesTableBody = document.getElementById('vpmrOpportunitiesTableBody'); // Already defined by ID
 
     const mapViewContainer = document.getElementById('mapViewContainer');
     const mapStatus = document.getElementById('mapStatus');
@@ -167,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let mapMarkersLayer = null;
     let storeOptions = [];
     let allPossibleStores = [];
-    let currentSort = { column: 'Store', ascending: true };
+    let currentSort = { column: 'Store', ascending: true }; // For main attach rate table
     let selectedStoreRow = null;
 
     // --- "What's New" Modal Logic ---
@@ -219,9 +219,8 @@ document.addEventListener('DOMContentLoaded', () => {
             setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365); // Set cookie when closed by user
         });
     }
-    // Event listener for the new floating button to re-open "What's New"
-    if (openWhatsNewBtn) { // Ensure the variable 'openWhatsNewBtn' points to the correct element ID
-        openWhatsNewBtn.addEventListener('click', showWhatsNewModal); // No cookie check here, always show
+    if (openWhatsNewBtn) { 
+        openWhatsNewBtn.addEventListener('click', showWhatsNewModal); 
     }
 
 
@@ -240,9 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.style.overflow = ''; 
         }
     };
-    // Note: The 'openFilterModalBtn' variable name is used for the main filter trigger button,
-    // ensure it's correctly ID'd in HTML and not confused with the 'openWhatsNewBtn'
-    const mainFilterModalTrigger = document.getElementById('openFilterModalBtn'); // Specific for main filter button
+    const mainFilterModalTrigger = document.getElementById('openFilterModalBtn'); 
     if (mainFilterModalTrigger) {
         mainFilterModalTrigger.addEventListener('click', openFilterModal);
     }
@@ -369,11 +366,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
         if (isFiltering) {
             if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = isLoading;
-            const mainFilterBtn = document.getElementById('openFilterModalBtn'); // Get ref to main filter button
+            const mainFilterBtn = document.getElementById('openFilterModalBtn'); 
             if (mainFilterBtn) mainFilterBtn.disabled = isLoading;
         } else {
             if (excelFileInput) excelFileInput.disabled = isLoading;
-            const mainFilterBtn = document.getElementById('openFilterModalBtn'); // Get ref to main filter button
+            const mainFilterBtn = document.getElementById('openFilterModalBtn'); 
             if (mainFilterBtn) mainFilterBtn.disabled = isLoading; 
         }
     };    
@@ -792,7 +789,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Event listeners for modal buttons
     if (applyFiltersButtonModal) {
         applyFiltersButtonModal.addEventListener('click', () => applyFilters(true)); 
     }
@@ -969,52 +965,166 @@ document.addEventListener('DOMContentLoaded', () => {
         if (attachTableStatus) attachTableStatus.textContent = `Showing ${attachRateTableBody.rows.length} stores with complete attach rate data. Click row for details. Click headers to sort.`;
         updateSortArrows();
     };
+
+    const updateFocusTableSortArrows = (tableElement) => {
+        if (!tableElement || !tableElement.sortConfig) return;
+        const sortConfig = tableElement.sortConfig;
+        tableElement.querySelectorAll('thead th.sortable .sort-arrow').forEach(arrow => {
+            arrow.className = 'sort-arrow'; // Reset arrows
+            arrow.textContent = '';
+        });
+        const currentHeader = tableElement.querySelector(`thead th[data-sort="${CSS.escape(sortConfig.column)}"]`);
+        if (currentHeader) {
+            const arrowSpan = currentHeader.querySelector('.sort-arrow');
+            if (arrowSpan) {
+                arrowSpan.classList.add(sortConfig.ascending ? 'asc' : 'desc');
+            }
+        }
+    };
+    
+    const populateFocusPointTable = (tableId, sectionElement, data, valueKey, valueLabel) => {
+        const table = document.getElementById(tableId);
+        if (!table) { console.error(`Table with ID ${tableId} not found.`); return; }
+    
+        const thead = table.querySelector('thead');
+        const tbody = table.querySelector('tbody');
+        if (!thead || !tbody) { console.error(`Thead or Tbody not found for table ${tableId}.`); return; }
+    
+        thead.innerHTML = ''; 
+        const headerRow = thead.insertRow();
+        const headers = [
+            { label: 'Store', sortKey: 'Store' },
+            { label: 'Territory', sortKey: 'Q2 Territory' },
+            { label: valueLabel, sortKey: valueKey }
+        ];
+    
+        headers.forEach(header => {
+            const th = document.createElement('th');
+            th.textContent = header.label;
+            th.dataset.sort = header.sortKey;
+            th.classList.add('sortable');
+            th.innerHTML += ' <span class="sort-arrow"></span>';
+            headerRow.appendChild(th);
+        });
+    
+        if (!table.sortConfig) {
+            table.sortConfig = { column: 'Store', ascending: true }; 
+        }
+    
+        const sortConfig = table.sortConfig;
+        const sortedData = [...data].sort((a, b) => {
+            let valA = safeGet(a, sortConfig.column, null);
+            let valB = safeGet(b, sortConfig.column, null);
+    
+            if (valA === null || String(valA).trim() === '') valA = sortConfig.ascending ? Infinity : -Infinity;
+            if (valB === null || String(valB).trim() === '') valB = sortConfig.ascending ? Infinity : -Infinity;
+    
+            let numA, numB;
+            if (sortConfig.column === valueKey) { 
+                numA = parsePercent(valA);
+                numB = parsePercent(valB);
+            } else if (sortConfig.column === 'Store' || sortConfig.column === 'Q2 Territory') {
+                valA = String(valA).toLowerCase();
+                valB = String(valB).toLowerCase();
+                return sortConfig.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            } else { 
+                numA = parseNumber(valA);
+                numB = parseNumber(valB);
+            }
+    
+            if (typeof numA === 'number' && typeof numB === 'number' && !isNaN(numA) && !isNaN(numB)) {
+                return sortConfig.ascending ? numA - numB : numB - numA;
+            }
+            valA = String(valA).toLowerCase();
+            valB = String(valB).toLowerCase();
+            return sortConfig.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        });
+    
+        tbody.innerHTML = '';
+        sortedData.forEach(row => {
+            const tr = tbody.insertRow();
+            const storeName = safeGet(row, 'Store', 'N/A');
+            tr.dataset.storeName = storeName;
+            tr.onclick = () => { showStoreDetails(row); highlightTableRow(storeName); };
+    
+            tr.insertCell().textContent = storeName;
+            tr.cells[0].title = storeName;
+    
+            const territoryName = safeGet(row, 'Q2 Territory', 'N/A');
+            tr.insertCell().textContent = territoryName;
+            tr.cells[1].title = territoryName;
+    
+            const metricValue = parsePercent(safeGet(row, valueKey, NaN));
+            const cellMetric = tr.insertCell();
+            cellMetric.textContent = formatPercent(metricValue);
+            cellMetric.title = formatPercent(metricValue);
+            cellMetric.style.textAlign = "right";
+        });
+    
+        updateFocusTableSortArrows(table);
+    
+        // Ensure listener is attached only once or correctly replaced
+        const newThead = thead.cloneNode(true); // Clone to help remove old listeners
+        thead.parentNode.replaceChild(newThead, thead);
+        newThead.addEventListener('click', (event) => {
+            const headerCell = event.target.closest('th');
+            if (!headerCell || !headerCell.classList.contains('sortable')) return;
+            
+            const sortKey = headerCell.dataset.sort;
+            if (!sortKey) return;
+    
+            if (table.sortConfig.column === sortKey) {
+                table.sortConfig.ascending = !table.sortConfig.ascending;
+            } else {
+                table.sortConfig.column = sortKey;
+                table.sortConfig.ascending = true;
+            }
+            populateFocusPointTable(tableId, sectionElement, data, valueKey, valueLabel); 
+        });
+    
+        const statusP = sectionElement.querySelector('.focus-point-status');
+        if (statusP) {
+            if (data.length > 0) {
+                statusP.textContent = `Displaying ${data.length} stores. Click headers to sort.`;
+            } else {
+                statusP.textContent = 'No stores meet this criteria based on current filters.';
+            }
+        }
+        sectionElement.style.display = 'block';
+    };
+
     const updateFocusPointSections = (baseData) => {
         if (focusEliteFilter?.checked) {
             const eliteOpps = baseData.filter(row => { const eliteVal = parsePercent(safeGet(row, 'Elite', null)); return !isNaN(eliteVal) && eliteVal > 0.01 && eliteVal < 1.0; });
-            populateFocusPointTable(eliteOpportunitiesTableBody, eliteOpportunitiesSection, eliteOpps, 'Elite', 'Elite %');
+            populateFocusPointTable('eliteOpportunitiesTable', eliteOpportunitiesSection, eliteOpps, 'Elite', 'Elite %');
         } else { if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none'; }
+
         if (focusConnectivityFilter?.checked) {
             const connOpps = baseData.filter(row => { const connVal = parsePercent(safeGet(row, 'Retail Mode Connectivity', null)); return !isNaN(connVal) && connVal < 1.0; });
-            populateFocusPointTable(connectivityOpportunitiesTableBody, connectivityOpportunitiesSection, connOpps, 'Retail Mode Connectivity', 'Connectivity %');
+            populateFocusPointTable('connectivityOpportunitiesTable', connectivityOpportunitiesSection, connOpps, 'Retail Mode Connectivity', 'Connectivity %');
         } else { if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none'; }
+        
         if (focusRepSkillFilter?.checked) {
             const repSkillOpps = baseData.filter(row => { const repSkillVal = parsePercent(safeGet(row, 'Rep Skill Ach', null)); return isValidNumericForFocus(safeGet(row, 'Rep Skill Ach', null)) && repSkillVal < 1.0; });
-            populateFocusPointTable(repSkillOpportunitiesTableBody, repSkillOpportunitiesSection, repSkillOpps, 'Rep Skill Ach', 'Rep Skill Ach %');
+            populateFocusPointTable('repSkillOpportunitiesTable', repSkillOpportunitiesSection, repSkillOpps, 'Rep Skill Ach', 'Rep Skill Ach %');
         } else { if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none'; }
+        
         if (focusVpmrFilter?.checked) {
             const vpmrOpps = baseData.filter(row => { const vpmrVal = parsePercent(safeGet(row, '(V)PMR Ach', null)); return isValidNumericForFocus(safeGet(row, '(V)PMR Ach', null)) && vpmrVal < 1.0; });
-            populateFocusPointTable(vpmrOpportunitiesTableBody, vpmrOpportunitiesSection, vpmrOpps, '(V)PMR Ach', '(V)PMR Ach %');
+            populateFocusPointTable('vpmrOpportunitiesTable', vpmrOpportunitiesSection, vpmrOpps, '(V)PMR Ach', '(V)PMR Ach %');
         } else { if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none'; }
     };
-    const populateFocusPointTable = (tbody, sectionElement, data, valueKey, valueLabel) => {
-        if (!tbody || !sectionElement) return; tbody.innerHTML = '';
-        const statusP = sectionElement.querySelector('.focus-point-status');
-        if (statusP) statusP.textContent = '';
-        if (data.length > 0) {
-            data.forEach(row => {
-                const tr = tbody.insertRow(); const storeName = safeGet(row, 'Store', 'N/A');
-                tr.dataset.storeName = storeName; tr.onclick = () => { showStoreDetails(row); highlightTableRow(storeName); };
-                tr.insertCell().textContent = storeName; tr.cells[0].title = storeName;
-                const territoryName = safeGet(row, 'Q2 Territory', 'N/A');
-                tr.insertCell().textContent = territoryName; tr.cells[1].title = territoryName;
-                const metricValue = parsePercent(safeGet(row, valueKey, NaN));
-                tr.insertCell().textContent = formatPercent(metricValue); tr.cells[2].title = formatPercent(metricValue);
-            });
-            if (statusP) statusP.textContent = `Displaying ${data.length} stores.`;
-            sectionElement.style.display = 'block';
-        } else { if (statusP) statusP.textContent = 'No stores meet this criteria based on current filters.'; sectionElement.style.display = 'block'; }
-    };
-    const handleSort = (event) => {
+
+    const handleSort = (event) => { // This is for the main Attach Rate table
          const headerCell = event.target.closest('th'); if (!headerCell?.classList.contains('sortable')) return;
          const sortKey = headerCell.dataset.sort; if (!sortKey) return;
          if (currentSort.column === sortKey) { currentSort.ascending = !currentSort.ascending; } else { currentSort.column = sortKey; currentSort.ascending = true; }
          updateAttachRateTable(filteredData); 
     };
-    const updateSortArrows = () => {
+    const updateSortArrows = () => { // For the main Attach Rate table
         if (!attachRateTable) return;
-        attachRateTable.querySelectorAll('th.sortable .sort-arrow').forEach(arrow => { arrow.className = 'sort-arrow'; arrow.textContent = ''; });
-        const currentHeaderArrow = attachRateTable.querySelector(`th[data-sort="${CSS.escape(currentSort.column)}"] .sort-arrow`);
+        attachRateTable.querySelectorAll('thead th.sortable .sort-arrow').forEach(arrow => { arrow.className = 'sort-arrow'; arrow.textContent = ''; });
+        const currentHeaderArrow = attachRateTable.querySelector(`thead th[data-sort="${CSS.escape(currentSort.column)}"] .sort-arrow`);
         if (currentHeaderArrow) { currentHeaderArrow.classList.add(currentSort.ascending ? 'asc' : 'desc'); }
     };
     const showStoreDetails = (storeData) => {
@@ -1023,7 +1133,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const addressString = addressParts.length > 0 ? addressParts.join(', ') : 'N/A';
         const latitude = parseNumber(safeGet(storeData, 'LATITUDE_ORG', NaN)); const longitude = parseNumber(safeGet(storeData, 'LONGITUDE_ORG', NaN));
         let mapsLinkHtml = `<p style="color: #aaa; font-style: italic;">(Map coordinates not available)</p>`;
-        if (!isNaN(latitude) && !isNaN(longitude)) { const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`; mapsLinkHtml = `<p><a href="${mapsUrl}" target="_blank" title="Open in Google Maps">View on Google Maps</a></p>`; }
+        if (!isNaN(latitude) && !isNaN(longitude) && latitude !== 0 && longitude !==0) { const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`; mapsLinkHtml = `<p><a href="${mapsUrl}" target="_blank" title="Open in Google Maps">View on Google Maps</a></p>`; }
         let flagSummaryHtml = FLAG_HEADERS.map(flag => { const flagValue = safeGet(storeData, flag, 'NO'); const isTrue = (flagValue === true || String(flagValue).toUpperCase() === 'YES' || String(flagValue) === 'Y' || flagValue === 1 || String(flagValue) === '1'); return `<span title="${flag.replace(/_/g, ' ')}" data-flag="${isTrue}">${flag.replace(/_/g, ' ')} ${isTrue ? '✔' : '✘'}</span>`; }).join(' | ');
         storeDetailsContent.innerHTML = ` <p><strong>Store:</strong> ${safeGet(storeData, 'Store')}</p> <p><strong>Address:</strong> ${addressString}</p> ${mapsLinkHtml} <hr> <p><strong>IDs:</strong> Store: ${safeGet(storeData, 'STORE ID')} | Org: ${safeGet(storeData, 'ORG_STORE_ID')} | CV: ${safeGet(storeData, 'CV_STORE_ID')} | CinglePoint: ${safeGet(storeData, 'CINGLEPOINT_ID')}</p> <p><strong>Type:</strong> ${safeGet(storeData, 'STORE_TYPE_NAME')} | Nat Tier: ${safeGet(storeData, 'National_Tier')} | Merch Lvl: ${safeGet(storeData, 'Merchandising_Level')} | Comb Tier: ${safeGet(storeData, 'Combined_Tier')}</p> <hr> <p><strong>Hierarchy:</strong> ${safeGet(storeData, 'REGION')} > ${safeGet(storeData, 'DISTRICT')} > ${safeGet(storeData, 'Q2 Territory')}</p> <p><strong>FSM:</strong> ${safeGet(storeData, 'FSM NAME')}</p> <p><strong>Channel:</strong> ${safeGet(storeData, 'CHANNEL')} / ${safeGet(storeData, 'SUB_CHANNEL')}</p> <p><strong>Dealer:</strong> ${safeGet(storeData, 'DEALER_NAME')}</p> <hr> <p><strong>Visits:</strong> ${formatNumber(parseNumber(safeGet(storeData, 'Visit count', 0)))} | <strong>Trainings:</strong> ${formatNumber(parseNumber(safeGet(storeData, 'Trainings', 0)))}</p> <p><strong>Connectivity:</strong> ${formatPercent(parsePercent(safeGet(storeData, 'Retail Mode Connectivity', 0)))}</p> <hr> <p><strong>Flags:</strong> ${flagSummaryHtml}</p> `;
         storeDetailsSection.style.display = 'block'; closeStoreDetailsButton.style.display = 'inline-block';
@@ -1036,7 +1146,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const highlightTableRow = (storeName) => {
         if (selectedStoreRow) { selectedStoreRow.classList.remove('selected-row'); selectedStoreRow = null; }
         if (storeName) {
-            const tablesToSearch = [ attachRateTableBody, top5TableBody, bottom5TableBody, eliteOpportunitiesTableBody, connectivityOpportunitiesTableBody, repSkillOpportunitiesTableBody, vpmrOpportunitiesTableBody ];
+            const tablesToSearch = [ 
+                document.getElementById('attachRateTableBody'), 
+                document.getElementById('top5TableBody'), 
+                document.getElementById('bottom5TableBody'), 
+                document.getElementById('eliteOpportunitiesTableBody'), 
+                document.getElementById('connectivityOpportunitiesTableBody'), 
+                document.getElementById('repSkillOpportunitiesTableBody'), 
+                document.getElementById('vpmrOpportunitiesTableBody') 
+            ];
             for (const tableBody of tablesToSearch) {
                 if (tableBody) { 
                     try { const rowToHighlight = tableBody.querySelector(`tr[data-store-name="${CSS.escape(storeName)}"]`); if (rowToHighlight) { rowToHighlight.classList.add('selected-row'); selectedStoreRow = rowToHighlight; break; }
@@ -1083,7 +1201,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const tableElement = document.getElementById(tableElementId);
             let parentSection = tableElement ? tableElement.closest('.card') : null;
             if (tableElementId === 'top5Table' || tableElementId === 'bottom5Table') parentSection = document.getElementById('topBottomSection');
-            else if (tableElementId.includes('OpportunitiesTable')) parentSection = tableElement.closest('.focus-point-card');
+            else if (tableElementId.includes('OpportunitiesTable')) parentSection = document.getElementById(tableElementId)?.closest('.focus-point-card');
             else if (tableElementId === 'attachRateTable') parentSection = document.getElementById('attachRateTableContainer');
             if (!tableElement || (parentSection && parentSection.style.display === 'none') ) return '';
             const tableBody = tableElement.querySelector('tbody');
@@ -1105,10 +1223,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         html += generateTableHTMLFromDOM('attachRateTable', 'Attach Rates');
         const focusSections = [
-            { id: 'eliteOpportunitiesTable', title: 'Elite Opportunities', sectionId: 'eliteOpportunitiesSection' },
-            { id: 'connectivityOpportunitiesTable', title: 'Connectivity Opportunities', sectionId: 'connectivityOpportunitiesSection' },
-            { id: 'repSkillOpportunitiesTable', title: 'Rep Skill Opportunities', sectionId: 'repSkillOpportunitiesSection' },
-            { id: 'vpmrOpportunitiesTable', title: 'VPMR Opportunities', sectionId: 'vpmrOpportunitiesSection' } ];
+            { id: 'eliteOpportunitiesTable', title: 'Elite Opportunities (>1% <100%)', sectionId: 'eliteOpportunitiesSection' },
+            { id: 'connectivityOpportunitiesTable', title: 'Connectivity Opportunities (<100%)', sectionId: 'connectivityOpportunitiesSection' },
+            { id: 'repSkillOpportunitiesTable', title: 'Rep Skill Opportunities (<100%, valid data)', sectionId: 'repSkillOpportunitiesSection' },
+            { id: 'vpmrOpportunitiesTable', title: 'VPMR Opportunities (<100%, valid data)', sectionId: 'vpmrOpportunitiesSection' } ];
         focusSections.forEach(fs => { html += generateTableHTMLFromDOM(fs.id, fs.title); });
         return html;
     };
@@ -1212,6 +1330,6 @@ document.addEventListener('DOMContentLoaded', () => {
     resetUI(); 
     if (!mainChartCanvas) console.warn("Main chart canvas context not found on load. Chart will not render.");
     updateShareOptions(); 
-    checkAndShowWhatsNew(); // Initial check for "What's New" on page load
+    checkAndShowWhatsNew(); 
 
-}); // End DOMContentLoaded
+});
