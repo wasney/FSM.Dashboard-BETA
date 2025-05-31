@@ -1,6 +1,6 @@
 /*
-    Timestamp: 2025-05-26T12:22:21EDT
-    Summary: Added CSS for sort arrows in table headers.
+    Timestamp: 2025-05-30T23:28:29EDT
+    Summary: Added CSS for sort arrows in table headers and ensured new filter buttons are styled.
 */
 
 :root {
@@ -383,7 +383,8 @@ h4 {
     padding: 1rem 1.5rem;
     border-top: 1px solid var(--filter-modal-header-border);
     display: flex;
-    gap: 1rem;
+    flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
+    gap: 0.75rem; /* Adjust gap for better spacing when wrapped */
     justify-content: flex-end; 
     background-color: var(--card-bg); 
 }
@@ -392,7 +393,8 @@ h4 {
     padding: 0.75rem 1.25rem;
     font-size: 1rem;
     flex-grow: 1; 
-    max-width: 50%;
+    max-width: 50%; /* Allows two buttons per row on mobile */
+    min-width: 150px; /* Ensure buttons don't get too squished */
 }
 
 
@@ -507,9 +509,23 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
 .highlight-red { background-color: var(--highlight-red-bg) !important; color: var(--highlight-red-text); }
 .highlight-yellow { background-color: var(--highlight-yellow-bg) !important; color: var(--highlight-yellow-text); } 
 
-.sort-arrow { display: inline-block; width: 12px; height: 12px; margin-left: 5px; opacity: 0.5; vertical-align: middle; }
-.sort-arrow.asc::before { content: ' ▲'; opacity: 1;}
-.sort-arrow.desc::before { content: ' ▼'; opacity: 1;}
+.sort-arrow { 
+    display: inline-block; 
+    width: 12px; /* Increased width to accommodate character */
+    height: 12px; 
+    margin-left: 5px; 
+    opacity: 0.5; 
+    vertical-align: middle;
+    text-align: center;
+}
+.sort-arrow.asc::before { 
+    content: '▲'; /* Unicode for up arrow */
+    opacity: 1; 
+}
+.sort-arrow.desc::before { 
+    content: '▼'; /* Unicode for down arrow */
+    opacity: 1; 
+}
 
 #attachTableStatus { margin-top: 0.75rem; color: var(--text-color-muted); font-size: 0.85rem; text-align: center; }
 
@@ -541,11 +557,11 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     font-weight: 600;
     color: var(--table-header-text);
     font-size: 0.8rem;
-    cursor: pointer; /* Added for sortable headers */
-    user-select: none; /* Added for sortable headers */
+    cursor: pointer; 
+    user-select: none; 
 }
 .focus-point-card th:hover {
-    background-color: var(--button-hover-bg); /* Added for sortable headers */
+    background-color: var(--button-hover-bg); 
 }
 .focus-point-card tbody tr {
     cursor: pointer;
@@ -622,7 +638,7 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
     }
      .filter-modal-footer .apply-filters-button,
     .filter-modal-footer .reset-filters-button {
-        max-width: none; 
+        max-width: calc(50% - 0.375rem); /* Adjust for gap when two buttons per row */
     }
 }
 
