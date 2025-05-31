@@ -26,7 +26,7 @@
                 <li><strong>"Additional Tools" Section:</strong> This new section provides targeted views:
                     <ul>
                         <li><em>Geographic Store View:</em> Visualizes store locations on an interactive map.</li>
-                        <li><em>Focus Point Tables:</em> Helps identify opportunity stores for Elite, Connectivity, Rep Skill, and VPMR metrics.</li>
+                        <li><em>Focus Point Tables:</em> Helps identify opportunity stores for Elite, Connectivity, Rep Skill, and VPMR metrics. (Now sortable!)</li>
                     </ul>
                 </li>
                 <li><strong>Attach Rate Table Enhancements:</strong> 
@@ -34,6 +34,7 @@
                         <li>The "Territory" column is now dynamically displayed only when relevant (i.e., when multiple territories are included in the filter).</li>
                         <li>Improved handling of "N/A" or blank values for clearer data presentation.</li>
                         <li>Introduced three-tier color highlighting (Green/Yellow/Red) for easier performance assessment against averages.</li>
+                         <li>Column sorting is available.</li>
                     </ul>
                 </li>
                 <li><strong>Improved Excel File Processing:</strong> The backend has been updated for more robust and reliable handling of uploaded Excel files.</li>
@@ -147,7 +148,9 @@
                 </div>
             </div>
             <div class="filter-modal-footer">
-                <button id="resetFiltersButtonModal" class="reset-filters-button" disabled>Reset Filters</button>
+                <button id="saveDefaultFiltersBtn" class="reset-filters-button" title="Save current filters as default" disabled>⭐ Save Defaults</button>
+                <button id="clearDefaultFiltersBtn" class="reset-filters-button" title="Clear saved default filters" disabled>🗑️ Clear Defaults</button>
+                <button id="resetFiltersButtonModal" class="reset-filters-button" title="Reset filters for the current session" disabled>Reset Session Filters</button>
                 <button id="applyFiltersButtonModal" class="apply-filters-button" disabled>Apply Filters</button>
             </div>
             <div id="filterLoadingIndicatorModal" style="display: none; justify-content: center; margin-top: 10px;">
