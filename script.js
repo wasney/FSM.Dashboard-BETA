@@ -1,11 +1,12 @@
 //
-//    Timestamp: 2025-05-26T12:22:21EDT
-//    Summary: Added sort functionality to Elite, Connectivity, Rep Skill, and VPMR opportunity tables.
+//    Timestamp: 2025-05-30T23:37:00EDT
+//    Summary: Implemented "Save/Load/Clear Default Filters" using localStorage and status messages.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
     const LIGHT_THEME_CLASS = 'light-theme';
     const THEME_STORAGE_KEY = 'themePreference';
+    const DEFAULT_FILTERS_STORAGE_KEY = 'fsmDashboardDefaultFilters_v1'; // Added versioning
     const DARK_THEME_ICON = '🌙'; 
     const LIGHT_THEME_ICON = '☀️'; 
     const DARK_THEME_META_COLOR = '#2c2c2c';
@@ -19,14 +20,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeWhatsNewModalBtn = document.getElementById('closeWhatsNewModalBtn');
     const gotItWhatsNewBtn = document.getElementById('gotItWhatsNewBtn');
     const BETA_FEATURES_POPUP_COOKIE = 'betaFeaturesPopupShown_v1.3'; 
-    const openWhatsNewBtn = document.getElementById('openWhatsNewBtn'); // New button to re-open What's New
+    const openWhatsNewBtn = document.getElementById('openWhatsNewBtn'); 
 
     // --- Filter Modal Elements ---
     const filterModal = document.getElementById('filterModal');
-    const openFilterModalBtn = document.getElementById('openFilterModalBtn'); // This is for the main filter modal
+    const openFilterModalBtn = document.getElementById('openFilterModalBtn'); 
     const closeFilterModalBtn = document.getElementById('closeFilterModalBtn');
     const applyFiltersButtonModal = document.getElementById('applyFiltersButtonModal');
     const resetFiltersButtonModal = document.getElementById('resetFiltersButtonModal');
+    const saveDefaultFiltersBtn = document.getElementById('saveDefaultFiltersBtn');
+    const clearDefaultFiltersBtn = document.getElementById('clearDefaultFiltersBtn');
     const filterLoadingIndicatorModal = document.getElementById('filterLoadingIndicatorModal');
 
 
@@ -148,13 +151,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const focusVpmrFilter = document.getElementById('focusVpmrFilter');
 
     const eliteOpportunitiesSection = document.getElementById('eliteOpportunitiesSection');
-    // const eliteOpportunitiesTableBody = document.getElementById('eliteOpportunitiesTableBody'); // Already defined by ID
     const connectivityOpportunitiesSection = document.getElementById('connectivityOpportunitiesSection');
-    // const connectivityOpportunitiesTableBody = document.getElementById('connectivityOpportunitiesTableBody'); // Already defined by ID
     const repSkillOpportunitiesSection = document.getElementById('repSkillOpportunitiesSection');
-    // const repSkillOpportunitiesTableBody = document.getElementById('repSkillOpportunitiesTableBody'); // Already defined by ID
     const vpmrOpportunitiesSection = document.getElementById('vpmrOpportunitiesSection');
-    // const vpmrOpportunitiesTableBody = document.getElementById('vpmrOpportunitiesTableBody'); // Already defined by ID
 
     const mapViewContainer = document.getElementById('mapViewContainer');
     const mapStatus = document.getElementById('mapStatus');
@@ -183,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => whatsNewModal.style.display = 'none', 300); 
         }
     };
-    const checkAndShowWhatsNew = () => { // For initial automatic display
+    const checkAndShowWhatsNew = () => { 
         if (!getCookie(BETA_FEATURES_POPUP_COOKIE)) {
             showWhatsNewModal();
         }
@@ -210,13 +209,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeWhatsNewModalBtn) {
         closeWhatsNewModalBtn.addEventListener('click', () => {
             hideWhatsNewModal();
-            setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365); // Set cookie when closed by user
+            setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365); 
         });
     }
     if (gotItWhatsNewBtn) {
         gotItWhatsNewBtn.addEventListener('click', () => {
             hideWhatsNewModal();
-            setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365); // Set cookie when closed by user
+            setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365); 
         });
     }
     if (openWhatsNewBtn) { 
@@ -366,6 +365,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
         if (isFiltering) {
             if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = isLoading;
+            if (saveDefaultFiltersBtn) saveDefaultFiltersBtn.disabled = isLoading;
+            if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = isLoading;
             const mainFilterBtn = document.getElementById('openFilterModalBtn'); 
             if (mainFilterBtn) mainFilterBtn.disabled = isLoading;
         } else {
@@ -495,11 +496,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const mainFilterBtn = document.getElementById('openFilterModalBtn');
             if (mainFilterBtn) mainFilterBtn.disabled = false;
             
-            if (statusDiv) statusDiv.textContent = `Loaded ${rawData.length} rows. Filters opened automatically.`;
+            if (loadDefaultFilters()) { // Try to load and apply default filters
+                if (statusDiv) statusDiv.textContent += ` Loaded ${rawData.length} rows. Default filters applied.`;
+                applyFilters(false); // Apply loaded defaults, don't open modal from here
+            } else {
+                if (statusDiv) statusDiv.textContent = `Loaded ${rawData.length} rows. Filters opened automatically.`;
+                setTimeout(() => { openFilterModal(); }, 100); 
+            }
 
-            setTimeout(() => {
-                openFilterModal(); 
-            }, 100); 
         } catch (error) {
             console.error('Error processing file:', error); if (statusDiv) statusDiv.textContent = `Error: ${error.message}`;
             rawData = []; allPossibleStores = []; filteredData = []; resetUI();
@@ -526,9 +530,154 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (applyFiltersButtonModal) applyFiltersButtonModal.disabled = false;
         if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = false; 
+        if (saveDefaultFiltersBtn) saveDefaultFiltersBtn.disabled = false;
+        if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = localStorage.getItem(DEFAULT_FILTERS_STORAGE_KEY) === null; // Enable only if defaults exist
         
         addDependencyFilterListeners();
     };
+
+    const saveDefaultFilters = () => {
+        const defaultFilters = {
+            region: regionFilter?.value,
+            district: districtFilter?.value,
+            territories: territoryFilter ? Array.from(territoryFilter.selectedOptions).map(opt => opt.value) : [],
+            fsm: fsmFilter?.value,
+            channel: channelFilter?.value,
+            subchannel: subchannelFilter?.value,
+            dealer: dealerFilter?.value,
+            stores: storeFilter ? Array.from(storeFilter.selectedOptions).map(opt => opt.value) : [],
+            flags: FLAG_HEADERS.reduce((acc, header) => {
+                if (flagFiltersCheckboxes[header]) {
+                    acc[header] = flagFiltersCheckboxes[header].checked;
+                }
+                return acc;
+            }, {}),
+            additionalTools: {
+                mapView: showMapViewFilter?.checked,
+                elite: focusEliteFilter?.checked,
+                connectivity: focusConnectivityFilter?.checked,
+                repSkill: focusRepSkillFilter?.checked,
+                vpmr: focusVpmrFilter?.checked
+            }
+        };
+        try {
+            localStorage.setItem(DEFAULT_FILTERS_STORAGE_KEY, JSON.stringify(defaultFilters));
+            if(statusDiv) statusDiv.textContent = "⭐ Default filters saved successfully!";
+            if(clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = false; // Enable clear button
+        } catch (e) {
+            console.error("Error saving default filters to localStorage:", e);
+            if(statusDiv) statusDiv.textContent = "Error saving default filters. Your browser might be blocking localStorage or it's full.";
+        }
+    };
+
+    const loadDefaultFilters = () => {
+        let defaultsApplied = false;
+        try {
+            const savedFiltersJSON = localStorage.getItem(DEFAULT_FILTERS_STORAGE_KEY);
+            if (!savedFiltersJSON) {
+                if(clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = true;
+                return false;
+            }
+
+            const defaults = JSON.parse(savedFiltersJSON);
+            let partialLoadMessage = "";
+
+            if (regionFilter && defaults.region) regionFilter.value = defaults.region;
+            if (districtFilter && defaults.district) districtFilter.value = defaults.district;
+            if (fsmFilter && defaults.fsm) fsmFilter.value = defaults.fsm;
+            if (channelFilter && defaults.channel) channelFilter.value = defaults.channel;
+            if (subchannelFilter && defaults.subchannel) subchannelFilter.value = defaults.subchannel;
+            if (dealerFilter && defaults.dealer) dealerFilter.value = defaults.dealer;
+
+            if (territoryFilter && defaults.territories) {
+                const availableTerritories = Array.from(territoryFilter.options).map(opt => opt.value);
+                let foundCount = 0;
+                defaults.territories.forEach(savedTerritory => {
+                    const option = Array.from(territoryFilter.options).find(opt => opt.value === savedTerritory);
+                    if (option) {
+                        option.selected = true;
+                        foundCount++;
+                    }
+                });
+                if (foundCount < defaults.territories.length && defaults.territories.length > 0) {
+                    partialLoadMessage += ` Some saved territories not found in current file.`;
+                }
+            } else if (territoryFilter) {
+                territoryFilter.selectedIndex = -1;
+            }
+
+            if (storeFilter && defaults.stores) {
+                 // Store filter options will be updated by updateStoreFilterOptionsBasedOnHierarchy AFTER hierarchical filters are set.
+                 // So, we store the intended selections and apply them *after* updateStoreFilterOptionsBasedOnHierarchy.
+                 // For now, we can just ensure the store search is cleared if no defaults.
+                 storeFilter.savedDefaults = defaults.stores; // Temporary store
+            } else if (storeFilter) {
+                 storeFilter.selectedIndex = -1;
+                 delete storeFilter.savedDefaults;
+            }
+
+
+            FLAG_HEADERS.forEach(header => {
+                if (flagFiltersCheckboxes[header] && defaults.flags && typeof defaults.flags[header] === 'boolean') {
+                    flagFiltersCheckboxes[header].checked = defaults.flags[header];
+                }
+            });
+
+            if (defaults.additionalTools) {
+                if (showMapViewFilter && typeof defaults.additionalTools.mapView === 'boolean') showMapViewFilter.checked = defaults.additionalTools.mapView;
+                if (focusEliteFilter && typeof defaults.additionalTools.elite === 'boolean') focusEliteFilter.checked = defaults.additionalTools.elite;
+                if (focusConnectivityFilter && typeof defaults.additionalTools.connectivity === 'boolean') focusConnectivityFilter.checked = defaults.additionalTools.connectivity;
+                if (focusRepSkillFilter && typeof defaults.additionalTools.repSkill === 'boolean') focusRepSkillFilter.checked = defaults.additionalTools.repSkill;
+                if (focusVpmrFilter && typeof defaults.additionalTools.vpmr === 'boolean') focusVpmrFilter.checked = defaults.additionalTools.vpmr;
+            }
+            
+            updateStoreFilterOptionsBasedOnHierarchy(); // IMPORTANT: Update store options based on loaded hierarchical filters
+
+            // Now apply saved store selections if they exist and are valid for the updated store list
+            if (storeFilter && storeFilter.savedDefaults) {
+                let foundStoreCount = 0;
+                const availableStores = Array.from(storeFilter.options).map(opt => opt.value);
+                storeFilter.savedDefaults.forEach(savedStore => {
+                    const option = Array.from(storeFilter.options).find(opt => opt.value === savedStore);
+                    if (option) {
+                        option.selected = true;
+                        foundStoreCount++;
+                    }
+                });
+                 if (foundStoreCount < storeFilter.savedDefaults.length && storeFilter.savedDefaults.length > 0) {
+                    partialLoadMessage += ` Some saved stores not found in current file.`;
+                }
+                delete storeFilter.savedDefaults; // Clean up temporary storage
+            }
+
+
+            if (statusDiv) statusDiv.textContent = "⭐ Default filters loaded." + partialLoadMessage;
+            if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = false;
+            defaultsApplied = true;
+
+        } catch (e) {
+            console.error("Error loading default filters from localStorage:", e);
+            if (statusDiv) statusDiv.textContent = "Error loading default filters. They might be corrupted.";
+            localStorage.removeItem(DEFAULT_FILTERS_STORAGE_KEY); // Clear corrupted data
+            if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = true;
+            return false;
+        }
+        return defaultsApplied;
+    };
+
+    const clearDefaultFilters = () => {
+        try {
+            localStorage.removeItem(DEFAULT_FILTERS_STORAGE_KEY);
+            if(statusDiv) statusDiv.textContent = "🗑️ Default filters cleared.";
+            if(clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = true; // Disable clear button as there are no defaults
+            // Optionally, reset current filters to 'ALL' or prompt user
+            // handleResetFiltersClick(false); // Uncomment to also reset session filters
+        } catch (e) {
+            console.error("Error clearing default filters from localStorage:", e);
+            if(statusDiv) statusDiv.textContent = "Error clearing default filters.";
+        }
+    };
+
     const addDependencyFilterListeners = () => {
         const handler = updateStoreFilterOptionsBasedOnHierarchy; const filtersToListen = [regionFilter, districtFilter, territoryFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter];
         filtersToListen.forEach(filter => { if (filter) { filter.removeEventListener('change', handler); filter.addEventListener('change', handler); } });
@@ -550,8 +699,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const validStoreNames = new Set(potentiallyValidStoresData.map(row => safeGet(row, 'Store', null)).filter(s => s && String(s).trim() !== ''));
         storeOptions = Array.from(validStoreNames).sort().map(s => ({ value: s, text: s }));
         const previouslySelectedStores = storeFilter ? new Set(Array.from(storeFilter.selectedOptions).map(opt => opt.value)) : new Set();
-        setStoreFilterOptions(storeOptions, false); filterStoreOptions(); 
-        if (storeFilter) { Array.from(storeFilter.options).forEach(option => { if (previouslySelectedStores.has(option.value)) { option.selected = true; } }); if (storeFilter.selectedOptions.length === 0) { storeFilter.selectedIndex = -1; } }
+        
+        const currentSearchTerm = storeSearch?.value || ''; // Preserve search term
+        setStoreFilterOptions(storeOptions, storeFilter ? storeFilter.disabled : true); // Pass current disabled state
+        filterStoreOptions(); // This will re-apply the search term
+
+        if (storeFilter) { 
+            Array.from(storeFilter.options).forEach(option => { 
+                if (previouslySelectedStores.has(option.value)) { 
+                    option.selected = true; 
+                } 
+            }); 
+            if (storeFilter.selectedOptions.length === 0 && previouslySelectedStores.size > 0) {
+                 // If previously selected stores are no longer valid options, they won't be selected.
+            } else if (storeFilter.selectedOptions.length === 0) {
+                storeFilter.selectedIndex = -1;
+            }
+        }
     };
     const setStoreFilterOptions = (optionsToShow, disable = true) => {
         if (!storeFilter) return; const currentSearchTerm = storeSearch?.value || ''; storeFilter.innerHTML = '';
@@ -593,7 +757,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
     
-    const applyFilters = (isFromModal = false) => { 
+    const applyFilters = (isFromModalOrDefaults = false) => { 
         showLoading(true, true); 
         if (resultsArea) resultsArea.style.display = 'none';
         
@@ -624,12 +788,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateShareOptions(); 
 
                 if (filteredData.length === 1) { showStoreDetails(filteredData[0]); highlightTableRow(safeGet(filteredData[0], 'Store', null)); } else { hideStoreDetails(); }
-                if (statusDiv) statusDiv.textContent = `Displaying ${filteredData.length} of ${rawData.length} rows based on filters.`;
+                if (statusDiv && !statusDiv.textContent.includes("Default filters loaded")) { // Avoid overwriting default load message
+                     statusDiv.textContent = `Displaying ${filteredData.length} of ${rawData.length} rows based on filters.`;
+                } else if (statusDiv && statusDiv.textContent.includes("Default filters loaded") && filteredData.length > 0) {
+                    // Keep the "Default filters loaded" part and add current row count.
+                     statusDiv.textContent = statusDiv.textContent.split('.')[0] + `. Displaying ${filteredData.length} of ${rawData.length} rows.`;
+                }
+
+
                 if (resultsArea) resultsArea.style.display = 'block'; 
                 if (exportCsvButton) exportCsvButton.disabled = filteredData.length === 0;
                 if (printReportButton) printReportButton.disabled = filteredData.length === 0;
                 
-                if (isFromModal) { 
+                if (isFromModalOrDefaults && filterModal && filterModal.classList.contains('active')) { 
                     closeFilterModal();
                 }
 
@@ -672,6 +843,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
          if (applyFiltersButtonModal) applyFiltersButtonModal.disabled = true;
          if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = true; 
+         if (saveDefaultFiltersBtn) saveDefaultFiltersBtn.disabled = true;
+         if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = true;
+
          const mainFilterBtn = document.getElementById('openFilterModalBtn');
          if (mainFilterBtn) mainFilterBtn.disabled = true;
 
@@ -721,10 +895,11 @@ document.addEventListener('DOMContentLoaded', () => {
          updateShareOptions(); 
          const mainFilterBtn = document.getElementById('openFilterModalBtn');
          if (mainFilterBtn) mainFilterBtn.disabled = true;
+         if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = localStorage.getItem(DEFAULT_FILTERS_STORAGE_KEY) === null;
          closeFilterModal(); 
      };
 
-    const handleResetFiltersClick = (isFromModal = false) => {
+    const handleResetFiltersClick = (isFromModal = false) => { // Renamed to clarify it's for the session
         [regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(sel => { 
             if (sel) sel.value = 'ALL'; 
         });
@@ -748,53 +923,39 @@ document.addEventListener('DOMContentLoaded', () => {
             if (storeDeselectAll) storeDeselectAll.disabled = true;
         }
 
-        if (resultsArea) resultsArea.style.display = 'none'; 
-        if (topBottomSection) topBottomSection.style.display = 'none';
-        if (mainChartInstance) { mainChartInstance.destroy(); mainChartInstance = null; }
-        
-        if (mapInstance && mapMarkersLayer?.clearLayers) {
-            mapMarkersLayer.clearLayers();
-            mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); 
-        } else if (mapInstance) { 
-            mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
-        }
-
-        if (mapViewContainer) mapViewContainer.style.display = 'none'; 
-        if (mapStatus) mapStatus.textContent = 'Enable via "Additional Tools" and apply filters to see map.';
-
-        if (attachRateTableBody) attachRateTableBody.innerHTML = '';
-        if (attachRateTableFooter) attachRateTableFooter.innerHTML = '';
-        if (attachTableStatus) attachTableStatus.textContent = '';
-        hideStoreDetails(); 
-        if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none';
-        if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
-        if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
-        if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
-        if (emailShareSection) emailShareSection.style.display = 'none';
-
-        filteredData = []; 
-        if (exportCsvButton) exportCsvButton.disabled = true;
-        if (printReportButton) printReportButton.disabled = true;
-        updateShareOptions();
+        // Don't hide results area immediately, let applyFilters handle it if no data.
+        // if (resultsArea) resultsArea.style.display = 'none'; 
+        // if (topBottomSection) topBottomSection.style.display = 'none';
+        // if (mainChartInstance) { mainChartInstance.destroy(); mainChartInstance = null; }
+        // ... and other UI resets related to displayed data should happen after applyFilters
 
         if (statusDiv) {
             if (rawData.length > 0) {
-                statusDiv.textContent = 'Filters reset. Click "Apply Filters" to see results.';
+                statusDiv.textContent = 'Session filters reset. Click "Apply Filters" to see all data or re-apply defaults by reloading the file.';
             } else {
                 statusDiv.textContent = 'No file selected. Load a file to use filters.';
             }
         }
+        // If "Reset Session Filters" is clicked from modal, it should apply to show all data (or re-apply defaults if any exist)
         if (isFromModal) {
-            applyFilters(true); 
+             applyFilters(true); // Re-apply to show unfiltered data or defaults if re-implemented here
         }
     };
 
+    // Event listeners for modal buttons
     if (applyFiltersButtonModal) {
         applyFiltersButtonModal.addEventListener('click', () => applyFilters(true)); 
     }
     if (resetFiltersButtonModal) {
         resetFiltersButtonModal.addEventListener('click', () => handleResetFiltersClick(true)); 
     }
+    if (saveDefaultFiltersBtn) {
+        saveDefaultFiltersBtn.addEventListener('click', saveDefaultFilters);
+    }
+    if (clearDefaultFiltersBtn) {
+        clearDefaultFiltersBtn.addEventListener('click', clearDefaultFilters);
+    }
+
 
     const updateSummary = (data) => {
         const totalCount = data.length;
@@ -970,7 +1131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!tableElement || !tableElement.sortConfig) return;
         const sortConfig = tableElement.sortConfig;
         tableElement.querySelectorAll('thead th.sortable .sort-arrow').forEach(arrow => {
-            arrow.className = 'sort-arrow'; // Reset arrows
+            arrow.className = 'sort-arrow'; 
             arrow.textContent = '';
         });
         const currentHeader = tableElement.querySelector(`thead th[data-sort="${CSS.escape(sortConfig.column)}"]`);
@@ -1021,8 +1182,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
             let numA, numB;
             if (sortConfig.column === valueKey) { 
-                numA = parsePercent(valA);
-                numB = parsePercent(valB);
+                numA = parsePercent(String(valA).replace('%','')); // Ensure % is handled if present
+                numB = parsePercent(String(valB).replace('%',''));
             } else if (sortConfig.column === 'Store' || sortConfig.column === 'Q2 Territory') {
                 valA = String(valA).toLowerCase();
                 valB = String(valB).toLowerCase();
@@ -1063,8 +1224,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
         updateFocusTableSortArrows(table);
     
-        // Ensure listener is attached only once or correctly replaced
-        const newThead = thead.cloneNode(true); // Clone to help remove old listeners
+        const newThead = thead.cloneNode(true); 
         thead.parentNode.replaceChild(newThead, thead);
         newThead.addEventListener('click', (event) => {
             const headerCell = event.target.closest('th');
@@ -1115,13 +1275,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } else { if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none'; }
     };
 
-    const handleSort = (event) => { // This is for the main Attach Rate table
+    const handleSort = (event) => { 
          const headerCell = event.target.closest('th'); if (!headerCell?.classList.contains('sortable')) return;
          const sortKey = headerCell.dataset.sort; if (!sortKey) return;
          if (currentSort.column === sortKey) { currentSort.ascending = !currentSort.ascending; } else { currentSort.column = sortKey; currentSort.ascending = true; }
          updateAttachRateTable(filteredData); 
     };
-    const updateSortArrows = () => { // For the main Attach Rate table
+    const updateSortArrows = () => { 
         if (!attachRateTable) return;
         attachRateTable.querySelectorAll('thead th.sortable .sort-arrow').forEach(arrow => { arrow.className = 'sort-arrow'; arrow.textContent = ''; });
         const currentHeaderArrow = attachRateTable.querySelector(`thead th[data-sort="${CSS.escape(currentSort.column)}"] .sort-arrow`);
