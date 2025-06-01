@@ -1,12 +1,12 @@
 //
-//    Timestamp: 2025-05-30T23:37:00EDT
-//    Summary: Implemented "Save/Load/Clear Default Filters" using localStorage and status messages.
+//    Timestamp: 2025-05-31T20:23:00EDT
+//    Summary: Implemented logic for showing and dismissing the data accuracy disclaimer banner with 30-day localStorage persistence.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
     const LIGHT_THEME_CLASS = 'light-theme';
     const THEME_STORAGE_KEY = 'themePreference';
-    const DEFAULT_FILTERS_STORAGE_KEY = 'fsmDashboardDefaultFilters_v1'; // Added versioning
+    const DEFAULT_FILTERS_STORAGE_KEY = 'fsmDashboardDefaultFilters_v1'; 
     const DARK_THEME_ICON = '🌙'; 
     const LIGHT_THEME_ICON = '☀️'; 
     const DARK_THEME_META_COLOR = '#2c2c2c';
@@ -31,6 +31,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveDefaultFiltersBtn = document.getElementById('saveDefaultFiltersBtn');
     const clearDefaultFiltersBtn = document.getElementById('clearDefaultFiltersBtn');
     const filterLoadingIndicatorModal = document.getElementById('filterLoadingIndicatorModal');
+
+    // --- Disclaimer Banner Elements ---
+    const dataAccuracyDisclaimer = document.getElementById('dataAccuracyDisclaimer');
+    const dismissDisclaimerBtn = document.getElementById('dismissDisclaimerBtn');
+    const DISCLAIMER_STORAGE_KEY = 'dataAccuracyDisclaimerDismissed_v1';
+    const DISCLAIMER_EXPIRY_DAYS = 30;
 
 
     // --- Configuration ---
@@ -166,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let mapMarkersLayer = null;
     let storeOptions = [];
     let allPossibleStores = [];
-    let currentSort = { column: 'Store', ascending: true }; // For main attach rate table
+    let currentSort = { column: 'Store', ascending: true }; 
     let selectedStoreRow = null;
 
     // --- "What's New" Modal Logic ---
@@ -283,6 +289,45 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     };
 
+    // --- Disclaimer Banner Logic ---
+    const checkAndShowDisclaimer = () => {
+        if (!dataAccuracyDisclaimer) return;
+        try {
+            const disclaimerStateJSON = localStorage.getItem(DISCLAIMER_STORAGE_KEY);
+            if (disclaimerStateJSON) {
+                const disclaimerState = JSON.parse(disclaimerStateJSON);
+                if (disclaimerState.expires && new Date().getTime() < disclaimerState.expires) {
+                    dataAccuracyDisclaimer.style.display = 'none'; // Still within 30-day dismissal period
+                    return;
+                }
+            }
+            // Show disclaimer if not dismissed or if expiry has passed
+            dataAccuracyDisclaimer.style.display = 'flex';
+        } catch (e) {
+            console.error("Error accessing disclaimer state from localStorage:", e);
+            dataAccuracyDisclaimer.style.display = 'flex'; // Show by default on error
+        }
+    };
+
+    const handleDismissDisclaimer = () => {
+        if (!dataAccuracyDisclaimer) return;
+        try {
+            const expiryDate = new Date();
+            expiryDate.setDate(expiryDate.getDate() + DISCLAIMER_EXPIRY_DAYS);
+            localStorage.setItem(DISCLAIMER_STORAGE_KEY, JSON.stringify({ expires: expiryDate.getTime() }));
+            dataAccuracyDisclaimer.style.display = 'none';
+        } catch (e) {
+            console.error("Error saving disclaimer state to localStorage:", e);
+            // Still hide it for the current session even if localStorage fails
+            dataAccuracyDisclaimer.style.display = 'none';
+        }
+    };
+
+    if (dismissDisclaimerBtn) {
+        dismissDisclaimerBtn.addEventListener('click', handleDismissDisclaimer);
+    }
+
+
     // --- Helper Functions ---
     const formatCurrency = (value) => isNaN(value) ? 'N/A' : CURRENCY_FORMAT.format(value);
     const formatPercent = (value) => isNaN(value) ? 'N/A' : PERCENT_FORMAT.format(value);
@@ -366,7 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isFiltering) {
             if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = isLoading;
             if (saveDefaultFiltersBtn) saveDefaultFiltersBtn.disabled = isLoading;
-            if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = isLoading;
+            if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = isLoading || localStorage.getItem(DEFAULT_FILTERS_STORAGE_KEY) === null;
             const mainFilterBtn = document.getElementById('openFilterModalBtn'); 
             if (mainFilterBtn) mainFilterBtn.disabled = isLoading;
         } else {
@@ -496,9 +541,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const mainFilterBtn = document.getElementById('openFilterModalBtn');
             if (mainFilterBtn) mainFilterBtn.disabled = false;
             
-            if (loadDefaultFilters()) { // Try to load and apply default filters
+            if (loadDefaultFilters()) { 
                 if (statusDiv) statusDiv.textContent += ` Loaded ${rawData.length} rows. Default filters applied.`;
-                applyFilters(false); // Apply loaded defaults, don't open modal from here
+                applyFilters(true); // Apply loaded defaults and close modal if open
             } else {
                 if (statusDiv) statusDiv.textContent = `Loaded ${rawData.length} rows. Filters opened automatically.`;
                 setTimeout(() => { openFilterModal(); }, 100); 
@@ -531,7 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (applyFiltersButtonModal) applyFiltersButtonModal.disabled = false;
         if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = false; 
         if (saveDefaultFiltersBtn) saveDefaultFiltersBtn.disabled = false;
-        if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = localStorage.getItem(DEFAULT_FILTERS_STORAGE_KEY) === null; // Enable only if defaults exist
+        if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = localStorage.getItem(DEFAULT_FILTERS_STORAGE_KEY) === null;
         
         addDependencyFilterListeners();
     };
@@ -563,7 +608,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             localStorage.setItem(DEFAULT_FILTERS_STORAGE_KEY, JSON.stringify(defaultFilters));
             if(statusDiv) statusDiv.textContent = "⭐ Default filters saved successfully!";
-            if(clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = false; // Enable clear button
+            if(clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = false; 
         } catch (e) {
             console.error("Error saving default filters to localStorage:", e);
             if(statusDiv) statusDiv.textContent = "Error saving default filters. Your browser might be blocking localStorage or it's full.";
@@ -605,17 +650,13 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (territoryFilter) {
                 territoryFilter.selectedIndex = -1;
             }
-
+            
+            // Temporarily store saved store selections
             if (storeFilter && defaults.stores) {
-                 // Store filter options will be updated by updateStoreFilterOptionsBasedOnHierarchy AFTER hierarchical filters are set.
-                 // So, we store the intended selections and apply them *after* updateStoreFilterOptionsBasedOnHierarchy.
-                 // For now, we can just ensure the store search is cleared if no defaults.
-                 storeFilter.savedDefaults = defaults.stores; // Temporary store
+                 storeFilter.savedDefaults = defaults.stores; 
             } else if (storeFilter) {
-                 storeFilter.selectedIndex = -1;
                  delete storeFilter.savedDefaults;
             }
-
 
             FLAG_HEADERS.forEach(header => {
                 if (flagFiltersCheckboxes[header] && defaults.flags && typeof defaults.flags[header] === 'boolean') {
@@ -631,12 +672,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (focusVpmrFilter && typeof defaults.additionalTools.vpmr === 'boolean') focusVpmrFilter.checked = defaults.additionalTools.vpmr;
             }
             
-            updateStoreFilterOptionsBasedOnHierarchy(); // IMPORTANT: Update store options based on loaded hierarchical filters
+            updateStoreFilterOptionsBasedOnHierarchy(); 
 
-            // Now apply saved store selections if they exist and are valid for the updated store list
+            // Apply saved store selections after store options are updated
             if (storeFilter && storeFilter.savedDefaults) {
                 let foundStoreCount = 0;
-                const availableStores = Array.from(storeFilter.options).map(opt => opt.value);
+                // Deselect all first to ensure clean application of defaults
+                Array.from(storeFilter.options).forEach(opt => opt.selected = false);
+
                 storeFilter.savedDefaults.forEach(savedStore => {
                     const option = Array.from(storeFilter.options).find(opt => opt.value === savedStore);
                     if (option) {
@@ -647,7 +690,9 @@ document.addEventListener('DOMContentLoaded', () => {
                  if (foundStoreCount < storeFilter.savedDefaults.length && storeFilter.savedDefaults.length > 0) {
                     partialLoadMessage += ` Some saved stores not found in current file.`;
                 }
-                delete storeFilter.savedDefaults; // Clean up temporary storage
+                delete storeFilter.savedDefaults; 
+            } else if (storeFilter) {
+                 storeFilter.selectedIndex = -1; // Deselect if no saved stores
             }
 
 
@@ -658,7 +703,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             console.error("Error loading default filters from localStorage:", e);
             if (statusDiv) statusDiv.textContent = "Error loading default filters. They might be corrupted.";
-            localStorage.removeItem(DEFAULT_FILTERS_STORAGE_KEY); // Clear corrupted data
+            localStorage.removeItem(DEFAULT_FILTERS_STORAGE_KEY); 
             if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = true;
             return false;
         }
@@ -669,9 +714,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             localStorage.removeItem(DEFAULT_FILTERS_STORAGE_KEY);
             if(statusDiv) statusDiv.textContent = "🗑️ Default filters cleared.";
-            if(clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = true; // Disable clear button as there are no defaults
-            // Optionally, reset current filters to 'ALL' or prompt user
-            // handleResetFiltersClick(false); // Uncomment to also reset session filters
+            if(clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = true; 
         } catch (e) {
             console.error("Error clearing default filters from localStorage:", e);
             if(statusDiv) statusDiv.textContent = "Error clearing default filters.";
@@ -700,9 +743,9 @@ document.addEventListener('DOMContentLoaded', () => {
         storeOptions = Array.from(validStoreNames).sort().map(s => ({ value: s, text: s }));
         const previouslySelectedStores = storeFilter ? new Set(Array.from(storeFilter.selectedOptions).map(opt => opt.value)) : new Set();
         
-        const currentSearchTerm = storeSearch?.value || ''; // Preserve search term
-        setStoreFilterOptions(storeOptions, storeFilter ? storeFilter.disabled : true); // Pass current disabled state
-        filterStoreOptions(); // This will re-apply the search term
+        const currentSearchTerm = storeSearch?.value || ''; 
+        setStoreFilterOptions(storeOptions, storeFilter ? storeFilter.disabled : true); 
+        filterStoreOptions(); 
 
         if (storeFilter) { 
             Array.from(storeFilter.options).forEach(option => { 
@@ -711,7 +754,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 } 
             }); 
             if (storeFilter.selectedOptions.length === 0 && previouslySelectedStores.size > 0) {
-                 // If previously selected stores are no longer valid options, they won't be selected.
             } else if (storeFilter.selectedOptions.length === 0) {
                 storeFilter.selectedIndex = -1;
             }
@@ -788,11 +830,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateShareOptions(); 
 
                 if (filteredData.length === 1) { showStoreDetails(filteredData[0]); highlightTableRow(safeGet(filteredData[0], 'Store', null)); } else { hideStoreDetails(); }
-                if (statusDiv && !statusDiv.textContent.includes("Default filters loaded")) { // Avoid overwriting default load message
+                if (statusDiv && !statusDiv.textContent.includes("Default filters loaded")) { 
                      statusDiv.textContent = `Displaying ${filteredData.length} of ${rawData.length} rows based on filters.`;
-                } else if (statusDiv && statusDiv.textContent.includes("Default filters loaded") && filteredData.length > 0) {
-                    // Keep the "Default filters loaded" part and add current row count.
+                } else if (statusDiv && statusDiv.textContent.includes("Default filters loaded") && rawData.length > 0) {
                      statusDiv.textContent = statusDiv.textContent.split('.')[0] + `. Displaying ${filteredData.length} of ${rawData.length} rows.`;
+                } else if (statusDiv && rawData.length === 0) {
+                    statusDiv.textContent = 'No data to display.';
                 }
 
 
@@ -899,7 +942,7 @@ document.addEventListener('DOMContentLoaded', () => {
          closeFilterModal(); 
      };
 
-    const handleResetFiltersClick = (isFromModal = false) => { // Renamed to clarify it's for the session
+    const handleResetFiltersClick = (isFromModal = false) => { 
         [regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(sel => { 
             if (sel) sel.value = 'ALL'; 
         });
@@ -922,27 +965,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (storeSelectAll) storeSelectAll.disabled = true;
             if (storeDeselectAll) storeDeselectAll.disabled = true;
         }
-
-        // Don't hide results area immediately, let applyFilters handle it if no data.
-        // if (resultsArea) resultsArea.style.display = 'none'; 
-        // if (topBottomSection) topBottomSection.style.display = 'none';
-        // if (mainChartInstance) { mainChartInstance.destroy(); mainChartInstance = null; }
-        // ... and other UI resets related to displayed data should happen after applyFilters
-
+        
         if (statusDiv) {
             if (rawData.length > 0) {
-                statusDiv.textContent = 'Session filters reset. Click "Apply Filters" to see all data or re-apply defaults by reloading the file.';
+                statusDiv.textContent = 'Session filters reset. Click "Apply Filters" to see results, or reload file to use defaults.';
             } else {
                 statusDiv.textContent = 'No file selected. Load a file to use filters.';
             }
         }
-        // If "Reset Session Filters" is clicked from modal, it should apply to show all data (or re-apply defaults if any exist)
         if (isFromModal) {
-             applyFilters(true); // Re-apply to show unfiltered data or defaults if re-implemented here
+             applyFilters(true); 
         }
     };
 
-    // Event listeners for modal buttons
     if (applyFiltersButtonModal) {
         applyFiltersButtonModal.addEventListener('click', () => applyFilters(true)); 
     }
@@ -1182,7 +1217,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
             let numA, numB;
             if (sortConfig.column === valueKey) { 
-                numA = parsePercent(String(valA).replace('%','')); // Ensure % is handled if present
+                numA = parsePercent(String(valA).replace('%',''));
                 numB = parsePercent(String(valB).replace('%',''));
             } else if (sortConfig.column === 'Store' || sortConfig.column === 'Q2 Territory') {
                 valA = String(valA).toLowerCase();
@@ -1491,5 +1526,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!mainChartCanvas) console.warn("Main chart canvas context not found on load. Chart will not render.");
     updateShareOptions(); 
     checkAndShowWhatsNew(); 
+    checkAndShowDisclaimer(); // Call to show disclaimer on page load
 
 });
