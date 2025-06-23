@@ -25,7 +25,7 @@
                 <li><strong>Favorite Filters (Save Defaults):</strong> You can now save your current filter setup as your default!
                     <ul>
                         <li>Click the '⭐ Save Defaults' button in the filter modal to remember your preferred settings.</li>
-                        <li>These defaults will automatically apply the next time you upload a file, making it quicker to get to your usual analysis!</li>
+                        <li>These defaults will automatically apply the next time you load a file, making it quicker to get to your usual analysis!</li>
                         <li>Use the '🗑️ Clear Defaults' button to remove your saved preferences. This feature uses your browser's local storage.</li>
                     </ul>
                 </li>
@@ -351,6 +351,12 @@
         </div>
 
     </div>
+
+    <div id="dataAccuracyDisclaimer" class="disclaimer-banner" style="display: none;">
+        <p><strong>Quick Note on Metrics:</strong> When multiple locations are selected, some metrics (like 'Retail Mode Connectivity') are averaged with equal weighting per store. This may differ from Tableau, which can use weighted averages, such as total demo devices or amount of Elite users. This dashboard provides a direct, unweighted average based on the available store data.</p>
+        <button id="dismissDisclaimerBtn" class="button-secondary">Okay, got it! (Hide for 30 days)</button>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@latest/dist/chart.umd.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
