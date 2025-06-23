@@ -1,7 +1,8 @@
+
 {
-  "name": "FSM Excel Data Dashboard BETA",
-  "short_name": "FSM Dash BETA",
-  "description": "Analyze and visualize Excel spreadsheet data for FSMs. :)",
+  "name": "FSM Excel Data Dashboard 2.0",
+  "short_name": "FSM Dash 2.0",
+  "description": "Analyze and visualize Excel spreadsheet data for FSMs. No data actually uploaded to server, all used via cookies on personal device. :)",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#f3f2f2",
@@ -15,3 +16,4 @@
     }
   ]
 }
+
