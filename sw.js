@@ -1,17 +1,19 @@
 // sw.js - Basic Caching Service Worker
-// Timestamp: 2025-06-28T10:25:44EDT
-// Summary: Added 'closed-beta.html' to the cache list for offline access.
+// Timestamp: 2025-06-28T10:45:47EDT
+// Summary: Added new beta-specific files to the cache list for offline access.
 
 const CACHE_NAME = 'fsm-dashboard-cache-v1'; // Keep or update cache name as needed
 // List of files to cache immediately upon installation (Relative Paths)
 const urlsToCache = [
   '.',             // Represents index.html
   'index.html',
-  'closed-beta.html', // Added new page to cache!
   'style.css',
   'script.js',
   'manifest.json',
   'icons/icon.svg',
+  'closed-beta.html',
+  'style-beta.css',
+  'script-beta.js',
   // External libraries
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
   'https://cdn.jsdelivr.net/npm/chart.js@latest/dist/chart.umd.js',
