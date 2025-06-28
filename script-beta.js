@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-06-28T10:59:15EDT
-//    Summary: Implemented a password gate for accessing the dashboard content.
+//    Timestamp: 2025-06-28T12:21:23EDT
+//    Summary: Added .trim() to the password check to handle leading/trailing whitespace.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Password Gate Elements & Logic ---
@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordForm = document.getElementById('passwordForm');
 
     const handleAccessAttempt = () => {
-        if (passwordInput.value === PASSWORD) {
+        if (passwordInput.value.trim() === PASSWORD) {
             if (passwordForm) passwordForm.style.display = 'none';
             if (dashboardContent) dashboardContent.style.display = 'block';
             if (passwordMessage) passwordMessage.textContent = '';
