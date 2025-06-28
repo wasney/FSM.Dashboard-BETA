@@ -1,12 +1,13 @@
 // sw.js - Basic Caching Service Worker
-// Timestamp: 2025-05-24T15:10:00EDT
-// Summary: Added Geographic Map View (Leaflet.js) and minor UI consistency improvements.
+// Timestamp: 2025-06-28T10:25:44EDT
+// Summary: Added 'closed-beta.html' to the cache list for offline access.
 
 const CACHE_NAME = 'fsm-dashboard-cache-v1'; // Keep or update cache name as needed
 // List of files to cache immediately upon installation (Relative Paths)
 const urlsToCache = [
   '.',             // Represents index.html
   'index.html',
+  'closed-beta.html', // Added new page to cache!
   'style.css',
   'script.js',
   'manifest.json',
