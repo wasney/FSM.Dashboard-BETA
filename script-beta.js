@@ -1,8 +1,37 @@
 //
-//    Timestamp: 2025-06-28T10:41:40EDT
-//    Summary: Created a beta-specific JS file copied from the stable version.
+//    Timestamp: 2025-06-28T10:59:15EDT
+//    Summary: Implemented a password gate for accessing the dashboard content.
 //
 document.addEventListener('DOMContentLoaded', () => {
+    // --- Password Gate Elements & Logic ---
+    const PASSWORD = 'ClosedBeta25';
+    const passwordInput = document.getElementById('passwordInput');
+    const accessBtn = document.getElementById('accessBtn');
+    const passwordMessage = document.getElementById('passwordMessage');
+    const dashboardContent = document.getElementById('dashboardContent');
+    const passwordForm = document.getElementById('passwordForm');
+
+    const handleAccessAttempt = () => {
+        if (passwordInput.value === PASSWORD) {
+            if (passwordForm) passwordForm.style.display = 'none';
+            if (dashboardContent) dashboardContent.style.display = 'block';
+            if (passwordMessage) passwordMessage.textContent = '';
+        } else {
+            if (passwordMessage) passwordMessage.textContent = 'Incorrect password. Please try again.';
+        }
+    };
+
+    if (accessBtn) {
+        accessBtn.addEventListener('click', handleAccessAttempt);
+    }
+    if (passwordInput) {
+        passwordInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                handleAccessAttempt();
+            }
+        });
+    }
+
     // --- Theme Constants and Elements ---
     const LIGHT_THEME_CLASS = 'light-theme';
     const THEME_STORAGE_KEY = 'themePreference';
