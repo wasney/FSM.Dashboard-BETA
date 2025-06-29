@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-06-29T01:01:38EDT
-//    Summary: Implemented a password persistence mechanism using a cookie so users only need to enter the password once.
+//    Timestamp: 2025-06-29T15:04:16EDT
+//    Summary: Implemented a dynamic global search filter that updates all filter dropdown options.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Password Gate Elements & Logic ---
@@ -112,6 +112,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusDiv = document.getElementById('status');
     const loadingIndicator = document.getElementById('loadingIndicator');
     const resultsArea = document.getElementById('resultsArea');
+    
+    const globalSearchFilter = document.getElementById('globalSearchFilter'); // New global search field
+    const filterSelects = ['regionFilter', 'districtFilter', 'territoryFilter', 'fsmFilter', 'channelFilter', 'subchannelFilter', 'dealerFilter'];
     
     const regionFilter = document.getElementById('regionFilter');
     const districtFilter = document.getElementById('districtFilter');
@@ -594,9 +597,74 @@ document.addEventListener('DOMContentLoaded', () => {
             if (excelFileInput) excelFileInput.value = ''; 
         }
     };
+
+    const updateFilterOptions = () => {
+        if (rawData.length === 0) return;
+
+        // 1. Get current selections to restore later
+        const currentSelections = {};
+        filterSelects.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.multiple) {
+                currentSelections[id] = Array.from(el.selectedOptions).map(opt => opt.value);
+            } else if (el) {
+                currentSelections[id] = el.value;
+            }
+        });
+
+        // 2. Filter rawData based on the global search term
+        const searchTerm = globalSearchFilter?.value.toLowerCase().trim();
+        let globallyFilteredData = rawData;
+        if (searchTerm) {
+            globallyFilteredData = rawData.filter(row => {
+                const searchFields = ['Store', 'FSM NAME', 'ADDRESS1', 'CITY'];
+                return searchFields.some(field => {
+                    const value = safeGet(row, field, '').toLowerCase();
+                    return value.includes(searchTerm);
+                });
+            });
+        }
+        
+        // 3. Update all dropdown options
+        setOptions(regionFilter, getUniqueValues(globallyFilteredData, 'REGION'));
+        setOptions(districtFilter, getUniqueValues(globallyFilteredData, 'DISTRICT'));
+        setMultiSelectOptions(territoryFilter, getUniqueValues(globallyFilteredData, 'Q2 Territory').slice(1));
+        setOptions(fsmFilter, getUniqueValues(globallyFilteredData, 'FSM NAME'));
+        setOptions(channelFilter, getUniqueValues(globallyFilteredData, 'CHANNEL'));
+        setOptions(subchannelFilter, getUniqueValues(globallyFilteredData, 'SUB_CHANNEL'));
+        setOptions(dealerFilter, getUniqueValues(globallyFilteredData, 'DEALER_NAME'));
+        
+        // Update store filter options based on hierarchy and global search
+        updateStoreFilterOptionsBasedOnHierarchy();
+
+        // 4. Restore selections for all dropdowns (except store, which is handled separately)
+        filterSelects.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && currentSelections[id]) {
+                if (el.multiple) {
+                    Array.from(el.options).forEach(option => {
+                        if (currentSelections[id].includes(option.value)) {
+                            option.selected = true;
+                        }
+                    });
+                } else {
+                    el.value = currentSelections[id];
+                }
+            }
+        });
+        
+        // Disable/enable controls based on data
+        if (globalSearchFilter) globalSearchFilter.disabled = rawData.length === 0;
+        if (storeSearch) storeSearch.disabled = rawData.length === 0;
+        if (territorySelectAll) territorySelectAll.disabled = rawData.length === 0;
+        if (territoryDeselectAll) territoryDeselectAll.disabled = rawData.length === 0;
+        if (storeSelectAll) storeSelectAll.disabled = storeOptions.length === 0;
+        if (storeDeselectAll) storeDeselectAll.disabled = storeOptions.length === 0;
+    };
+    
+    // This function is now responsible for populating filters on file load
     const populateFilters = (data) => {
-        setOptions(regionFilter, getUniqueValues(data, 'REGION')); setOptions(districtFilter, getUniqueValues(data, 'DISTRICT')); setMultiSelectOptions(territoryFilter, getUniqueValues(data, 'Q2 Territory').slice(1));
-        setOptions(fsmFilter, getUniqueValues(data, 'FSM NAME')); setOptions(channelFilter, getUniqueValues(data, 'CHANNEL')); setOptions(subchannelFilter, getUniqueValues(data, 'SUB_CHANNEL')); setOptions(dealerFilter, getUniqueValues(data, 'DEALER_NAME'));
+        updateFilterOptions(); // Use the new function to populate all dropdowns initially
         Object.values(flagFiltersCheckboxes).forEach(input => { if(input) input.disabled = false; });
         
         if(showMapViewFilter) showMapViewFilter.disabled = false;
@@ -605,11 +673,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if(focusRepSkillFilter) focusRepSkillFilter.disabled = false;
         if(focusVpmrFilter) focusVpmrFilter.disabled = false;
 
-        storeOptions = [...allPossibleStores]; setStoreFilterOptions(storeOptions, false);
-        if (territorySelectAll) territorySelectAll.disabled = false; if (territoryDeselectAll) territoryDeselectAll.disabled = false;
-        if (storeSelectAll) storeSelectAll.disabled = false; if (storeDeselectAll) storeDeselectAll.disabled = false;
-        if (storeSearch) storeSearch.disabled = false; 
-        
         if (applyFiltersButtonModal) applyFiltersButtonModal.disabled = false;
         if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = false; 
         if (saveDefaultFiltersBtn) saveDefaultFiltersBtn.disabled = false;
@@ -759,10 +822,19 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const addDependencyFilterListeners = () => {
-        const handler = updateStoreFilterOptionsBasedOnHierarchy; const filtersToListen = [regionFilter, districtFilter, territoryFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter];
-        filtersToListen.forEach(filter => { if (filter) { filter.removeEventListener('change', handler); filter.addEventListener('change', handler); } });
-        Object.values(flagFiltersCheckboxes).forEach(input => { if (input) { input.removeEventListener('change', handler); input.addEventListener('change', handler); } });
+        const handler = updateFilterOptions; // Now all filters trigger the same update function
+        [globalSearchFilter, regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(filter => {
+            if (filter) { 
+                filter.removeEventListener('change', handler); 
+                filter.removeEventListener('input', handler); 
+                filter.addEventListener('input', handler); 
+            } 
+        });
+        // Special case for multi-selects and checkboxes
+        if (territoryFilter) territoryFilter.addEventListener('change', updateFilterOptions);
+        Object.values(flagFiltersCheckboxes).forEach(input => { if (input) input.addEventListener('change', updateFilterOptions); });
     };
+
     const updateStoreFilterOptionsBasedOnHierarchy = () => {
         if (rawData.length === 0) return;
         const selectedRegion = regionFilter?.value; const selectedDistrict = districtFilter?.value; const selectedTerritories = territoryFilter ? Array.from(territoryFilter.selectedOptions).map(opt => opt.value) : [];
@@ -928,15 +1000,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
          const mainFilterBtn = document.getElementById('openFilterModalBtn');
          if (mainFilterBtn) mainFilterBtn.disabled = true;
+         if (globalSearchFilter) globalSearchFilter.disabled = true; // Disable global search on UI reset
 
          if (territorySelectAll) territorySelectAll.disabled = true; if (territoryDeselectAll) territoryDeselectAll.disabled = true;
          if (storeSelectAll) storeSelectAll.disabled = true; if (storeDeselectAll) storeDeselectAll.disabled = true;
          if (exportCsvButton) exportCsvButton.disabled = true;
          if (printReportButton) printReportButton.disabled = true;
          if (emailShareSection) emailShareSection.style.display = 'none';
-         const handler = updateStoreFilterOptionsBasedOnHierarchy;
-         [regionFilter, districtFilter, territoryFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(filter => { if (filter) filter.removeEventListener('change', handler); });
+         const handler = updateFilterOptions;
+         [regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(filter => { if (filter) filter.removeEventListener('change', handler); });
          Object.values(flagFiltersCheckboxes).forEach(input => { if (input) input.removeEventListener('change', handler); });
+         if (globalSearchFilter) globalSearchFilter.removeEventListener('input', handler);
     };
 
      const resetUI = () => {
@@ -980,8 +1054,11 @@ document.addEventListener('DOMContentLoaded', () => {
      };
 
     const handleResetFiltersClick = (isFromModal = false) => { 
-        [regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(sel => { 
-            if (sel) sel.value = 'ALL'; 
+        [globalSearchFilter, regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(sel => { 
+            if (sel) {
+                if (sel.type === 'text') sel.value = '';
+                else sel.value = 'ALL'; 
+            }
         });
         if (territoryFilter) territoryFilter.selectedIndex = -1;
         if (storeFilter) storeFilter.selectedIndex = -1; 
@@ -995,7 +1072,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(focusVpmrFilter) focusVpmrFilter.checked = false;
 
         if (rawData.length > 0) {
-            updateStoreFilterOptionsBasedOnHierarchy(); 
+            updateFilterOptions();
         } else {
             if (storeFilter) { storeFilter.innerHTML = '<option value="ALL">-- Load File First --</option>'; storeFilter.disabled = true; }
             if (storeSearch) storeSearch.disabled = true;
@@ -1507,6 +1584,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const getFilterSummary = () => {
         let summary = [];
+        if (globalSearchFilter?.value) summary.push(`Search: "${globalSearchFilter.value}"`);
         if (regionFilter?.value !== 'ALL') summary.push(`Region: ${regionFilter.value}`); if (districtFilter?.value !== 'ALL') summary.push(`District: ${districtFilter.value}`);
         const territories = territoryFilter ? Array.from(territoryFilter.selectedOptions).map(o => o.value) : []; if (territories.length > 0) summary.push(`Territories: ${territories.length === 1 ? territories[0] : `${territories.length} selected`}`);
         if (fsmFilter?.value !== 'ALL') summary.push(`FSM: ${fsmFilter.value}`); if (channelFilter?.value !== 'ALL') summary.push(`Channel: ${channelFilter.value}`);
@@ -1554,6 +1632,12 @@ document.addEventListener('DOMContentLoaded', () => {
     storeSelectAll?.addEventListener('click', () => selectAllOptions(storeFilter));
     storeDeselectAll?.addEventListener('click', () => deselectAllOptions(storeFilter));
     attachRateTable?.querySelector('thead')?.addEventListener('click', handleSort);
+    // New listener for the global search filter
+    if (globalSearchFilter) globalSearchFilter.addEventListener('input', () => {
+        updateFilterOptions();
+        applyFilters();
+    });
+
 
     // --- Initial Setup ---
     const savedTheme = localStorage.getItem(THEME_STORAGE_KEY); 
