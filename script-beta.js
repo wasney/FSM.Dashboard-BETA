@@ -1,21 +1,29 @@
 //
-//    Timestamp: 2025-06-28T12:21:23EDT
-//    Summary: Added .trim() to the password check to handle leading/trailing whitespace.
+//    Timestamp: 2025-06-29T01:01:38EDT
+//    Summary: Implemented a password persistence mechanism using a cookie so users only need to enter the password once.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Password Gate Elements & Logic ---
     const PASSWORD = 'ClosedBeta25';
+    const BETA_ACCESS_COOKIE = 'betaAccessGranted';
+    const BETA_ACCESS_EXPIRY_DAYS = 30;
     const passwordInput = document.getElementById('passwordInput');
     const accessBtn = document.getElementById('accessBtn');
     const passwordMessage = document.getElementById('passwordMessage');
     const dashboardContent = document.getElementById('dashboardContent');
     const passwordForm = document.getElementById('passwordForm');
 
+    // Function to unlock the dashboard and save access via a cookie.
+    const grantAccess = () => {
+        if (passwordForm) passwordForm.style.display = 'none';
+        if (dashboardContent) dashboardContent.style.display = 'block';
+        if (passwordMessage) passwordMessage.textContent = '';
+        setCookie(BETA_ACCESS_COOKIE, 'true', BETA_ACCESS_EXPIRY_DAYS);
+    };
+
     const handleAccessAttempt = () => {
         if (passwordInput.value.trim() === PASSWORD) {
-            if (passwordForm) passwordForm.style.display = 'none';
-            if (dashboardContent) dashboardContent.style.display = 'block';
-            if (passwordMessage) passwordMessage.textContent = '';
+            grantAccess();
         } else {
             if (passwordMessage) passwordMessage.textContent = 'Incorrect password. Please try again.';
         }
@@ -1557,4 +1565,12 @@ document.addEventListener('DOMContentLoaded', () => {
     checkAndShowWhatsNew(); 
     checkAndShowDisclaimer(); // Call to show disclaimer on page load
 
+    // --- Check for password cookie on load and unlock if present ---
+    const checkAndUnlockOnLoad = () => {
+        if (getCookie(BETA_ACCESS_COOKIE) === 'true') {
+            console.log("Password cookie found. Unlocking dashboard.");
+            grantAccess();
+        }
+    };
+    checkAndUnlockOnLoad(); // Execute this check when the script loads
 });
