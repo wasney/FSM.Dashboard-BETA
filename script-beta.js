@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-06-29T15:04:16EDT
-//    Summary: Implemented a dynamic global search filter that updates all filter dropdown options.
+//    Timestamp: 2025-06-29T15:38:09EDT
+//    Summary: Fixed TypeError by converting all search values to a string before applying toLowerCase().
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Password Gate Elements & Logic ---
@@ -603,7 +603,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 1. Get current selections to restore later
         const currentSelections = {};
-        filterSelects.forEach(id => {
+        const allFilterIds = filterSelects.concat(['storeFilter']);
+        allFilterIds.forEach(id => {
             const el = document.getElementById(id);
             if (el && el.multiple) {
                 currentSelections[id] = Array.from(el.selectedOptions).map(opt => opt.value);
@@ -611,7 +612,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentSelections[id] = el.value;
             }
         });
-
+        
         // 2. Filter rawData based on the global search term
         const searchTerm = globalSearchFilter?.value.toLowerCase().trim();
         let globallyFilteredData = rawData;
@@ -619,13 +620,14 @@ document.addEventListener('DOMContentLoaded', () => {
             globallyFilteredData = rawData.filter(row => {
                 const searchFields = ['Store', 'FSM NAME', 'ADDRESS1', 'CITY'];
                 return searchFields.some(field => {
-                    const value = safeGet(row, field, '').toLowerCase();
+                    // FIX: Convert value to string before calling toLowerCase()
+                    const value = String(safeGet(row, field, '')).toLowerCase();
                     return value.includes(searchTerm);
                 });
             });
         }
         
-        // 3. Update all dropdown options
+        // 3. Update all dropdown options based on the filtered data
         setOptions(regionFilter, getUniqueValues(globallyFilteredData, 'REGION'));
         setOptions(districtFilter, getUniqueValues(globallyFilteredData, 'DISTRICT'));
         setMultiSelectOptions(territoryFilter, getUniqueValues(globallyFilteredData, 'Q2 Territory').slice(1));
@@ -634,11 +636,15 @@ document.addEventListener('DOMContentLoaded', () => {
         setOptions(subchannelFilter, getUniqueValues(globallyFilteredData, 'SUB_CHANNEL'));
         setOptions(dealerFilter, getUniqueValues(globallyFilteredData, 'DEALER_NAME'));
         
-        // Update store filter options based on hierarchy and global search
-        updateStoreFilterOptionsBasedOnHierarchy();
+        // The store filter is now also updated based on this globally filtered data
+        const validStoreNames = new Set(globallyFilteredData.map(row => safeGet(row, 'Store', null)).filter(s => s && String(s).trim() !== ''));
+        storeOptions = Array.from(validStoreNames).sort().map(s => ({ value: s, text: s }));
+        
+        setStoreFilterOptions(storeOptions, false);
+        filterStoreOptions(); // Apply local store search if any
 
-        // 4. Restore selections for all dropdowns (except store, which is handled separately)
-        filterSelects.forEach(id => {
+        // 4. Restore selections for all dropdowns (including store)
+        allFilterIds.forEach(id => {
             const el = document.getElementById(id);
             if (el && currentSelections[id]) {
                 if (el.multiple) {
@@ -653,7 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        // Disable/enable controls based on data
+        // Re-enable filter controls based on data
         if (globalSearchFilter) globalSearchFilter.disabled = rawData.length === 0;
         if (storeSearch) storeSearch.disabled = rawData.length === 0;
         if (territorySelectAll) territorySelectAll.disabled = rawData.length === 0;
@@ -822,17 +828,19 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const addDependencyFilterListeners = () => {
-        const handler = updateFilterOptions; // Now all filters trigger the same update function
-        [globalSearchFilter, regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(filter => {
-            if (filter) { 
+        // Old listener is removed because updateFilterOptions now does the job.
+        // I will add the global search filter to the list of elements that trigger the filter update.
+        const handler = updateFilterOptions;
+        if (globalSearchFilter) globalSearchFilter.addEventListener('input', handler);
+        const filtersToListen = [regionFilter, districtFilter, territoryFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter, storeSearch];
+        filtersToListen.forEach(filter => {
+            if (filter) {
+                // Ensure no duplicate listeners are added
                 filter.removeEventListener('change', handler); 
-                filter.removeEventListener('input', handler); 
-                filter.addEventListener('input', handler); 
-            } 
+                filter.addEventListener('change', handler); 
+            }
         });
-        // Special case for multi-selects and checkboxes
-        if (territoryFilter) territoryFilter.addEventListener('change', updateFilterOptions);
-        Object.values(flagFiltersCheckboxes).forEach(input => { if (input) input.addEventListener('change', updateFilterOptions); });
+        Object.values(flagFiltersCheckboxes).forEach(input => { if (input) input.addEventListener('change', handler); });
     };
 
     const updateStoreFilterOptionsBasedOnHierarchy = () => {
@@ -914,11 +922,26 @@ document.addEventListener('DOMContentLoaded', () => {
         
         setTimeout(() => {
             try {
+                // Get the global search term
+                const searchTerm = globalSearchFilter?.value.toLowerCase().trim();
+                let filteredFromSearch = rawData;
+                if (searchTerm) {
+                    filteredFromSearch = rawData.filter(row => {
+                        const searchFields = ['Store', 'FSM NAME', 'ADDRESS1', 'CITY'];
+                        return searchFields.some(field => {
+                            const value = String(safeGet(row, field, '')).toLowerCase();
+                            return value.includes(searchTerm);
+                        });
+                    });
+                }
+                
+                // Now apply the rest of the filters on top of the search results
                 const selectedRegion = regionFilter?.value; const selectedDistrict = districtFilter?.value; const selectedTerritories = territoryFilter ? Array.from(territoryFilter.selectedOptions).map(opt => opt.value) : [];
                 const selectedFsm = fsmFilter?.value; const selectedChannel = channelFilter?.value; const selectedSubchannel = subchannelFilter?.value; const selectedDealer = dealerFilter?.value;
                 const selectedStores = storeFilter ? Array.from(storeFilter.selectedOptions).map(opt => opt.value) : [];
                 const selectedFlags = {}; Object.entries(flagFiltersCheckboxes).forEach(([key, input]) => { if (input?.checked) { selectedFlags[key] = true; } });
-                filteredData = rawData.filter(row => {
+                
+                filteredData = filteredFromSearch.filter(row => {
                     if (selectedRegion !== 'ALL' && safeGet(row, 'REGION', null) !== selectedRegion) return false; if (selectedDistrict !== 'ALL' && safeGet(row, 'DISTRICT', null) !== selectedDistrict) return false;
                     if (selectedTerritories.length > 0 && !selectedTerritories.includes(safeGet(row, 'Q2 Territory', null))) return false; if (selectedFsm !== 'ALL' && safeGet(row, 'FSM NAME', null) !== selectedFsm) return false;
                     if (selectedChannel !== 'ALL' && safeGet(row, 'CHANNEL', null) !== selectedChannel) return false; if (selectedSubchannel !== 'ALL' && safeGet(row, 'SUB_CHANNEL', null) !== selectedSubchannel) return false;
@@ -926,6 +949,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     for (const flag in selectedFlags) { const flagValue = safeGet(row, flag, 'NO'); if (!(flagValue === true || String(flagValue).toUpperCase() === 'YES' || String(flagValue) === 'Y' || flagValue === 1 || String(flagValue) === '1')) { return false; } }
                     return true;
                 });
+                
                 updateSummary(filteredData); updateTopBottomTables(filteredData); updateCharts(filteredData); updateAttachRateTable(filteredData); 
                 
                 if (showMapViewFilter && showMapViewFilter.checked) {
