@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-06-30T23:28:40EDT
-//    Summary: Implemented functionality to load a second worksheet tab and added a conditional UI for the new Unified Connectivity Report feature.
+//    Timestamp: 2025-06-30T23:34:02EDT
+//    Summary: Moved resetUI and resetFiltersForFullUIReset function definitions to a higher scope to fix a ReferenceError.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Password Gate Elements & Logic ---
@@ -1203,6 +1203,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const vpmrOpps = baseData.filter(row => { const vpmrVal = parsePercent(safeGet(row, '(V)PMR Ach', null)); return isValidNumericForFocus(safeGet(row, '(V)PMR Ach', null)) && vpmrVal < 1.0; });
             populateFocusPointTable('vpmrOpportunitiesTable', vpmrOpportunitiesSection, vpmrOpps, '(V)PMR Ach', '(V)PMR Ach %');
         } else { if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none'; }
+        
+        // Show/hide Unified Connectivity Report section
+        if (unifiedConnectivityReportSection) {
+            if (showConnectivityReportFilter?.checked && connectivityData && connectivityData.length > 0) {
+                unifiedConnectivityReportSection.style.display = 'block';
+                renderConnectivityTable(baseData);
+            } else {
+                unifiedConnectivityReportSection.style.display = 'none';
+            }
+        }
     };
 
     const handleSort = (event) => { 
@@ -1403,11 +1413,102 @@ document.addEventListener('DOMContentLoaded', () => {
          if (!selectElement) return; selectElement.selectedIndex = -1;
          if (selectElement === territoryFilter) updateStoreFilterOptionsBasedOnHierarchy();
     };
+    
+    // --- Reset Functions (Moved to top for hoisting) ---
+    const resetFiltersForFullUIReset = () => {
+         const allOptionHTML = '<option value="ALL">-- Load File First --</option>';
+         [regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(sel => { 
+             if (sel) { sel.innerHTML = allOptionHTML; sel.value = 'ALL'; sel.disabled = true;}
+         });
+         if (territoryFilter) { territoryFilter.innerHTML = '<option value="ALL">-- Load File First --</option>'; territoryFilter.selectedIndex = -1; territoryFilter.disabled = true; }
+         if (storeFilter) { storeFilter.innerHTML = '<option value="ALL">-- Load File First --</option>'; storeFilter.selectedIndex = -1; storeFilter.disabled = true; }
+         if (storeSearch) { storeSearch.value = ''; storeSearch.disabled = true; }
+         storeOptions = []; 
+         Object.values(flagFiltersCheckboxes).forEach(input => { if(input) {input.checked = false; input.disabled = true;} });
+        
+        if(showMapViewFilter) { showMapViewFilter.checked = false; showMapViewFilter.disabled = true; }
+        if(focusEliteFilter) { focusEliteFilter.checked = false; focusEliteFilter.disabled = true; }
+        if(focusConnectivityFilter) { focusConnectivityFilter.checked = false; focusConnectivityFilter.disabled = true; }
+        if(focusRepSkillFilter) { focusRepSkillFilter.checked = false; focusRepSkillFilter.disabled = true; }
+        if(focusVpmrFilter) { focusVpmrFilter.checked = false; focusVpmrFilter.disabled = true; }
+        if(showConnectivityReportFilter) { showConnectivityReportFilter.checked = false; showConnectivityReportFilter.disabled = true; }
 
+         if (applyFiltersButtonModal) applyFiltersButtonModal.disabled = true;
+         if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = true; 
+         if (saveDefaultFiltersBtn) saveDefaultFiltersBtn.disabled = true;
+         if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = true;
+
+         const mainFilterBtn = document.getElementById('openFilterModalBtn');
+         if (mainFilterBtn) mainFilterBtn.disabled = true;
+         if (globalSearchFilter) globalSearchFilter.disabled = true; // Disable global search on UI reset
+
+         if (territorySelectAll) territorySelectAll.disabled = true; if (territoryDeselectAll) territoryDeselectAll.disabled = true;
+         if (storeSelectAll) storeSelectAll.disabled = true; if (storeDeselectAll) storeDeselectAll.disabled = true;
+         if (exportCsvButton) exportCsvButton.disabled = true;
+         if (printReportButton) printReportButton.disabled = true;
+         if (emailShareSection) emailShareSection.style.display = 'none';
+         
+         const handler = updateFilterOptions;
+         [regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter, storeSearch, globalSearchFilter, territoryFilter].forEach(filter => {
+             if (filter) {
+                 filter.removeEventListener('change', handler);
+                 filter.removeEventListener('input', handler);
+             }
+         });
+         Object.values(flagFiltersCheckboxes).forEach(input => { if(input) input.removeEventListener('change', handler); });
+         if (showConnectivityReportFilter) showConnectivityReportFilter.removeEventListener('change', applyFilters);
+
+    };
+    
+    const resetUI = () => {
+         resetFiltersForFullUIReset(); 
+         if (resultsArea) resultsArea.style.display = 'none';
+         if (mainChartInstance) { mainChartInstance.destroy(); mainChartInstance = null; }
+         
+         if (mapInstance && mapMarkersLayer?.clearLayers) {
+             mapMarkersLayer.clearLayers();
+             mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); 
+         } else if (mapInstance) { 
+             mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
+         }
+
+         if (mapViewContainer) mapViewContainer.style.display = 'none';
+         if (mapStatus) mapStatus.textContent = 'Enable via "Additional Tools" and apply filters to see map.';
+
+         if (unifiedConnectivityReportSection) unifiedConnectivityReportSection.style.display = 'none';
+         const connectivityTableBody = document.querySelector('#connectivityReportTable tbody');
+         if(connectivityTableBody) connectivityTableBody.innerHTML = '';
+
+
+         if (attachRateTableBody) attachRateTableBody.innerHTML = ''; 
+         if (attachRateTableFooter) attachRateTableFooter.innerHTML = ''; 
+         if (attachTableStatus) attachTableStatus.textContent = '';
+         if (topBottomSection) topBottomSection.style.display = 'none'; 
+         if (top5TableBody) top5TableBody.innerHTML = ''; 
+         if (bottom5TableBody) bottom5TableBody.innerHTML = '';
+         hideStoreDetails(); 
+         updateSummary([]); 
+        if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none';
+        if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
+        if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
+        if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
+        if (emailShareSection) emailShareSection.style.display = 'none';
+
+         if(statusDiv) statusDiv.textContent = 'No file selected.';
+         allPossibleStores = []; 
+         rawData = []; 
+         filteredData = [];
+         connectivityData = null;
+         updateShareOptions(); 
+         const mainFilterBtn = document.getElementById('openFilterModalBtn');
+         if (mainFilterBtn) mainFilterBtn.disabled = true;
+         if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = localStorage.getItem(DEFAULT_FILTERS_STORAGE_KEY) === null;
+         closeFilterModal(); 
+     };
+    
     // --- Event Listeners ---
     if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
     excelFileInput?.addEventListener('change', handleFile);
-    storeSearch?.addEventListener('input', filterStoreOptions);
     exportCsvButton?.addEventListener('click', exportData);
     if (printReportButton) printReportButton.addEventListener('click', handlePrintReport);
     if (shareEmailButton) shareEmailButton.addEventListener('click', handleShareEmail);
