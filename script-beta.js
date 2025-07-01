@@ -1,6 +1,6 @@
 /*
-    Timestamp: 2025-06-30T23:39:00EDT
-    Summary: Moved the resetUI and resetFiltersForFullUIReset function definitions to an earlier position to prevent a ReferenceError on file load.
+    Timestamp: 2025-06-30T23:49:00EDT
+    Summary: Reordered function definitions to resolve a ReferenceError where 'applyFilters' was called before it was defined within the UI reset logic.
 */
 document.addEventListener('DOMContentLoaded', () => {
     // --- Password Gate Elements & Logic ---
@@ -43,11 +43,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Theme Constants and Elements ---
     const LIGHT_THEME_CLASS = 'light-theme';
     const THEME_STORAGE_KEY = 'themePreference';
-    const DEFAULT_FILTERS_STORAGE_KEY = 'fsmDashboardDefaultFilters_v1'; 
-    const DARK_THEME_ICON = '🌙'; 
-    const LIGHT_THEME_ICON = '☀️'; 
+    const DEFAULT_FILTERS_STORAGE_KEY = 'fsmDashboardDefaultFilters_v1';
+    const DARK_THEME_ICON = '🌙';
+    const LIGHT_THEME_ICON = '☀️';
     const DARK_THEME_META_COLOR = '#2c2c2c';
-    const LIGHT_THEME_META_COLOR = '#f4f4f8'; 
+    const LIGHT_THEME_META_COLOR = '#f4f4f8';
 
     const themeToggleBtn = document.getElementById('themeToggleBtn');
     const metaThemeColorTag = document.querySelector('meta[name="theme-color"]');
@@ -56,12 +56,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const whatsNewModal = document.getElementById('whatsNewModal');
     const closeWhatsNewModalBtn = document.getElementById('closeWhatsNewModalBtn');
     const gotItWhatsNewBtn = document.getElementById('gotItWhatsNewBtn');
-    const BETA_FEATURES_POPUP_COOKIE = 'betaFeaturesPopupShown_v1.3'; 
-    const openWhatsNewBtn = document.getElementById('openWhatsNewBtn'); 
+    const BETA_FEATURES_POPUP_COOKIE = 'betaFeaturesPopupShown_v1.3';
+    const openWhatsNewBtn = document.getElementById('openWhatsNewBtn');
 
     // --- Filter Modal Elements ---
     const filterModal = document.getElementById('filterModal');
-    const openFilterModalBtn = document.getElementById('openFilterModalBtn'); 
+    const openFilterModalBtn = document.getElementById('openFilterModalBtn');
     const closeFilterModalBtn = document.getElementById('closeFilterModalBtn');
     const applyFiltersButtonModal = document.getElementById('applyFiltersButtonModal');
     const resetFiltersButtonModal = document.getElementById('resetFiltersButtonModal');
@@ -77,34 +77,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Configuration ---
-    const MICHIGAN_AREA_VIEW = { lat: 43.8, lon: -84.8, zoom: 7 }; 
-    const AVERAGE_THRESHOLD_PERCENT = 0.10; 
+    const MICHIGAN_AREA_VIEW = { lat: 43.8, lon: -84.8, zoom: 7 };
+    const AVERAGE_THRESHOLD_PERCENT = 0.10;
 
-    const REQUIRED_HEADERS = [ 
+    const REQUIRED_HEADERS = [
         'Store', 'REGION', 'DISTRICT', 'Q2 Territory', 'FSM NAME', 'CHANNEL',
         'SUB_CHANNEL', 'DEALER_NAME', 'Revenue w/DF', 'QTD Revenue Target',
-        'Quarterly Revenue Target', 'QTD Gap', '% Quarterly Revenue Target', 'Rev AR%', 
+        'Quarterly Revenue Target', 'QTD Gap', '% Quarterly Revenue Target', 'Rev AR%',
         'Unit w/ DF', 'Unit Target', 'Unit Achievement', 'Visit count', 'Trainings',
         'Retail Mode Connectivity', 'Rep Skill Ach', '(V)PMR Ach', 'Elite', 'Post Training Score',
         'Tablet Attach Rate', 'PC Attach Rate', 'NC Attach Rate', 'TWS Attach Rate',
         'WW Attach Rate', 'ME Attach Rate', 'NCME Attach Rate', 'SUPER STORE', 'GOLDEN RHINO',
         'GCE', 'AI_Zone', 'Hispanic_Market', 'EV ROUTE',
         'STORE ID', 'ADDRESS1', 'CITY', 'STATE', 'ZIPCODE',
-        'LATITUDE_ORG', 'LONGITUDE_ORG', 
-        'ORG_STORE_ID', 'CV_STORE_ID', 'CINGLEPOINT_ID', 
-        'STORE_TYPE_NAME', 'National_Tier', 'Merchandising_Level', 'Combined_Tier', 
+        'LATITUDE_ORG', 'LONGITUDE_ORG',
+        'ORG_STORE_ID', 'CV_STORE_ID', 'CINGLEPOINT_ID',
+        'STORE_TYPE_NAME', 'National_Tier', 'Merchandising_Level', 'Combined_Tier',
         '%Quarterly Territory Rev Target', 'Region Rev%', 'District Rev%', 'Territory Rev%'
-    ]; 
+    ];
     const FLAG_HEADERS = ['SUPER STORE', 'GOLDEN RHINO', 'GCE', 'AI_Zone', 'Hispanic_Market', 'EV ROUTE'];
-    const ATTACH_RATE_COLUMNS = [ 
-        'Tablet Attach Rate', 'PC Attach Rate', 'NC Attach Rate', 
+    const ATTACH_RATE_COLUMNS = [
+        'Tablet Attach Rate', 'PC Attach Rate', 'NC Attach Rate',
         'TWS Attach Rate', 'WW Attach Rate', 'ME Attach Rate', 'NCME Attach Rate'
     ];
     const CURRENCY_FORMAT = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
     const PERCENT_FORMAT = new Intl.NumberFormat('en-US', { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 });
     const NUMBER_FORMAT = new Intl.NumberFormat('en-US');
     const CHART_COLORS = ['#58a6ff', '#ffb758', '#86dc86', '#ff7f7f', '#b796e6', '#ffda8a', '#8ad7ff', '#ff9ba6'];
-    const TOP_N_CHART = 15; 
+    const TOP_N_CHART = 15;
     const TOP_N_TABLES = 5;
 
     // --- DOM Elements ---
@@ -112,10 +112,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const statusDiv = document.getElementById('status');
     const loadingIndicator = document.getElementById('loadingIndicator');
     const resultsArea = document.getElementById('resultsArea');
-    
+
     const globalSearchFilter = document.getElementById('globalSearchFilter'); // New global search field
     const filterSelects = ['regionFilter', 'districtFilter', 'territoryFilter', 'fsmFilter', 'channelFilter', 'subchannelFilter', 'dealerFilter'];
-    
+
     const regionFilter = document.getElementById('regionFilter');
     const districtFilter = document.getElementById('districtFilter');
     const territoryFilter = document.getElementById('territoryFilter');
@@ -128,17 +128,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const flagFiltersCheckboxes = FLAG_HEADERS.reduce((acc, header) => {
         let expectedId = '';
         switch (header) {
-            case 'SUPER STORE':       expectedId = 'superStoreFilter'; break;
-            case 'GOLDEN RHINO':      expectedId = 'goldenRhinoFilter'; break;
-            case 'GCE':               expectedId = 'gceFilter'; break;
-            case 'AI_Zone':           expectedId = 'aiZoneFilter'; break;
-            case 'Hispanic_Market':   expectedId = 'hispanicMarketFilter'; break;
-            case 'EV ROUTE':          expectedId = 'evRouteFilter'; break;
+            case 'SUPER STORE': expectedId = 'superStoreFilter'; break;
+            case 'GOLDEN RHINO': expectedId = 'goldenRhinoFilter'; break;
+            case 'GCE': expectedId = 'gceFilter'; break;
+            case 'AI_Zone': expectedId = 'aiZoneFilter'; break;
+            case 'Hispanic_Market': expectedId = 'hispanicMarketFilter'; break;
+            case 'EV ROUTE': expectedId = 'evRouteFilter'; break;
             default: console.warn(`Unknown flag header encountered during mapping: ${header}`); return acc;
         }
         const element = document.getElementById(expectedId);
-        if (element) { acc[header] = element; } 
-        else { console.warn(`Flag filter checkbox not found for ID: ${expectedId} (Header: ${header}) upon initial mapping. Check HTML.`);}
+        if (element) { acc[header] = element; }
+        else { console.warn(`Flag filter checkbox not found for ID: ${expectedId} (Header: ${header}) upon initial mapping. Check HTML.`); }
         return acc;
     }, {});
     const showConnectivityReportFilter = document.getElementById('showConnectivityReportFilter');
@@ -184,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const storeDetailsSection = document.getElementById('storeDetailsSection');
     const storeDetailsContent = document.getElementById('storeDetailsContent');
     const closeStoreDetailsButton = document.getElementById('closeStoreDetailsButton');
-    
+
     const printReportButton = document.getElementById('printReportButton');
     const emailShareSection = document.getElementById('emailShareSection');
     const emailShareControls = document.getElementById('emailShareControls');
@@ -193,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const shareStatus = document.getElementById('shareStatus');
     const emailShareHint = document.getElementById('emailShareHint');
 
-    const showMapViewFilter = document.getElementById('showMapViewFilter'); 
+    const showMapViewFilter = document.getElementById('showMapViewFilter');
     const focusEliteFilter = document.getElementById('focusEliteFilter');
     const focusConnectivityFilter = document.getElementById('focusConnectivityFilter');
     const focusRepSkillFilter = document.getElementById('focusRepSkillFilter');
@@ -212,119 +212,27 @@ document.addEventListener('DOMContentLoaded', () => {
     let connectivityData = null; // New global variable for the connectivity sheet data
     let filteredData = [];
     let mainChartInstance = null;
-    let mapInstance = null; 
+    let mapInstance = null;
     let mapMarkersLayer = null;
     let storeOptions = [];
     let allPossibleStores = [];
-    let currentSort = { column: 'Store', ascending: true }; 
+    let currentSort = { column: 'Store', ascending: true };
     let selectedStoreRow = null;
-
-    // --- Reset Functions ---
-    const resetFiltersForFullUIReset = () => {
-        const allOptionHTML = '<option value="ALL">-- Load File First --</option>';
-        [regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(sel => { 
-            if (sel) { sel.innerHTML = allOptionHTML; sel.value = 'ALL'; sel.disabled = true;}
-        });
-        if (territoryFilter) { territoryFilter.innerHTML = '<option value="ALL">-- Load File First --</option>'; territoryFilter.selectedIndex = -1; territoryFilter.disabled = true; }
-        if (storeFilter) { storeFilter.innerHTML = '<option value="ALL">-- Load File First --</option>'; storeFilter.selectedIndex = -1; storeFilter.disabled = true; }
-        if (storeSearch) { storeSearch.value = ''; storeSearch.disabled = true; }
-        storeOptions = []; 
-        Object.values(flagFiltersCheckboxes).forEach(input => { if(input) {input.checked = false; input.disabled = true;} });
-       
-       if(showMapViewFilter) { showMapViewFilter.checked = false; showMapViewFilter.disabled = true; }
-       if(focusEliteFilter) { focusEliteFilter.checked = false; focusEliteFilter.disabled = true; }
-       if(focusConnectivityFilter) { focusConnectivityFilter.checked = false; focusConnectivityFilter.disabled = true; }
-       if(focusRepSkillFilter) { focusRepSkillFilter.checked = false; focusRepSkillFilter.disabled = true; }
-       if(focusVpmrFilter) { focusVpmrFilter.checked = false; focusVpmrFilter.disabled = true; }
-       if(showConnectivityReportFilter) { showConnectivityReportFilter.checked = false; showConnectivityReportFilter.disabled = true; }
-
-        if (applyFiltersButtonModal) applyFiltersButtonModal.disabled = true;
-        if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = true; 
-        if (saveDefaultFiltersBtn) saveDefaultFiltersBtn.disabled = true;
-        if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = true;
-
-        const mainFilterBtn = document.getElementById('openFilterModalBtn');
-        if (mainFilterBtn) mainFilterBtn.disabled = true;
-        if (globalSearchFilter) globalSearchFilter.disabled = true; // Disable global search on UI reset
-
-        if (territorySelectAll) territorySelectAll.disabled = true; if (territoryDeselectAll) territoryDeselectAll.disabled = true;
-        if (storeSelectAll) storeSelectAll.disabled = true; if (storeDeselectAll) storeDeselectAll.disabled = true;
-        if (exportCsvButton) exportCsvButton.disabled = true;
-        if (printReportButton) printReportButton.disabled = true;
-        if (emailShareSection) emailShareSection.style.display = 'none';
-        
-        const handler = updateFilterOptions;
-        [regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter, storeSearch, globalSearchFilter, territoryFilter].forEach(filter => {
-            if (filter) {
-                filter.removeEventListener('change', handler);
-                filter.removeEventListener('input', handler);
-            }
-        });
-        Object.values(flagFiltersCheckboxes).forEach(input => { if(input) input.removeEventListener('change', handler); });
-        if (showConnectivityReportFilter) showConnectivityReportFilter.removeEventListener('change', applyFilters);
-
-   };
-   
-   const resetUI = () => {
-        resetFiltersForFullUIReset(); 
-        if (resultsArea) resultsArea.style.display = 'none';
-        if (mainChartInstance) { mainChartInstance.destroy(); mainChartInstance = null; }
-        
-        if (mapInstance && mapMarkersLayer?.clearLayers) {
-            mapMarkersLayer.clearLayers();
-            mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); 
-        } else if (mapInstance) { 
-            mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
-        }
-
-        if (mapViewContainer) mapViewContainer.style.display = 'none';
-        if (mapStatus) mapStatus.textContent = 'Enable via "Additional Tools" and apply filters to see map.';
-
-        if (unifiedConnectivityReportSection) unifiedConnectivityReportSection.style.display = 'none';
-        const connectivityTableBody = document.querySelector('#connectivityReportTable tbody');
-        if(connectivityTableBody) connectivityTableBody.innerHTML = '';
-
-
-        if (attachRateTableBody) attachRateTableBody.innerHTML = ''; 
-        if (attachRateTableFooter) attachRateTableFooter.innerHTML = ''; 
-        if (attachTableStatus) attachTableStatus.textContent = '';
-        if (topBottomSection) topBottomSection.style.display = 'none'; 
-        if (top5TableBody) top5TableBody.innerHTML = ''; 
-        if (bottom5TableBody) bottom5TableBody.innerHTML = '';
-        hideStoreDetails(); 
-        updateSummary([]); 
-       if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none';
-       if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
-       if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
-       if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
-       if (emailShareSection) emailShareSection.style.display = 'none';
-
-        if(statusDiv) statusDiv.textContent = 'No file selected.';
-        allPossibleStores = []; 
-        rawData = []; 
-        filteredData = [];
-        connectivityData = null;
-        updateShareOptions(); 
-        const mainFilterBtn = document.getElementById('openFilterModalBtn');
-        if (mainFilterBtn) mainFilterBtn.disabled = true;
-        if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = localStorage.getItem(DEFAULT_FILTERS_STORAGE_KEY) === null;
-        closeFilterModal(); 
-    };
 
     // --- "What's New" Modal Logic ---
     const showWhatsNewModal = () => {
         if (whatsNewModal) {
             whatsNewModal.style.display = 'flex';
-            setTimeout(() => whatsNewModal.classList.add('active'), 10); 
+            setTimeout(() => whatsNewModal.classList.add('active'), 10);
         }
     };
     const hideWhatsNewModal = () => {
         if (whatsNewModal) {
             whatsNewModal.classList.remove('active');
-            setTimeout(() => whatsNewModal.style.display = 'none', 300); 
+            setTimeout(() => whatsNewModal.style.display = 'none', 300);
         }
     };
-    const checkAndShowWhatsNew = () => { 
+    const checkAndShowWhatsNew = () => {
         if (!getCookie(BETA_FEATURES_POPUP_COOKIE)) {
             showWhatsNewModal();
         }
@@ -351,17 +259,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (closeWhatsNewModalBtn) {
         closeWhatsNewModalBtn.addEventListener('click', () => {
             hideWhatsNewModal();
-            setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365); 
+            setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365);
         });
     }
     if (gotItWhatsNewBtn) {
         gotItWhatsNewBtn.addEventListener('click', () => {
             hideWhatsNewModal();
-            setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365); 
+            setCookie(BETA_FEATURES_POPUP_COOKIE, 'true', 365);
         });
     }
-    if (openWhatsNewBtn) { 
-        openWhatsNewBtn.addEventListener('click', showWhatsNewModal); 
+    if (openWhatsNewBtn) {
+        openWhatsNewBtn.addEventListener('click', showWhatsNewModal);
     }
 
 
@@ -370,17 +278,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (filterModal) {
             filterModal.style.display = 'flex';
             setTimeout(() => filterModal.classList.add('active'), 10);
-            document.body.style.overflow = 'hidden'; 
+            document.body.style.overflow = 'hidden';
         }
     };
     const closeFilterModal = () => {
         if (filterModal) {
             filterModal.classList.remove('active');
             setTimeout(() => filterModal.style.display = 'none', 300);
-            document.body.style.overflow = ''; 
+            document.body.style.overflow = '';
         }
     };
-    const mainFilterModalTrigger = document.getElementById('openFilterModalBtn'); 
+    const mainFilterModalTrigger = document.getElementById('openFilterModalBtn');
     if (mainFilterModalTrigger) {
         mainFilterModalTrigger.addEventListener('click', openFilterModal);
     }
@@ -394,20 +302,20 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.classList.add(LIGHT_THEME_CLASS);
             if (themeToggleBtn) themeToggleBtn.textContent = DARK_THEME_ICON;
             if (metaThemeColorTag) metaThemeColorTag.setAttribute('content', LIGHT_THEME_META_COLOR);
-        } else { 
+        } else {
             document.body.classList.remove(LIGHT_THEME_CLASS);
             if (themeToggleBtn) themeToggleBtn.textContent = LIGHT_THEME_ICON;
             if (metaThemeColorTag) metaThemeColorTag.setAttribute('content', DARK_THEME_META_COLOR);
         }
-        if (mainChartInstance && (filteredData.length > 0 || (rawData.length > 0 && filteredData.length === 0) )) { 
-             updateCharts(filteredData); 
+        if (mainChartInstance && (filteredData.length > 0 || (rawData.length > 0 && filteredData.length === 0))) {
+            updateCharts(filteredData);
         }
-        if (mapInstance) { 
+        if (mapInstance) {
             setTimeout(() => {
                 if (mapInstance && typeof mapInstance.invalidateSize === 'function') {
                     mapInstance.invalidateSize();
                 }
-            }, 0); 
+            }, 0);
         }
     };
     const toggleTheme = () => {
@@ -475,49 +383,49 @@ document.addEventListener('DOMContentLoaded', () => {
         return NaN;
     };
     const parsePercent = (value) => {
-         if (value === null || value === undefined || String(value).trim() === '') return NaN;
-         if (typeof value === 'number') return value; 
-         if (typeof value === 'string') { 
-             const numStr = value.replace('%', ''); 
-             const num = parseFloat(numStr); 
-             if (isNaN(num)) return NaN;
-             if (value.includes('%') || (num > 1 && num <= 100) || (num === 0) || (num === 1) ) { 
-                 return num / 100;
-             }
-             return num; 
+        if (value === null || value === undefined || String(value).trim() === '') return NaN;
+        if (typeof value === 'number') return value;
+        if (typeof value === 'string') {
+            const numStr = value.replace('%', '');
+            const num = parseFloat(numStr);
+            if (isNaN(num)) return NaN;
+            if (value.includes('%') || (num > 1 && num <= 100) || (num === 0) || (num === 1)) {
+                return num / 100;
+            }
+            return num;
         }
-         return NaN;
+        return NaN;
     };
     const safeGet = (obj, path, defaultValue = 'N/A') => {
         const value = obj ? obj[path] : undefined;
         return (value !== undefined && value !== null && String(value).trim() !== '') ? value : defaultValue;
     };
-    const isValidForAverage = (value) => { 
-         if (value === null || value === undefined || String(value).trim() === '') return false;
-         const parsed = parseNumber(String(value).replace('%','')); 
-         return !isNaN(parsed);
-    };
-    const isValidNumericForFocus = (value) => { 
+    const isValidForAverage = (value) => {
         if (value === null || value === undefined || String(value).trim() === '') return false;
-        const parsedVal = parsePercent(value); 
+        const parsed = parseNumber(String(value).replace('%', ''));
+        return !isNaN(parsed);
+    };
+    const isValidNumericForFocus = (value) => {
+        if (value === null || value === undefined || String(value).trim() === '') return false;
+        const parsedVal = parsePercent(value);
         return !isNaN(parsedVal);
     };
     const calculateQtdGap = (row) => {
-        const revenue = parseNumber(safeGet(row, 'Revenue w/DF', 0)); 
-        const target = parseNumber(safeGet(row, 'QTD Revenue Target', 0));
-        if (isNaN(revenue) || isNaN(target)) { return Infinity; } 
-        return revenue - target;
-    };
-    const calculateRevARPercentForRow = (row) => { 
         const revenue = parseNumber(safeGet(row, 'Revenue w/DF', 0));
         const target = parseNumber(safeGet(row, 'QTD Revenue Target', 0));
-        if (target === 0 || isNaN(revenue) || isNaN(target)) { return NaN; } 
+        if (isNaN(revenue) || isNaN(target)) { return Infinity; }
+        return revenue - target;
+    };
+    const calculateRevARPercentForRow = (row) => {
+        const revenue = parseNumber(safeGet(row, 'Revenue w/DF', 0));
+        const target = parseNumber(safeGet(row, 'QTD Revenue Target', 0));
+        if (target === 0 || isNaN(revenue) || isNaN(target)) { return NaN; }
         return revenue / target;
     };
-    const calculateUnitAchievementPercentForRow = (row) => { 
+    const calculateUnitAchievementPercentForRow = (row) => {
         const units = parseNumber(safeGet(row, 'Unit w/ DF', 0));
         const target = parseNumber(safeGet(row, 'Unit Target', 0));
-        if (target === 0 || isNaN(units) || isNaN(target)) { return NaN; } 
+        if (target === 0 || isNaN(units) || isNaN(target)) { return NaN; }
         return units / target;
     };
     const getUniqueValues = (data, column) => {
@@ -539,23 +447,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const showLoading = (isLoading, isFiltering = false) => {
         const displayStyle = isLoading ? 'flex' : 'none';
         const indicator = isFiltering ? filterLoadingIndicatorModal : loadingIndicator;
-        const primaryButton = isFiltering ? applyFiltersButtonModal : excelFileInput; 
-    
+        const primaryButton = isFiltering ? applyFiltersButtonModal : excelFileInput;
+
         if (indicator) indicator.style.display = displayStyle;
         if (primaryButton) primaryButton.disabled = isLoading;
-    
+
         if (isFiltering) {
             if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = isLoading;
             if (saveDefaultFiltersBtn) saveDefaultFiltersBtn.disabled = isLoading;
             if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = isLoading || localStorage.getItem(DEFAULT_FILTERS_STORAGE_KEY) === null;
-            const mainFilterBtn = document.getElementById('openFilterModalBtn'); 
+            const mainFilterBtn = document.getElementById('openFilterModalBtn');
             if (mainFilterBtn) mainFilterBtn.disabled = isLoading;
         } else {
             if (excelFileInput) excelFileInput.disabled = isLoading;
-            const mainFilterBtn = document.getElementById('openFilterModalBtn'); 
-            if (mainFilterBtn) mainFilterBtn.disabled = isLoading; 
+            const mainFilterBtn = document.getElementById('openFilterModalBtn');
+            if (mainFilterBtn) mainFilterBtn.disabled = isLoading;
         }
-    };    
+    };
 
     // --- Map Functions ---
     const initMapView = () => {
@@ -568,7 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const mapElement = document.getElementById('mapid');
         if (mapElement && !mapInstance) {
             try {
-                mapInstance = L.map(mapElement).setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); 
+                mapInstance = L.map(mapElement).setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                     maxZoom: 18, tileSize: 512, zoomOffset: -1
@@ -590,20 +498,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateMapView = (data) => {
         if (!showMapViewFilter || !showMapViewFilter.checked) {
             if (mapViewContainer) mapViewContainer.style.display = 'none';
-            if (mapInstance && mapMarkersLayer?.clearLayers) mapMarkersLayer.clearLayers(); 
-            return; 
+            if (mapInstance && mapMarkersLayer?.clearLayers) mapMarkersLayer.clearLayers();
+            return;
         }
         if (!mapInstance || !document.getElementById('mapid')) {
             if (mapStatus) mapStatus.textContent = 'Map is not initialized or container is missing.';
-            if (mapViewContainer) mapViewContainer.style.display = 'block'; 
+            if (mapViewContainer) mapViewContainer.style.display = 'block';
             return;
         }
         if (!mapMarkersLayer || !(mapMarkersLayer instanceof L.LayerGroup)) {
-             if (mapMarkersLayer?.remove) mapMarkersLayer.remove();
+            if (mapMarkersLayer?.remove) mapMarkersLayer.remove();
             mapMarkersLayer = L.layerGroup().addTo(mapInstance);
-            if (!(mapMarkersLayer instanceof L.LayerGroup)) { 
+            if (!(mapMarkersLayer instanceof L.LayerGroup)) {
                 if (mapStatus) mapStatus.textContent = 'Map layer component error. Please refresh.';
-                if (mapViewContainer) mapViewContainer.style.display = 'block'; 
+                if (mapViewContainer) mapViewContainer.style.display = 'block';
                 return;
             }
         }
@@ -612,9 +520,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const validStoresWithCoords = data.filter(row => {
             const lat = parseNumber(safeGet(row, 'LATITUDE_ORG', NaN));
             const lon = parseNumber(safeGet(row, 'LONGITUDE_ORG', NaN));
-            return !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0  && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
+            return !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0 && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
         });
-        if (mapViewContainer) mapViewContainer.style.display = 'block'; 
+        if (mapViewContainer) mapViewContainer.style.display = 'block';
         if (validStoresWithCoords.length === 0) {
             if (mapStatus) mapStatus.textContent = 'No stores with valid coordinates in filtered data. Showing default map area.';
             mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
@@ -638,22 +546,183 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mapMarkersLayer?.getBounds) {
                 const bounds = mapMarkersLayer.getBounds();
                 if (bounds?.isValid()) {
-                    mapInstance.fitBounds(bounds, { padding: [25, 25], maxZoom: 16 }); 
+                    mapInstance.fitBounds(bounds, { padding: [25, 25], maxZoom: 16 });
                 } else {
                     if (validStoresWithCoords.length > 0) {
                         const firstStoreWithCoords = validStoresWithCoords[0];
                         const lat = parseNumber(safeGet(firstStoreWithCoords, 'LATITUDE_ORG'));
                         const lon = parseNumber(safeGet(firstStoreWithCoords, 'LONGITUDE_ORG'));
-                        if(!isNaN(lat) && !isNaN(lon)) mapInstance.setView([lat, lon], 10);
+                        if (!isNaN(lat) && !isNaN(lon)) mapInstance.setView([lat, lon], 10);
                     } else { mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); }
                 }
             }
             if (mapStatus) mapStatus.textContent = `Displaying ${storesOnMapCount} stores on map.`;
-        } else { 
+        } else {
             if (mapStatus) mapStatus.textContent = 'No stores with displayable coordinates in filtered data. Showing default map area.';
-             mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
+            mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
         }
         setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 0);
+    };
+
+    // --- Core Filtering Logic ---
+    const applyFilters = (isFromModalOrDefaults = false) => {
+        showLoading(true, true);
+        if (resultsArea) resultsArea.style.display = 'none';
+
+        setTimeout(() => {
+            try {
+                const selectedRegion = regionFilter?.value; const selectedDistrict = districtFilter?.value; const selectedTerritories = territoryFilter ? Array.from(territoryFilter.selectedOptions).map(opt => opt.value) : [];
+                const selectedFsm = fsmFilter?.value; const selectedChannel = channelFilter?.value; const selectedSubchannel = subchannelFilter?.value; const selectedDealer = dealerFilter?.value;
+                const selectedStores = storeFilter ? Array.from(storeFilter.selectedOptions).map(opt => opt.value) : [];
+                const selectedFlags = {}; Object.entries(flagFiltersCheckboxes).forEach(([key, input]) => { if (input?.checked) { selectedFlags[key] = true; } });
+                filteredData = rawData.filter(row => {
+                    if (selectedRegion !== 'ALL' && safeGet(row, 'REGION', null) !== selectedRegion) return false; if (selectedDistrict !== 'ALL' && safeGet(row, 'DISTRICT', null) !== selectedDistrict) return false;
+                    if (selectedTerritories.length > 0 && !selectedTerritories.includes(safeGet(row, 'Q2 Territory', null))) return false; if (selectedFsm !== 'ALL' && safeGet(row, 'FSM NAME', null) !== selectedFsm) return false;
+                    if (selectedChannel !== 'ALL' && safeGet(row, 'CHANNEL', null) !== selectedChannel) return false; if (selectedSubchannel !== 'ALL' && safeGet(row, 'SUB_CHANNEL', null) !== selectedSubchannel) return false;
+                    if (selectedDealer !== 'ALL' && safeGet(row, 'DEALER_NAME', null) !== selectedDealer) return false; if (selectedStores.length > 0 && !selectedStores.includes(safeGet(row, 'Store', null))) return false;
+                    for (const flag in selectedFlags) { const flagValue = safeGet(row, flag, 'NO'); if (!(flagValue === true || String(flagValue).toUpperCase() === 'YES' || String(flagValue) === 'Y' || flagValue === 1 || String(flagValue) === '1')) { return false; } }
+                    return true;
+                });
+                updateSummary(filteredData); updateTopBottomTables(filteredData); updateCharts(filteredData); updateAttachRateTable(filteredData);
+
+                if (showMapViewFilter && showMapViewFilter.checked) {
+                    updateMapView(filteredData);
+                } else {
+                    if (mapViewContainer) mapViewContainer.style.display = 'none';
+                    if (mapInstance && mapMarkersLayer?.clearLayers) mapMarkersLayer.clearLayers();
+                }
+
+                updateFocusPointSections(filteredData);
+                updateShareOptions();
+
+                if (filteredData.length === 1) { showStoreDetails(filteredData[0]); highlightTableRow(safeGet(filteredData[0], 'Store', null)); } else { hideStoreDetails(); }
+                if (statusDiv && !statusDiv.textContent.includes("Default filters loaded")) {
+                    statusDiv.textContent = `Displaying ${filteredData.length} of ${rawData.length} rows based on filters.`;
+                } else if (statusDiv && statusDiv.textContent.includes("Default filters loaded") && rawData.length > 0) {
+                    statusDiv.textContent = statusDiv.textContent.split('.')[0] + `. Displaying ${filteredData.length} of ${rawData.length} rows.`;
+                } else if (statusDiv && rawData.length === 0) {
+                    statusDiv.textContent = 'No data to display.';
+                }
+
+
+                if (resultsArea) resultsArea.style.display = 'block';
+                if (exportCsvButton) exportCsvButton.disabled = filteredData.length === 0;
+                if (printReportButton) printReportButton.disabled = filteredData.length === 0;
+
+                if (isFromModalOrDefaults && filterModal && filterModal.classList.contains('active')) {
+                    closeFilterModal();
+                }
+
+            } catch (error) {
+                console.error("Error applying filters:", error); if (statusDiv) statusDiv.textContent = "Error applying filters. Check console for details.";
+                filteredData = []; if (resultsArea) resultsArea.style.display = 'none';
+                if (exportCsvButton) exportCsvButton.disabled = true;
+                if (printReportButton) printReportButton.disabled = true;
+                if (emailShareSection) emailShareSection.style.display = 'none';
+                updateSummary([]); updateTopBottomTables([]); updateCharts([]); updateAttachRateTable([]); updateMapView([]); hideStoreDetails();
+                if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none';
+                if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
+                if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
+                if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
+                if (mapViewContainer) mapViewContainer.style.display = 'none';
+            } finally {
+                showLoading(false, true);
+                const mainFilterBtn = document.getElementById('openFilterModalBtn');
+                if (mainFilterBtn) mainFilterBtn.disabled = rawData.length === 0;
+            }
+        }, 10);
+    };
+
+    // --- Reset Functions ---
+    const resetFiltersForFullUIReset = () => {
+        const allOptionHTML = '<option value="ALL">-- Load File First --</option>';
+        [regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(sel => {
+            if (sel) { sel.innerHTML = allOptionHTML; sel.value = 'ALL'; sel.disabled = true; }
+        });
+        if (territoryFilter) { territoryFilter.innerHTML = '<option value="ALL">-- Load File First --</option>'; territoryFilter.selectedIndex = -1; territoryFilter.disabled = true; }
+        if (storeFilter) { storeFilter.innerHTML = '<option value="ALL">-- Load File First --</option>'; storeFilter.selectedIndex = -1; storeFilter.disabled = true; }
+        if (storeSearch) { storeSearch.value = ''; storeSearch.disabled = true; }
+        storeOptions = [];
+        Object.values(flagFiltersCheckboxes).forEach(input => { if (input) { input.checked = false; input.disabled = true; } });
+
+        if (showMapViewFilter) { showMapViewFilter.checked = false; showMapViewFilter.disabled = true; }
+        if (focusEliteFilter) { focusEliteFilter.checked = false; focusEliteFilter.disabled = true; }
+        if (focusConnectivityFilter) { focusConnectivityFilter.checked = false; focusConnectivityFilter.disabled = true; }
+        if (focusRepSkillFilter) { focusRepSkillFilter.checked = false; focusRepSkillFilter.disabled = true; }
+        if (focusVpmrFilter) { focusVpmrFilter.checked = false; focusVpmrFilter.disabled = true; }
+        if (showConnectivityReportFilter) { showConnectivityReportFilter.checked = false; showConnectivityReportFilter.disabled = true; }
+
+        if (applyFiltersButtonModal) applyFiltersButtonModal.disabled = true;
+        if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = true;
+        if (saveDefaultFiltersBtn) saveDefaultFiltersBtn.disabled = true;
+        if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = true;
+
+        const mainFilterBtn = document.getElementById('openFilterModalBtn');
+        if (mainFilterBtn) mainFilterBtn.disabled = true;
+        if (globalSearchFilter) globalSearchFilter.disabled = true; // Disable global search on UI reset
+
+        if (territorySelectAll) territorySelectAll.disabled = true; if (territoryDeselectAll) territoryDeselectAll.disabled = true;
+        if (storeSelectAll) storeSelectAll.disabled = true; if (storeDeselectAll) storeDeselectAll.disabled = true;
+        if (exportCsvButton) exportCsvButton.disabled = true;
+        if (printReportButton) printReportButton.disabled = true;
+        if (emailShareSection) emailShareSection.style.display = 'none';
+
+        const handler = updateFilterOptions;
+        [regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter, storeSearch, globalSearchFilter, territoryFilter].forEach(filter => {
+            if (filter) {
+                filter.removeEventListener('change', handler);
+                filter.removeEventListener('input', handler);
+            }
+        });
+        Object.values(flagFiltersCheckboxes).forEach(input => { if (input) input.removeEventListener('change', handler); });
+        if (showConnectivityReportFilter) showConnectivityReportFilter.removeEventListener('change', applyFilters);
+
+    };
+
+    const resetUI = () => {
+        resetFiltersForFullUIReset();
+        if (resultsArea) resultsArea.style.display = 'none';
+        if (mainChartInstance) { mainChartInstance.destroy(); mainChartInstance = null; }
+
+        if (mapInstance && mapMarkersLayer?.clearLayers) {
+            mapMarkersLayer.clearLayers();
+            mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
+        } else if (mapInstance) {
+            mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
+        }
+
+        if (mapViewContainer) mapViewContainer.style.display = 'none';
+        if (mapStatus) mapStatus.textContent = 'Enable via "Additional Tools" and apply filters to see map.';
+
+        if (unifiedConnectivityReportSection) unifiedConnectivityReportSection.style.display = 'none';
+        const connectivityTableBody = document.querySelector('#connectivityReportTable tbody');
+        if (connectivityTableBody) connectivityTableBody.innerHTML = '';
+
+
+        if (attachRateTableBody) attachRateTableBody.innerHTML = '';
+        if (attachRateTableFooter) attachRateTableFooter.innerHTML = '';
+        if (attachTableStatus) attachTableStatus.textContent = '';
+        if (topBottomSection) topBottomSection.style.display = 'none';
+        if (top5TableBody) top5TableBody.innerHTML = '';
+        if (bottom5TableBody) bottom5TableBody.innerHTML = '';
+        hideStoreDetails();
+        updateSummary([]);
+        if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none';
+        if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
+        if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
+        if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
+        if (emailShareSection) emailShareSection.style.display = 'none';
+
+        if (statusDiv) statusDiv.textContent = 'No file selected.';
+        allPossibleStores = [];
+        rawData = [];
+        filteredData = [];
+        connectivityData = null;
+        updateShareOptions();
+        const mainFilterBtn = document.getElementById('openFilterModalBtn');
+        if (mainFilterBtn) mainFilterBtn.disabled = true;
+        if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = localStorage.getItem(DEFAULT_FILTERS_STORAGE_KEY) === null;
+        closeFilterModal();
     };
 
     // --- Core Functions ---
@@ -661,13 +730,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = event.target.files[0];
         if (!file) { if (statusDiv) statusDiv.textContent = 'No file selected.'; return; }
         if (statusDiv) statusDiv.textContent = 'Reading file...';
-        showLoading(true, false); 
-        if (resultsArea) resultsArea.style.display = 'none'; 
-        resetUI(); 
+        showLoading(true, false);
+        if (resultsArea) resultsArea.style.display = 'none';
+        resetUI();
         try {
             const data = await file.arrayBuffer();
             const workbook = XLSX.read(data);
-            
+
             // Read the first worksheet for the main dashboard data
             const firstSheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[firstSheetName];
@@ -682,7 +751,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 throw new Error("Main worksheet appears to be empty.");
             }
-            
+
             // Read the "Unified Connectivity Report" worksheet for the new feature
             const connectivitySheetName = 'Unified Connectivity Report';
             const hasConnectivitySheet = workbook.SheetNames.includes(connectivitySheetName);
@@ -696,25 +765,25 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             allPossibleStores = [...new Set(rawData.map(r => safeGet(r, 'Store', null)).filter(s => s && String(s).trim() !== ''))].sort().map(s => ({ value: s, text: s }));
-            
-            populateFilters(rawData); 
+
+            populateFilters(rawData);
             const mainFilterBtn = document.getElementById('openFilterModalBtn');
             if (mainFilterBtn) mainFilterBtn.disabled = false;
-            
-            if (loadDefaultFilters()) { 
+
+            if (loadDefaultFilters()) {
                 if (statusDiv) statusDiv.textContent += ` Loaded ${rawData.length} rows. Default filters applied.`;
                 applyFilters(true); // Apply loaded defaults and close modal if open
             } else {
                 if (statusDiv) statusDiv.textContent = `Loaded ${rawData.length} rows. Filters opened automatically.`;
-                setTimeout(() => { openFilterModal(); }, 100); 
+                setTimeout(() => { openFilterModal(); }, 100);
             }
 
         } catch (error) {
             console.error('Error processing file:', error); if (statusDiv) statusDiv.textContent = `Error: ${error.message}`;
             rawData = []; allPossibleStores = []; filteredData = []; resetUI();
-        } finally { 
-            showLoading(false, false); 
-            if (excelFileInput) excelFileInput.value = ''; 
+        } finally {
+            showLoading(false, false);
+            if (excelFileInput) excelFileInput.value = '';
         }
     };
 
@@ -732,7 +801,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentSelections[id] = el.value;
             }
         });
-        
+
         // 2. Filter rawData based on the global search term
         const searchTerm = globalSearchFilter?.value.toLowerCase().trim();
         let globallyFilteredData = rawData;
@@ -746,7 +815,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
         }
-        
+
         // 3. Update all dropdown options based on the filtered data
         setOptions(regionFilter, getUniqueValues(globallyFilteredData, 'REGION'));
         setOptions(districtFilter, getUniqueValues(globallyFilteredData, 'DISTRICT'));
@@ -755,11 +824,11 @@ document.addEventListener('DOMContentLoaded', () => {
         setOptions(channelFilter, getUniqueValues(globallyFilteredData, 'CHANNEL'));
         setOptions(subchannelFilter, getUniqueValues(globallyFilteredData, 'SUB_CHANNEL'));
         setOptions(dealerFilter, getUniqueValues(globallyFilteredData, 'DEALER_NAME'));
-        
+
         // The store filter is now also updated based on this globally filtered data
         const validStoreNames = new Set(globallyFilteredData.map(row => safeGet(row, 'Store', null)).filter(s => s && String(s).trim() !== ''));
         storeOptions = Array.from(validStoreNames).sort().map(s => ({ value: s, text: s }));
-        
+
         setStoreFilterOptions(storeOptions, false);
         filterStoreOptions(); // Apply local store search if any
 
@@ -778,7 +847,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
-        
+
         // Re-enable filter controls based on data
         if (globalSearchFilter) globalSearchFilter.disabled = rawData.length === 0;
         if (storeSearch) storeSearch.disabled = rawData.length === 0;
@@ -786,30 +855,30 @@ document.addEventListener('DOMContentLoaded', () => {
         if (territoryDeselectAll) territoryDeselectAll.disabled = rawData.length === 0;
         if (storeSelectAll) storeSelectAll.disabled = storeOptions.length === 0;
         if (storeDeselectAll) storeDeselectAll.disabled = storeOptions.length === 0;
-        
+
         // Enable/disable the connectivity report checkbox based on loaded data
         if (showConnectivityReportFilter) {
             showConnectivityReportFilter.disabled = connectivityData === null || connectivityData.length === 0;
         }
     };
-    
+
     // This function is now responsible for populating filters on file load
     const populateFilters = (data) => {
         updateFilterOptions(); // Use the new function to populate all dropdowns initially
-        Object.values(flagFiltersCheckboxes).forEach(input => { if(input) input.disabled = false; });
-        
-        if(showMapViewFilter) showMapViewFilter.disabled = false;
-        if(focusEliteFilter) focusEliteFilter.disabled = false;
-        if(focusConnectivityFilter) focusConnectivityFilter.disabled = false;
-        if(focusRepSkillFilter) focusRepSkillFilter.disabled = false;
-        if(focusVpmrFilter) focusVpmrFilter.disabled = false;
-        if(showConnectivityReportFilter) showConnectivityReportFilter.disabled = connectivityData === null || connectivityData.length === 0;
+        Object.values(flagFiltersCheckboxes).forEach(input => { if (input) input.disabled = false; });
+
+        if (showMapViewFilter) showMapViewFilter.disabled = false;
+        if (focusEliteFilter) focusEliteFilter.disabled = false;
+        if (focusConnectivityFilter) focusConnectivityFilter.disabled = false;
+        if (focusRepSkillFilter) focusRepSkillFilter.disabled = false;
+        if (focusVpmrFilter) focusVpmrFilter.disabled = false;
+        if (showConnectivityReportFilter) showConnectivityReportFilter.disabled = connectivityData === null || connectivityData.length === 0;
 
         if (applyFiltersButtonModal) applyFiltersButtonModal.disabled = false;
-        if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = false; 
+        if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = false;
         if (saveDefaultFiltersBtn) saveDefaultFiltersBtn.disabled = false;
         if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = localStorage.getItem(DEFAULT_FILTERS_STORAGE_KEY) === null;
-        
+
         addDependencyFilterListeners();
     };
 
@@ -840,11 +909,11 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         try {
             localStorage.setItem(DEFAULT_FILTERS_STORAGE_KEY, JSON.stringify(defaultFilters));
-            if(statusDiv) statusDiv.textContent = "⭐ Default filters saved successfully!";
-            if(clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = false; 
+            if (statusDiv) statusDiv.textContent = "⭐ Default filters saved successfully!";
+            if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = false;
         } catch (e) {
             console.error("Error saving default filters to localStorage:", e);
-            if(statusDiv) statusDiv.textContent = "Error saving default filters. Your browser might be blocking localStorage or it's full.";
+            if (statusDiv) statusDiv.textContent = "Error saving default filters. Your browser might be blocking localStorage or it's full.";
         }
     };
 
@@ -853,7 +922,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const savedFiltersJSON = localStorage.getItem(DEFAULT_FILTERS_STORAGE_KEY);
             if (!savedFiltersJSON) {
-                if(clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = true;
+                if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = true;
                 return false;
             }
 
@@ -883,12 +952,12 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (territoryFilter) {
                 territoryFilter.selectedIndex = -1;
             }
-            
+
             // Temporarily store saved store selections
             if (storeFilter && defaults.stores) {
-                 storeFilter.savedDefaults = defaults.stores; 
+                storeFilter.savedDefaults = defaults.stores;
             } else if (storeFilter) {
-                 delete storeFilter.savedDefaults;
+                delete storeFilter.savedDefaults;
             }
 
             FLAG_HEADERS.forEach(header => {
@@ -905,8 +974,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (focusVpmrFilter && typeof defaults.additionalTools.vpmr === 'boolean') focusVpmrFilter.checked = defaults.additionalTools.vpmr;
                 if (showConnectivityReportFilter && typeof defaults.additionalTools.connectivityReport === 'boolean') showConnectivityReportFilter.checked = defaults.additionalTools.connectivityReport;
             }
-            
-            updateStoreFilterOptionsBasedOnHierarchy(); 
+
+            updateStoreFilterOptionsBasedOnHierarchy();
 
             // Apply saved store selections after store options are updated
             if (storeFilter && storeFilter.savedDefaults) {
@@ -921,12 +990,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         foundStoreCount++;
                     }
                 });
-                 if (foundStoreCount < storeFilter.savedDefaults.length && storeFilter.savedDefaults.length > 0) {
+                if (foundStoreCount < storeFilter.savedDefaults.length && storeFilter.savedDefaults.length > 0) {
                     partialLoadMessage += ` Some saved stores not found in current file.`;
                 }
-                delete storeFilter.savedDefaults; 
+                delete storeFilter.savedDefaults;
             } else if (storeFilter) {
-                 storeFilter.selectedIndex = -1; // Deselect if no saved stores
+                storeFilter.selectedIndex = -1; // Deselect if no saved stores
             }
 
 
@@ -937,7 +1006,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             console.error("Error loading default filters from localStorage:", e);
             if (statusDiv) statusDiv.textContent = "Error loading default filters. They might be corrupted.";
-            localStorage.removeItem(DEFAULT_FILTERS_STORAGE_KEY); 
+            localStorage.removeItem(DEFAULT_FILTERS_STORAGE_KEY);
             if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = true;
             return false;
         }
@@ -947,11 +1016,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearDefaultFilters = () => {
         try {
             localStorage.removeItem(DEFAULT_FILTERS_STORAGE_KEY);
-            if(statusDiv) statusDiv.textContent = "🗑️ Default filters cleared.";
-            if(clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = true; 
+            if (statusDiv) statusDiv.textContent = "🗑️ Default filters cleared.";
+            if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = true;
         } catch (e) {
             console.error("Error clearing default filters from localStorage:", e);
-            if(statusDiv) statusDiv.textContent = "Error clearing default filters.";
+            if (statusDiv) statusDiv.textContent = "Error clearing default filters.";
         }
     };
 
@@ -964,12 +1033,12 @@ document.addEventListener('DOMContentLoaded', () => {
         filtersToListen.forEach(filter => {
             if (filter) {
                 // Ensure no duplicate listeners are added
-                filter.removeEventListener('change', handler); 
-                filter.addEventListener('change', handler); 
+                filter.removeEventListener('change', handler);
+                filter.addEventListener('change', handler);
             }
         });
         Object.values(flagFiltersCheckboxes).forEach(input => { if (input) input.addEventListener('change', handler); });
-        
+
         // New listener for the connectivity report checkbox
         if (showConnectivityReportFilter) {
             showConnectivityReportFilter.addEventListener('change', () => {
@@ -994,17 +1063,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const validStoreNames = new Set(potentiallyValidStoresData.map(row => safeGet(row, 'Store', null)).filter(s => s && String(s).trim() !== ''));
         storeOptions = Array.from(validStoreNames).sort().map(s => ({ value: s, text: s }));
         const previouslySelectedStores = storeFilter ? new Set(Array.from(storeFilter.selectedOptions).map(opt => opt.value)) : new Set();
-        
-        const currentSearchTerm = storeSearch?.value || ''; 
-        setStoreFilterOptions(storeOptions, storeFilter ? storeFilter.disabled : true); 
-        filterStoreOptions(); 
 
-        if (storeFilter) { 
-            Array.from(storeFilter.options).forEach(option => { 
-                if (previouslySelectedStores.has(option.value)) { 
-                    option.selected = true; 
-                } 
-            }); 
+        const currentSearchTerm = storeSearch?.value || '';
+        setStoreFilterOptions(storeOptions, storeFilter ? storeFilter.disabled : true);
+        filterStoreOptions();
+
+        if (storeFilter) {
+            Array.from(storeFilter.options).forEach(option => {
+                if (previouslySelectedStores.has(option.value)) {
+                    option.selected = true;
+                }
+            });
             if (storeFilter.selectedOptions.length === 0 && previouslySelectedStores.size > 0) {
             } else if (storeFilter.selectedOptions.length === 0) {
                 storeFilter.selectedIndex = -1;
@@ -1030,7 +1099,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const territoriesInData = new Set(data.map(row => safeGet(row, 'Q2 Territory', null)).filter(Boolean));
         const isSingleTerritorySelected = territoriesInData.size === 1;
         if (!isSingleTerritorySelected || data.length === 0) { topBottomSection.style.display = 'none'; return; }
-        topBottomSection.style.display = 'flex'; 
+        topBottomSection.style.display = 'flex';
         const top5Data = [...data].sort((a, b) => parseNumber(safeGet(b, 'Revenue w/DF', -Infinity)) - parseNumber(safeGet(a, 'Revenue w/DF', -Infinity))).slice(0, TOP_N_TABLES);
         top5Data.forEach(row => {
             const tr = top5TableBody.insertRow(); const storeName = safeGet(row, 'Store', 'N/A'); tr.dataset.storeName = storeName;
@@ -1050,7 +1119,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tr.insertCell().textContent = formatNumber(visits); tr.cells[4].title = formatNumber(visits);
         });
     };
-    
+
     const renderConnectivityTable = (mainTableData) => {
         const tableBody = document.querySelector('#connectivityReportTable tbody');
         const tableHeadRow = document.querySelector('#connectivityReportTable thead tr');
@@ -1144,7 +1213,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (renderedRowCount > 0) {
                 statusDiv.textContent = `Displaying connectivity data for ${renderedRowCount} stores.`;
             } else {
-                 statusDiv.textContent = 'No connectivity data available for the selected stores.';
+                statusDiv.textContent = 'No connectivity data available for the selected stores.';
             }
         }
     };
@@ -1153,7 +1222,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!tableElement || !tableElement.sortConfig) return;
         const sortConfig = tableElement.sortConfig;
         tableElement.querySelectorAll('thead th.sortable .sort-arrow').forEach(arrow => {
-            arrow.className = 'sort-arrow'; 
+            arrow.className = 'sort-arrow';
             arrow.textContent = '';
         });
         const currentHeader = tableElement.querySelector(`thead th[data-sort="${CSS.escape(sortConfig.column)}"]`);
@@ -1164,23 +1233,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     };
-    
+
     const populateFocusPointTable = (tableId, sectionElement, data, valueKey, valueLabel) => {
         const table = document.getElementById(tableId);
         if (!table) { console.error(`Table with ID ${tableId} not found.`); return; }
-    
+
         const thead = table.querySelector('thead');
         const tbody = table.querySelector('tbody');
         if (!thead || !tbody) { console.error(`Thead or Tbody not found for table ${tableId}.`); return; }
-    
-        thead.innerHTML = ''; 
+
+        thead.innerHTML = '';
         const headerRow = thead.insertRow();
         const headers = [
             { label: 'Store', sortKey: 'Store' },
             { label: 'Territory', sortKey: 'Q2 Territory' },
             { label: valueLabel, sortKey: valueKey }
         ];
-    
+
         headers.forEach(header => {
             const th = document.createElement('th');
             th.textContent = header.label;
@@ -1189,32 +1258,32 @@ document.addEventListener('DOMContentLoaded', () => {
             th.innerHTML += ' <span class="sort-arrow"></span>';
             headerRow.appendChild(th);
         });
-    
+
         if (!table.sortConfig) {
-            table.sortConfig = { column: 'Store', ascending: true }; 
+            table.sortConfig = { column: 'Store', ascending: true };
         }
-    
+
         const sortConfig = table.sortConfig;
         const sortedData = [...data].sort((a, b) => {
             let valA = safeGet(a, sortConfig.column, null);
             let valB = safeGet(b, sortConfig.column, null);
-    
+
             if (valA === null || String(valA).trim() === '') valA = sortConfig.ascending ? Infinity : -Infinity;
             if (valB === null || String(valB).trim() === '') valB = sortConfig.ascending ? Infinity : -Infinity;
-    
+
             let numA, numB;
-            if (sortConfig.column === valueKey) { 
-                numA = parsePercent(String(valA).replace('%',''));
-                numB = parsePercent(String(valB).replace('%',''));
+            if (sortConfig.column === valueKey) {
+                numA = parsePercent(String(valA).replace('%', ''));
+                numB = parsePercent(String(valB).replace('%', ''));
             } else if (sortConfig.column === 'Store' || sortConfig.column === 'Q2 Territory') {
                 valA = String(valA).toLowerCase();
                 valB = String(valB).toLowerCase();
                 return sortConfig.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
-            } else { 
+            } else {
                 numA = parseNumber(valA);
                 numB = parseNumber(valB);
             }
-    
+
             if (typeof numA === 'number' && typeof numB === 'number' && !isNaN(numA) && !isNaN(numB)) {
                 return sortConfig.ascending ? numA - numB : numB - numA;
             }
@@ -1222,48 +1291,48 @@ document.addEventListener('DOMContentLoaded', () => {
             valB = String(valB).toLowerCase();
             return sortConfig.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
         });
-    
+
         tbody.innerHTML = '';
         sortedData.forEach(row => {
             const tr = tbody.insertRow();
             const storeName = safeGet(row, 'Store', 'N/A');
             tr.dataset.storeName = storeName;
             tr.onclick = () => { showStoreDetails(row); highlightTableRow(storeName); };
-    
+
             tr.insertCell().textContent = storeName;
             tr.cells[0].title = storeName;
-    
+
             const territoryName = safeGet(row, 'Q2 Territory', 'N/A');
             tr.insertCell().textContent = territoryName;
             tr.cells[1].title = territoryName;
-    
+
             const metricValue = parsePercent(safeGet(row, valueKey, NaN));
             const cellMetric = tr.insertCell();
             cellMetric.textContent = formatPercent(metricValue);
             cellMetric.title = formatPercent(metricValue);
             cellMetric.style.textAlign = "right";
         });
-    
+
         updateFocusTableSortArrows(table);
-    
-        const newThead = thead.cloneNode(true); 
+
+        const newThead = thead.cloneNode(true);
         thead.parentNode.replaceChild(newThead, thead);
         newThead.addEventListener('click', (event) => {
             const headerCell = event.target.closest('th');
             if (!headerCell || !headerCell.classList.contains('sortable')) return;
-            
+
             const sortKey = headerCell.dataset.sort;
             if (!sortKey) return;
-    
+
             if (table.sortConfig.column === sortKey) {
                 table.sortConfig.ascending = !table.sortConfig.ascending;
             } else {
                 table.sortConfig.column = sortKey;
                 table.sortConfig.ascending = true;
             }
-            populateFocusPointTable(tableId, sectionElement, data, valueKey, valueLabel); 
+            populateFocusPointTable(tableId, sectionElement, data, valueKey, valueLabel);
         });
-    
+
         const statusP = sectionElement.querySelector('.focus-point-status');
         if (statusP) {
             if (data.length > 0) {
@@ -1285,17 +1354,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const connOpps = baseData.filter(row => { const connVal = parsePercent(safeGet(row, 'Retail Mode Connectivity', null)); return !isNaN(connVal) && connVal < 1.0; });
             populateFocusPointTable('connectivityOpportunitiesTable', connectivityOpportunitiesSection, connOpps, 'Retail Mode Connectivity', 'Connectivity %');
         } else { if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none'; }
-        
+
         if (focusRepSkillFilter?.checked) {
             const repSkillOpps = baseData.filter(row => { const repSkillVal = parsePercent(safeGet(row, 'Rep Skill Ach', null)); return isValidNumericForFocus(safeGet(row, 'Rep Skill Ach', null)) && repSkillVal < 1.0; });
             populateFocusPointTable('repSkillOpportunitiesTable', repSkillOpportunitiesSection, repSkillOpps, 'Rep Skill Ach', 'Rep Skill Ach %');
         } else { if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none'; }
-        
+
         if (focusVpmrFilter?.checked) {
             const vpmrOpps = baseData.filter(row => { const vpmrVal = parsePercent(safeGet(row, '(V)PMR Ach', null)); return isValidNumericForFocus(safeGet(row, '(V)PMR Ach', null)) && vpmrVal < 1.0; });
             populateFocusPointTable('vpmrOpportunitiesTable', vpmrOpportunitiesSection, vpmrOpps, '(V)PMR Ach', '(V)PMR Ach %');
         } else { if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none'; }
-        
+
         // Show/hide Unified Connectivity Report section
         if (unifiedConnectivityReportSection) {
             if (showConnectivityReportFilter?.checked && connectivityData && connectivityData.length > 0) {
@@ -1307,13 +1376,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const handleSort = (event) => { 
-         const headerCell = event.target.closest('th'); if (!headerCell?.classList.contains('sortable')) return;
-         const sortKey = headerCell.dataset.sort; if (!sortKey) return;
-         if (currentSort.column === sortKey) { currentSort.ascending = !currentSort.ascending; } else { currentSort.column = sortKey; currentSort.ascending = true; }
-         updateAttachRateTable(filteredData); 
+    const handleSort = (event) => {
+        const headerCell = event.target.closest('th'); if (!headerCell?.classList.contains('sortable')) return;
+        const sortKey = headerCell.dataset.sort; if (!sortKey) return;
+        if (currentSort.column === sortKey) { currentSort.ascending = !currentSort.ascending; } else { currentSort.column = sortKey; currentSort.ascending = true; }
+        updateAttachRateTable(filteredData);
     };
-    const updateSortArrows = () => { 
+    const updateSortArrows = () => {
         if (!attachRateTable) return;
         attachRateTable.querySelectorAll('thead th.sortable .sort-arrow').forEach(arrow => { arrow.className = 'sort-arrow'; arrow.textContent = ''; });
         const currentHeaderArrow = attachRateTable.querySelector(`thead th[data-sort="${CSS.escape(currentSort.column)}"] .sort-arrow`);
@@ -1321,11 +1390,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const showStoreDetails = (storeData) => {
         if (!storeDetailsContent || !storeDetailsSection || !closeStoreDetailsButton) return;
-        const addressParts = [ safeGet(storeData, 'ADDRESS1', null), safeGet(storeData, 'CITY', null), safeGet(storeData, 'STATE', null), safeGet(storeData, 'ZIPCODE', null) ].filter(part => part && String(part).trim() !== '');
+        const addressParts = [safeGet(storeData, 'ADDRESS1', null), safeGet(storeData, 'CITY', null), safeGet(storeData, 'STATE', null), safeGet(storeData, 'ZIPCODE', null)].filter(part => part && String(part).trim() !== '');
         const addressString = addressParts.length > 0 ? addressParts.join(', ') : 'N/A';
         const latitude = parseNumber(safeGet(storeData, 'LATITUDE_ORG', NaN)); const longitude = parseNumber(safeGet(storeData, 'LONGITUDE_ORG', NaN));
         let mapsLinkHtml = `<p style="color: #aaa; font-style: italic;">(Map coordinates not available)</p>`;
-        if (!isNaN(latitude) && !isNaN(longitude) && latitude !== 0 && longitude !==0) { const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`; mapsLinkHtml = `<p><a href="${mapsUrl}" target="_blank" title="Open in Google Maps">View on Google Maps</a></p>`; }
+        if (!isNaN(latitude) && !isNaN(longitude) && latitude !== 0 && longitude !== 0) { const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`; mapsLinkHtml = `<p><a href="${mapsUrl}" target="_blank" title="Open in Google Maps">View on Google Maps</a></p>`; }
         let flagSummaryHtml = FLAG_HEADERS.map(flag => { const flagValue = safeGet(storeData, flag, 'NO'); const isTrue = (flagValue === true || String(flagValue).toUpperCase() === 'YES' || String(flagValue) === 'Y' || flagValue === 1 || String(flagValue) === '1'); return `<span title="${flag.replace(/_/g, ' ')}" data-flag="${isTrue}">${flag.replace(/_/g, ' ')} ${isTrue ? '✔' : '✘'}</span>`; }).join(' | ');
         storeDetailsContent.innerHTML = ` <p><strong>Store:</strong> ${safeGet(storeData, 'Store')}</p> <p><strong>Address:</strong> ${addressString}</p> ${mapsLinkHtml} <hr> <p><strong>IDs:</strong> Store: ${safeGet(storeData, 'STORE ID')} | Org: ${safeGet(storeData, 'ORG_STORE_ID')} | CV: ${safeGet(storeData, 'CV_STORE_ID')} | CinglePoint: ${safeGet(storeData, 'CINGLEPOINT_ID')}</p> <p><strong>Type:</strong> ${safeGet(storeData, 'STORE_TYPE_NAME')} | Nat Tier: ${safeGet(storeData, 'National_Tier')} | Merch Lvl: ${safeGet(storeData, 'Merchandising_Level')} | Comb Tier: ${safeGet(storeData, 'Combined_Tier')}</p> <hr> <p><strong>Hierarchy:</strong> ${safeGet(storeData, 'REGION')} > ${safeGet(storeData, 'DISTRICT')} > ${safeGet(storeData, 'Q2 Territory')}</p> <p><strong>FSM:</strong> ${safeGet(storeData, 'FSM NAME')}</p> <p><strong>Channel:</strong> ${safeGet(storeData, 'CHANNEL')} / ${safeGet(storeData, 'SUB_CHANNEL')}</p> <p><strong>Dealer:</strong> ${safeGet(storeData, 'DEALER_NAME')}</p> <hr> <p><strong>Visits:</strong> ${formatNumber(parseNumber(safeGet(storeData, 'Visit count', 0)))} | <strong>Trainings:</strong> ${formatNumber(parseNumber(safeGet(storeData, 'Trainings', 0)))}</p> <p><strong>Connectivity:</strong> ${formatPercent(parsePercent(safeGet(storeData, 'Retail Mode Connectivity', 0)))}</p> <hr> <p><strong>Flags:</strong> ${flagSummaryHtml}</p> `;
         storeDetailsSection.style.display = 'block'; closeStoreDetailsButton.style.display = 'inline-block';
@@ -1338,19 +1407,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const highlightTableRow = (storeName) => {
         if (selectedStoreRow) { selectedStoreRow.classList.remove('selected-row'); selectedStoreRow = null; }
         if (storeName) {
-            const tablesToSearch = [ 
-                document.getElementById('attachRateTableBody'), 
-                document.getElementById('top5TableBody'), 
-                document.getElementById('bottom5TableBody'), 
-                document.getElementById('eliteOpportunitiesTableBody'), 
-                document.getElementById('connectivityOpportunitiesTableBody'), 
-                document.getElementById('repSkillOpportunitiesTableBody'), 
-                document.getElementById('vpmrOpportunitiesTableBody') ,
+            const tablesToSearch = [
+                document.getElementById('attachRateTableBody'),
+                document.getElementById('top5TableBody'),
+                document.getElementById('bottom5TableBody'),
+                document.getElementById('eliteOpportunitiesTableBody'),
+                document.getElementById('connectivityOpportunitiesTableBody'),
+                document.getElementById('repSkillOpportunitiesTableBody'),
+                document.getElementById('vpmrOpportunitiesTableBody'),
                 document.getElementById('connectivityReportTable')?.querySelector('tbody') // Also check the new table
             ];
             for (const tableBody of tablesToSearch) {
-                if (tableBody) { 
-                    try { const rowToHighlight = tableBody.querySelector(`tr[data-store-name="${CSS.escape(storeName)}"]`); if (rowToHighlight) { rowToHighlight.classList.add('selected-row'); selectedStoreRow = rowToHighlight; break; }
+                if (tableBody) {
+                    try {
+                        const rowToHighlight = tableBody.querySelector(`tr[data-store-name="${CSS.escape(storeName)}"]`); if (rowToHighlight) { rowToHighlight.classList.add('selected-row'); selectedStoreRow = rowToHighlight; break; }
                     } catch (e) { console.error("Error selecting table row:", e, "StoreName:", storeName); }
                 }
             }
@@ -1359,13 +1429,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateShareOptions = () => {
         if (!emailShareSection || !shareEmailButton || !emailShareHint || !printReportButton) return;
         if (filteredData.length === 0) { printReportButton.disabled = true; emailShareSection.style.display = 'none'; return; }
-        printReportButton.disabled = false; const emailBody = generateEmailBody(); 
+        printReportButton.disabled = false; const emailBody = generateEmailBody();
         if (emailBody.length < 2000) {
-            emailShareSection.style.display = 'block'; if(emailShareControls) emailShareControls.style.display = 'flex'; 
+            emailShareSection.style.display = 'block'; if (emailShareControls) emailShareControls.style.display = 'flex';
             shareEmailButton.disabled = false;
             emailShareHint.textContent = 'Note: This will open your default desktop email client. Available for summaries under 2000 characters.';
         } else {
-            emailShareSection.style.display = 'block'; if(emailShareControls) emailShareControls.style.display = 'none';
+            emailShareSection.style.display = 'block'; if (emailShareControls) emailShareControls.style.display = 'none';
             shareEmailButton.disabled = true;
             emailShareHint.textContent = 'Email summary is too long for direct sharing. Please use "Print / Save as PDF" for a full report.';
         }
@@ -1379,16 +1449,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 html += '<ul style="list-style-type: none; padding-left: 0;">';
                 summaryGrid.querySelectorAll('p').forEach(p => {
                     if (p.style.display !== 'none') {
-                         const labelNode = p.childNodes[0]; const label = labelNode ? labelNode.nodeValue.trim() : '';
-                         const value = p.querySelector('strong')?.textContent || '';
-                         if(label) html += `<li style="margin-bottom: 5px;">${label} <strong>${value}</strong></li>`;
+                        const labelNode = p.childNodes[0]; const label = labelNode ? labelNode.nodeValue.trim() : '';
+                        const value = p.querySelector('strong')?.textContent || '';
+                        if (label) html += `<li style="margin-bottom: 5px;">${label} <strong>${value}</strong></li>`;
                     }
                 }); html += '</ul>';
             }
         }
         if (mainChartInstance) {
             try { const chartImageURL = mainChartInstance.toBase64Image(); html += `<h2>Revenue Performance Chart</h2><div class="report-chart-container"><img src="${chartImageURL}" alt="Revenue Performance Chart" style="max-width: 100%; height: auto; border: 1px solid #ddd;"></div>`;
-            } catch(e) { html += `<p><em>Main chart could not be included.</em></p>`; }
+            } catch (e) { html += `<p><em>Main chart could not be included.</em></p>`; }
         }
         const generateTableHTMLFromDOM = (tableElementId, title) => {
             const tableElement = document.getElementById(tableElementId);
@@ -1397,11 +1467,11 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (tableElementId.includes('OpportunitiesTable')) parentSection = document.getElementById(tableElementId)?.closest('.focus-point-card');
             else if (tableElementId === 'attachRateTable') parentSection = document.getElementById('attachRateTableContainer');
             else if (tableElementId === 'connectivityReportTable') parentSection = document.getElementById('unifiedConnectivityReportSection');
-            if (!tableElement || (parentSection && parentSection.style.display === 'none') ) return '';
+            if (!tableElement || (parentSection && parentSection.style.display === 'none')) return '';
             const tableBody = tableElement.querySelector('tbody');
             if (!tableBody || tableBody.children.length === 0) return '';
             let tableHTML = `<h2>${title}</h2><table>`; const header = tableElement.querySelector('thead');
-            if (header) tableHTML += `<thead>${header.innerHTML}</thead>`; 
+            if (header) tableHTML += `<thead>${header.innerHTML}</thead>`;
             tableHTML += `<tbody>`;
             Array.from(tableBody.rows).forEach(row => {
                 tableHTML += `<tr>`; Array.from(row.cells).forEach(cell => { tableHTML += `<td style="text-align: ${cell.style.textAlign || 'left'};">${cell.textContent}</td>`; });
@@ -1421,7 +1491,7 @@ document.addEventListener('DOMContentLoaded', () => {
             { id: 'eliteOpportunitiesTable', title: 'Elite Opportunities (>1% <100%)', sectionId: 'eliteOpportunitiesSection' },
             { id: 'connectivityOpportunitiesTable', title: 'Connectivity Opportunities (<100%)', sectionId: 'connectivityOpportunitiesSection' },
             { id: 'repSkillOpportunitiesTable', title: 'Rep Skill Opportunities (<100%, valid data)', sectionId: 'repSkillOpportunitiesSection' },
-            { id: 'vpmrOpportunitiesTable', title: 'VPMR Opportunities (<100%, valid data)', sectionId: 'vpmrOpportunitiesSection' } ];
+            { id: 'vpmrOpportunitiesTable', title: 'VPMR Opportunities (<100%, valid data)', sectionId: 'vpmrOpportunitiesSection' }];
         focusSections.forEach(fs => { html += generateTableHTMLFromDOM(fs.id, fs.title); });
         return html;
     };
@@ -1437,10 +1507,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (filteredData.length === 0) { alert("No filtered data to export."); return; }
         try {
             const currentHeaders = Array.from(attachRateTable.querySelectorAll('thead th')).map(th => th.dataset.sort || th.textContent.replace(/ [▲▼]$/, '').trim());
-            const dataForExport = filteredData.filter(row => ATTACH_RATE_COLUMNS.every(colKey => isValidNumericForFocus(safeGet(row, colKey, null)))).map(row => currentHeaders.map(headerKey => { 
-                const dataKey = headerKey === 'Territory' ? 'Q2 Territory' : headerKey; let value = safeGet(row, dataKey, ''); 
+            const dataForExport = filteredData.filter(row => ATTACH_RATE_COLUMNS.every(colKey => isValidNumericForFocus(safeGet(row, colKey, null)))).map(row => currentHeaders.map(headerKey => {
+                const dataKey = headerKey === 'Territory' ? 'Q2 Territory' : headerKey; let value = safeGet(row, dataKey, '');
                 const isPercentLike = ATTACH_RATE_COLUMNS.includes(dataKey) || dataKey.includes('%') || dataKey.includes('Ach') || dataKey.includes('Connectivity') || dataKey.includes('Elite');
-                if (isPercentLike) { const numVal = parsePercent(value); return isNaN(numVal) ? '' : numVal; } 
+                if (isPercentLike) { const numVal = parsePercent(value); return isNaN(numVal) ? '' : numVal; }
                 else { const numVal = parseNumber(value); if (!isNaN(numVal) && typeof value !== 'boolean' && String(value).trim() !== '') return numVal; if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) return `"${value.replace(/"/g, '""')}"`; return value; }
             }));
             let csvContent = "data:text/csv;charset=utf-8," + currentHeaders.join(",") + "\n" + dataForExport.map(e => e.join(",")).join("\n");
@@ -1455,16 +1525,16 @@ document.addEventListener('DOMContentLoaded', () => {
         body += `- % Store Quarterly Target: ${percentQuarterlyStoreTargetValue?.textContent || 'N/A'}\n`; body += `- Total Units (incl. DF): ${unitsWithDFValue?.textContent || 'N/A'}\n`;
         body += `- Unit Achievement %: ${unitAchievementValue?.textContent || 'N/A'}\n`; body += `- Total Visits: ${visitCountValue?.textContent || 'N/A'}\n`; body += `- Avg. Connectivity: ${retailModeConnectivityValue?.textContent || 'N/A'}\n\n`;
         body += "Mysteryshop & Training (Avg*):\n"; body += `- Rep Skill Ach: ${repSkillAchValue?.textContent || 'N/A'}\n`; body += `- (V)PMR Ach: ${vPmrAchValue?.textContent || 'N/A'}\n`;
-        body += `- Post Training Score: ${postTrainingScoreValue?.textContent || 'N/A'} (Excludes 0s)\n`; 
+        body += `- Post Training Score: ${postTrainingScoreValue?.textContent || 'N/A'} (Excludes 0s)\n`;
         body += `- Elite Score %: ${eliteValue?.textContent || 'N/A'}\n\n`;
         body += "*Averages calculated only using stores with valid data for each metric.\n\n";
         const territoriesInData = new Set(filteredData.map(row => safeGet(row, 'Q2 Territory', null)).filter(Boolean));
         if (territoriesInData.size === 1) {
             const territoryName = territoriesInData.values().next().value; body += `--- Key Performers for Territory: ${territoryName} ---\n`;
             const top5ForEmail = [...filteredData].sort((a, b) => parseNumber(safeGet(b, 'Revenue w/DF', -Infinity)) - parseNumber(safeGet(a, 'Revenue w/DF', -Infinity))).slice(0, TOP_N_TABLES);
-            if (top5ForEmail.length > 0) { body += `Top ${top5ForEmail.length} (Revenue):\n`; top5ForEmail.forEach((store, i) => { body += `${i+1}. ${safeGet(store, 'Store')} - Rev: ${formatCurrency(parseNumber(safeGet(store, 'Revenue w/DF')))}\n`; }); body += "\n"; }
+            if (top5ForEmail.length > 0) { body += `Top ${top5ForEmail.length} (Revenue):\n`; top5ForEmail.forEach((store, i) => { body += `${i + 1}. ${safeGet(store, 'Store')} - Rev: ${formatCurrency(parseNumber(safeGet(store, 'Revenue w/DF')))}\n`; }); body += "\n"; }
             const bottom5ForEmail = [...filteredData].sort((a, b) => calculateQtdGap(a) - calculateQtdGap(b)).slice(0, TOP_N_TABLES);
-            if (bottom5ForEmail.length > 0) { body += `Bottom ${bottom5ForEmail.length} (Opportunities by QTD Gap):\n`; bottom5ForEmail.forEach((store, i) => { body += `${i+1}. ${safeGet(store, 'Store')} - Gap: ${formatCurrency(calculateQtdGap(store) === Infinity ? NaN : calculateQtdGap(store))}\n`; }); body += "\n"; }
+            if (bottom5ForEmail.length > 0) { body += `Bottom ${bottom5ForEmail.length} (Opportunities by QTD Gap):\n`; bottom5ForEmail.forEach((store, i) => { body += `${i + 1}. ${safeGet(store, 'Store')} - Gap: ${formatCurrency(calculateQtdGap(store) === Infinity ? NaN : calculateQtdGap(store))}\n`; }); body += "\n"; }
         }
         body += "---------------------------------\nGenerated by FSM Dashboard\n"; return body;
     };
@@ -1476,34 +1546,34 @@ document.addEventListener('DOMContentLoaded', () => {
         if (fsmFilter?.value !== 'ALL') summary.push(`FSM: ${fsmFilter.value}`); if (channelFilter?.value !== 'ALL') summary.push(`Channel: ${channelFilter.value}`);
         if (subchannelFilter?.value !== 'ALL') summary.push(`Subchannel: ${subchannelFilter.value}`); if (dealerFilter?.value !== 'ALL') summary.push(`Dealer: ${dealerFilter.value}`);
         const stores = storeFilter ? Array.from(storeFilter.selectedOptions).map(o => o.value) : []; if (stores.length > 0) summary.push(`Stores: ${stores.length === 1 ? stores[0] : `${stores.length} selected`}`);
-        const flags = Object.entries(flagFiltersCheckboxes).filter(([, input]) => input?.checked).map(([key])=> key.replace(/_/g, ' ')); if (flags.length > 0) summary.push(`Attributes: ${flags.join(', ')}`);
+        const flags = Object.entries(flagFiltersCheckboxes).filter(([, input]) => input?.checked).map(([key]) => key.replace(/_/g, ' ')); if (flags.length > 0) summary.push(`Attributes: ${flags.join(', ')}`);
         const additionalToolsSummary = [];
-        if(showMapViewFilter?.checked) additionalToolsSummary.push("Map View");
-        if(focusEliteFilter?.checked) additionalToolsSummary.push("Elite Opps");
-        if(focusConnectivityFilter?.checked) additionalToolsSummary.push("Connectivity Opps");
-        if(focusRepSkillFilter?.checked) additionalToolsSummary.push("Rep Skill Opps");
-        if(focusVpmrFilter?.checked) additionalToolsSummary.push("VPMR Opps");
-        if(showConnectivityReportFilter?.checked) additionalToolsSummary.push("Connectivity Report");
-        if(additionalToolsSummary.length > 0) summary.push(`Tools: ${additionalToolsSummary.join(', ')}`);
+        if (showMapViewFilter?.checked) additionalToolsSummary.push("Map View");
+        if (focusEliteFilter?.checked) additionalToolsSummary.push("Elite Opps");
+        if (focusConnectivityFilter?.checked) additionalToolsSummary.push("Connectivity Opps");
+        if (focusRepSkillFilter?.checked) additionalToolsSummary.push("Rep Skill Opps");
+        if (focusVpmrFilter?.checked) additionalToolsSummary.push("VPMR Opps");
+        if (showConnectivityReportFilter?.checked) additionalToolsSummary.push("Connectivity Report");
+        if (additionalToolsSummary.length > 0) summary.push(`Tools: ${additionalToolsSummary.join(', ')}`);
         return summary.length > 0 ? summary.join('; ') : 'None';
     };
     const handleShareEmail = () => {
         if (!emailRecipientInput || !shareStatus) return; const recipient = emailRecipientInput.value;
-        if (!recipient || !/\S+@\S+\.\S+/.test(recipient)) { if(shareStatus) shareStatus.textContent = "Please enter a valid recipient email address."; return; }
+        if (!recipient || !/\S+@\S+\.\S+/.test(recipient)) { if (shareStatus) shareStatus.textContent = "Please enter a valid recipient email address."; return; }
         try {
             const subject = `FSM Dashboard Summary - ${new Date().toLocaleDateString()}`; const bodyContent = generateEmailBody();
             const mailtoLink = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyContent)}`;
-            if (mailtoLink.length > 2000) { if(shareStatus) shareStatus.textContent = "Generated email body is too long. Please use Print/Save as PDF."; console.warn("Mailto link > 2000 chars"); return; }
-            window.location.href = mailtoLink; if(shareStatus) shareStatus.textContent = "Your email client should open.";
-        } catch (error) { console.error("Error generating mailto link:", error); if(shareStatus) shareStatus.textContent = "Error generating email. Check console."; }
+            if (mailtoLink.length > 2000) { if (shareStatus) shareStatus.textContent = "Generated email body is too long. Please use Print/Save as PDF."; console.warn("Mailto link > 2000 chars"); return; }
+            window.location.href = mailtoLink; if (shareStatus) shareStatus.textContent = "Your email client should open.";
+        } catch (error) { console.error("Error generating mailto link:", error); if (shareStatus) shareStatus.textContent = "Error generating email. Check console."; }
     };
-     const selectAllOptions = (selectElement) => {
-         if (!selectElement) return; Array.from(selectElement.options).forEach(option => option.selected = true);
-         if (selectElement === territoryFilter) updateStoreFilterOptionsBasedOnHierarchy();
+    const selectAllOptions = (selectElement) => {
+        if (!selectElement) return; Array.from(selectElement.options).forEach(option => option.selected = true);
+        if (selectElement === territoryFilter) updateStoreFilterOptionsBasedOnHierarchy();
     };
-     const deselectAllOptions = (selectElement) => {
-         if (!selectElement) return; selectElement.selectedIndex = -1;
-         if (selectElement === territoryFilter) updateStoreFilterOptionsBasedOnHierarchy();
+    const deselectAllOptions = (selectElement) => {
+        if (!selectElement) return; selectElement.selectedIndex = -1;
+        if (selectElement === territoryFilter) updateStoreFilterOptionsBasedOnHierarchy();
     };
 
     // --- Event Listeners ---
@@ -1526,13 +1596,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Initial Setup ---
-    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY); 
-    applyTheme(savedTheme || 'dark'); 
-    initMapView(); 
-    resetUI(); 
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+    applyTheme(savedTheme || 'dark');
+    initMapView();
+    resetUI();
     if (!mainChartCanvas) console.warn("Main chart canvas context not found on load. Chart will not render.");
-    updateShareOptions(); 
-    checkAndShowWhatsNew(); 
+    updateShareOptions();
+    checkAndShowWhatsNew();
     checkAndShowDisclaimer(); // Call to show disclaimer on page load
 
     // --- Check for password cookie on load and unlock if present ---
