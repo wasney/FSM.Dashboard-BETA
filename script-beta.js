@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-06-29T15:38:09EDT
-//    Summary: Fixed TypeError by converting all search values to a string before applying toLowerCase().
+//    Timestamp: 2025-06-30T23:28:40EDT
+//    Summary: Implemented functionality to load a second worksheet tab and added a conditional UI for the new Unified Connectivity Report feature.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Password Gate Elements & Logic ---
@@ -141,6 +141,9 @@ document.addEventListener('DOMContentLoaded', () => {
         else { console.warn(`Flag filter checkbox not found for ID: ${expectedId} (Header: ${header}) upon initial mapping. Check HTML.`);}
         return acc;
     }, {});
+    const showConnectivityReportFilter = document.getElementById('showConnectivityReportFilter');
+    const unifiedConnectivityReportSection = document.getElementById('unifiedConnectivityReportSection');
+
     const territorySelectAll = document.getElementById('territorySelectAll');
     const territoryDeselectAll = document.getElementById('territoryDeselectAll');
     const storeSelectAll = document.getElementById('storeSelectAll');
@@ -206,6 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Global State ---
     let rawData = [];
+    let connectivityData = null; // New global variable for the connectivity sheet data
     let filteredData = [];
     let mainChartInstance = null;
     let mapInstance = null; 
@@ -569,12 +573,36 @@ document.addEventListener('DOMContentLoaded', () => {
         if (resultsArea) resultsArea.style.display = 'none'; 
         resetUI(); 
         try {
-            const data = await file.arrayBuffer(); const workbook = XLSX.read(data); const firstSheetName = workbook.SheetNames[0]; const worksheet = workbook.Sheets[firstSheetName];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: null });
-            if (jsonData.length > 0) { const headers = Object.keys(jsonData[0]); const missingHeaders = REQUIRED_HEADERS.filter(h => !headers.includes(h)); if (missingHeaders.length > 0) { console.warn(`Warning: Missing expected columns: ${missingHeaders.join(', ')}.`); }
-            } else { throw new Error("Excel sheet appears to be empty."); }
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data);
             
-            rawData = jsonData; 
+            // Read the first worksheet for the main dashboard data
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            rawData = XLSX.utils.sheet_to_json(worksheet, { defval: null });
+
+            if (rawData.length > 0) {
+                const headers = Object.keys(rawData[0]);
+                const missingHeaders = REQUIRED_HEADERS.filter(h => !headers.includes(h));
+                if (missingHeaders.length > 0) {
+                    console.warn(`Warning: Missing expected columns in main sheet: ${missingHeaders.join(', ')}.`);
+                }
+            } else {
+                throw new Error("Main worksheet appears to be empty.");
+            }
+            
+            // Read the "Unified Connectivity Report" worksheet for the new feature
+            const connectivitySheetName = 'Unified Connectivity Report';
+            const hasConnectivitySheet = workbook.SheetNames.includes(connectivitySheetName);
+            if (hasConnectivitySheet) {
+                const connectivityWorksheet = workbook.Sheets[connectivitySheetName];
+                connectivityData = XLSX.utils.sheet_to_json(connectivityWorksheet, { defval: null });
+                console.log('Unified Connectivity Report sheet loaded successfully!');
+            } else {
+                connectivityData = []; // Use an empty array if not found
+                console.warn('Unified Connectivity Report sheet not found in the file. The related feature will be disabled.');
+            }
+
             allPossibleStores = [...new Set(rawData.map(r => safeGet(r, 'Store', null)).filter(s => s && String(s).trim() !== ''))].sort().map(s => ({ value: s, text: s }));
             
             populateFilters(rawData); 
@@ -666,6 +694,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (territoryDeselectAll) territoryDeselectAll.disabled = rawData.length === 0;
         if (storeSelectAll) storeSelectAll.disabled = storeOptions.length === 0;
         if (storeDeselectAll) storeDeselectAll.disabled = storeOptions.length === 0;
+        
+        // Enable/disable the connectivity report checkbox based on loaded data
+        if (showConnectivityReportFilter) {
+            showConnectivityReportFilter.disabled = connectivityData === null || connectivityData.length === 0;
+        }
     };
     
     // This function is now responsible for populating filters on file load
@@ -678,6 +711,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(focusConnectivityFilter) focusConnectivityFilter.disabled = false;
         if(focusRepSkillFilter) focusRepSkillFilter.disabled = false;
         if(focusVpmrFilter) focusVpmrFilter.disabled = false;
+        if(showConnectivityReportFilter) showConnectivityReportFilter.disabled = connectivityData === null || connectivityData.length === 0;
 
         if (applyFiltersButtonModal) applyFiltersButtonModal.disabled = false;
         if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = false; 
@@ -708,7 +742,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 elite: focusEliteFilter?.checked,
                 connectivity: focusConnectivityFilter?.checked,
                 repSkill: focusRepSkillFilter?.checked,
-                vpmr: focusVpmrFilter?.checked
+                vpmr: focusVpmrFilter?.checked,
+                connectivityReport: showConnectivityReportFilter?.checked,
             }
         };
         try {
@@ -776,6 +811,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (focusConnectivityFilter && typeof defaults.additionalTools.connectivity === 'boolean') focusConnectivityFilter.checked = defaults.additionalTools.connectivity;
                 if (focusRepSkillFilter && typeof defaults.additionalTools.repSkill === 'boolean') focusRepSkillFilter.checked = defaults.additionalTools.repSkill;
                 if (focusVpmrFilter && typeof defaults.additionalTools.vpmr === 'boolean') focusVpmrFilter.checked = defaults.additionalTools.vpmr;
+                if (showConnectivityReportFilter && typeof defaults.additionalTools.connectivityReport === 'boolean') showConnectivityReportFilter.checked = defaults.additionalTools.connectivityReport;
             }
             
             updateStoreFilterOptionsBasedOnHierarchy(); 
@@ -832,7 +868,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // I will add the global search filter to the list of elements that trigger the filter update.
         const handler = updateFilterOptions;
         if (globalSearchFilter) globalSearchFilter.addEventListener('input', handler);
-        const filtersToListen = [regionFilter, districtFilter, territoryFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter, storeSearch];
+        const filtersToListen = [regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter, storeSearch];
         filtersToListen.forEach(filter => {
             if (filter) {
                 // Ensure no duplicate listeners are added
@@ -841,6 +877,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         Object.values(flagFiltersCheckboxes).forEach(input => { if (input) input.addEventListener('change', handler); });
+        
+        // New listener for the connectivity report checkbox
+        if (showConnectivityReportFilter) {
+            showConnectivityReportFilter.addEventListener('change', () => {
+                applyFilters(); // Re-apply filters to show/hide the section
+            });
+        }
     };
 
     const updateStoreFilterOptionsBasedOnHierarchy = () => {
@@ -916,388 +959,102 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
     
-    const applyFilters = (isFromModalOrDefaults = false) => { 
-        showLoading(true, true); 
-        if (resultsArea) resultsArea.style.display = 'none';
-        
-        setTimeout(() => {
-            try {
-                // Get the global search term
-                const searchTerm = globalSearchFilter?.value.toLowerCase().trim();
-                let filteredFromSearch = rawData;
-                if (searchTerm) {
-                    filteredFromSearch = rawData.filter(row => {
-                        const searchFields = ['Store', 'FSM NAME', 'ADDRESS1', 'CITY'];
-                        return searchFields.some(field => {
-                            const value = String(safeGet(row, field, '')).toLowerCase();
-                            return value.includes(searchTerm);
-                        });
-                    });
-                }
-                
-                // Now apply the rest of the filters on top of the search results
-                const selectedRegion = regionFilter?.value; const selectedDistrict = districtFilter?.value; const selectedTerritories = territoryFilter ? Array.from(territoryFilter.selectedOptions).map(opt => opt.value) : [];
-                const selectedFsm = fsmFilter?.value; const selectedChannel = channelFilter?.value; const selectedSubchannel = subchannelFilter?.value; const selectedDealer = dealerFilter?.value;
-                const selectedStores = storeFilter ? Array.from(storeFilter.selectedOptions).map(opt => opt.value) : [];
-                const selectedFlags = {}; Object.entries(flagFiltersCheckboxes).forEach(([key, input]) => { if (input?.checked) { selectedFlags[key] = true; } });
-                
-                filteredData = filteredFromSearch.filter(row => {
-                    if (selectedRegion !== 'ALL' && safeGet(row, 'REGION', null) !== selectedRegion) return false; if (selectedDistrict !== 'ALL' && safeGet(row, 'DISTRICT', null) !== selectedDistrict) return false;
-                    if (selectedTerritories.length > 0 && !selectedTerritories.includes(safeGet(row, 'Q2 Territory', null))) return false; if (selectedFsm !== 'ALL' && safeGet(row, 'FSM NAME', null) !== selectedFsm) return false;
-                    if (selectedChannel !== 'ALL' && safeGet(row, 'CHANNEL', null) !== selectedChannel) return false; if (selectedSubchannel !== 'ALL' && safeGet(row, 'SUB_CHANNEL', null) !== selectedSubchannel) return false;
-                    if (selectedDealer !== 'ALL' && safeGet(row, 'DEALER_NAME', null) !== selectedDealer) return false; if (selectedStores.length > 0 && !selectedStores.includes(safeGet(row, 'Store', null))) return false;
-                    for (const flag in selectedFlags) { const flagValue = safeGet(row, flag, 'NO'); if (!(flagValue === true || String(flagValue).toUpperCase() === 'YES' || String(flagValue) === 'Y' || flagValue === 1 || String(flagValue) === '1')) { return false; } }
-                    return true;
-                });
-                
-                updateSummary(filteredData); updateTopBottomTables(filteredData); updateCharts(filteredData); updateAttachRateTable(filteredData); 
-                
-                if (showMapViewFilter && showMapViewFilter.checked) {
-                    updateMapView(filteredData);
-                } else {
-                    if (mapViewContainer) mapViewContainer.style.display = 'none';
-                    if (mapInstance && mapMarkersLayer?.clearLayers) mapMarkersLayer.clearLayers();
-                }
-                
-                updateFocusPointSections(filteredData);
-                updateShareOptions(); 
+    const renderConnectivityTable = (mainTableData) => {
+        const tableBody = document.querySelector('#connectivityReportTable tbody');
+        const tableHeadRow = document.querySelector('#connectivityReportTable thead tr');
+        const statusDiv = document.querySelector('#unifiedConnectivityReportSection .focus-point-status');
+        if (!tableBody || !tableHeadRow || !connectivityData) return;
 
-                if (filteredData.length === 1) { showStoreDetails(filteredData[0]); highlightTableRow(safeGet(filteredData[0], 'Store', null)); } else { hideStoreDetails(); }
-                if (statusDiv && !statusDiv.textContent.includes("Default filters loaded")) { 
-                     statusDiv.textContent = `Displaying ${filteredData.length} of ${rawData.length} rows based on filters.`;
-                } else if (statusDiv && statusDiv.textContent.includes("Default filters loaded") && rawData.length > 0) {
-                     statusDiv.textContent = statusDiv.textContent.split('.')[0] + `. Displaying ${filteredData.length} of ${rawData.length} rows.`;
-                } else if (statusDiv && rawData.length === 0) {
-                    statusDiv.textContent = 'No data to display.';
-                }
+        tableBody.innerHTML = '';
+        tableHeadRow.innerHTML = '<th>Store</th>'; // Reset header
 
-
-                if (resultsArea) resultsArea.style.display = 'block'; 
-                if (exportCsvButton) exportCsvButton.disabled = filteredData.length === 0;
-                if (printReportButton) printReportButton.disabled = filteredData.length === 0;
-                
-                if (isFromModalOrDefaults && filterModal && filterModal.classList.contains('active')) { 
-                    closeFilterModal();
-                }
-
-            } catch (error) {
-                console.error("Error applying filters:", error); if (statusDiv) statusDiv.textContent = "Error applying filters. Check console for details.";
-                filteredData = []; if (resultsArea) resultsArea.style.display = 'none'; 
-                if (exportCsvButton) exportCsvButton.disabled = true;
-                if (printReportButton) printReportButton.disabled = true;
-                if (emailShareSection) emailShareSection.style.display = 'none';
-                updateSummary([]); updateTopBottomTables([]); updateCharts([]); updateAttachRateTable([]); updateMapView([]); hideStoreDetails();
-                if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none';
-                if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
-                if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
-                if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
-                if (mapViewContainer) mapViewContainer.style.display = 'none';
-            } finally { 
-                showLoading(false, true); 
-                const mainFilterBtn = document.getElementById('openFilterModalBtn');
-                if (mainFilterBtn) mainFilterBtn.disabled = rawData.length === 0;
-            }
-        }, 10);
-    };
-    
-    const resetFiltersForFullUIReset = () => {
-         const allOptionHTML = '<option value="ALL">-- Load File First --</option>';
-         [regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(sel => { 
-             if (sel) { sel.innerHTML = allOptionHTML; sel.value = 'ALL'; sel.disabled = true;}
-         });
-         if (territoryFilter) { territoryFilter.innerHTML = '<option value="ALL">-- Load File First --</option>'; territoryFilter.selectedIndex = -1; territoryFilter.disabled = true; }
-         if (storeFilter) { storeFilter.innerHTML = '<option value="ALL">-- Load File First --</option>'; storeFilter.selectedIndex = -1; storeFilter.disabled = true; }
-         if (storeSearch) { storeSearch.value = ''; storeSearch.disabled = true; }
-         storeOptions = []; 
-         Object.values(flagFiltersCheckboxes).forEach(input => { if(input) {input.checked = false; input.disabled = true;} });
-        
-        if(showMapViewFilter) { showMapViewFilter.checked = false; showMapViewFilter.disabled = true; }
-        if(focusEliteFilter) { focusEliteFilter.checked = false; focusEliteFilter.disabled = true; }
-        if(focusConnectivityFilter) { focusConnectivityFilter.checked = false; focusConnectivityFilter.disabled = true; }
-        if(focusRepSkillFilter) { focusRepSkillFilter.checked = false; focusRepSkillFilter.disabled = true; }
-        if(focusVpmrFilter) { focusVpmrFilter.checked = false; focusVpmrFilter.disabled = true; }
-
-         if (applyFiltersButtonModal) applyFiltersButtonModal.disabled = true;
-         if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = true; 
-         if (saveDefaultFiltersBtn) saveDefaultFiltersBtn.disabled = true;
-         if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = true;
-
-         const mainFilterBtn = document.getElementById('openFilterModalBtn');
-         if (mainFilterBtn) mainFilterBtn.disabled = true;
-         if (globalSearchFilter) globalSearchFilter.disabled = true; // Disable global search on UI reset
-
-         if (territorySelectAll) territorySelectAll.disabled = true; if (territoryDeselectAll) territoryDeselectAll.disabled = true;
-         if (storeSelectAll) storeSelectAll.disabled = true; if (storeDeselectAll) storeDeselectAll.disabled = true;
-         if (exportCsvButton) exportCsvButton.disabled = true;
-         if (printReportButton) printReportButton.disabled = true;
-         if (emailShareSection) emailShareSection.style.display = 'none';
-         const handler = updateFilterOptions;
-         [regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(filter => { if (filter) filter.removeEventListener('change', handler); });
-         Object.values(flagFiltersCheckboxes).forEach(input => { if (input) input.removeEventListener('change', handler); });
-         if (globalSearchFilter) globalSearchFilter.removeEventListener('input', handler);
-    };
-
-     const resetUI = () => {
-         resetFiltersForFullUIReset(); 
-         if (resultsArea) resultsArea.style.display = 'none';
-         if (mainChartInstance) { mainChartInstance.destroy(); mainChartInstance = null; }
-         
-         if (mapInstance && mapMarkersLayer?.clearLayers) {
-             mapMarkersLayer.clearLayers();
-             mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom); 
-         } else if (mapInstance) { 
-             mapInstance.setView([MICHIGAN_AREA_VIEW.lat, MICHIGAN_AREA_VIEW.lon], MICHIGAN_AREA_VIEW.zoom);
-         }
-
-         if (mapViewContainer) mapViewContainer.style.display = 'none';
-         if (mapStatus) mapStatus.textContent = 'Enable via "Additional Tools" and apply filters to see map.';
-
-         if (attachRateTableBody) attachRateTableBody.innerHTML = ''; 
-         if (attachRateTableFooter) attachRateTableFooter.innerHTML = ''; 
-         if (attachTableStatus) attachTableStatus.textContent = '';
-         if (topBottomSection) topBottomSection.style.display = 'none'; 
-         if (top5TableBody) top5TableBody.innerHTML = ''; 
-         if (bottom5TableBody) bottom5TableBody.innerHTML = '';
-         hideStoreDetails(); 
-         updateSummary([]); 
-        if (eliteOpportunitiesSection) eliteOpportunitiesSection.style.display = 'none';
-        if (connectivityOpportunitiesSection) connectivityOpportunitiesSection.style.display = 'none';
-        if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
-        if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
-        if (emailShareSection) emailShareSection.style.display = 'none';
-
-         if(statusDiv) statusDiv.textContent = 'No file selected.';
-         allPossibleStores = []; 
-         rawData = []; 
-         filteredData = [];
-         updateShareOptions(); 
-         const mainFilterBtn = document.getElementById('openFilterModalBtn');
-         if (mainFilterBtn) mainFilterBtn.disabled = true;
-         if (clearDefaultFiltersBtn) clearDefaultFiltersBtn.disabled = localStorage.getItem(DEFAULT_FILTERS_STORAGE_KEY) === null;
-         closeFilterModal(); 
-     };
-
-    const handleResetFiltersClick = (isFromModal = false) => { 
-        [globalSearchFilter, regionFilter, districtFilter, fsmFilter, channelFilter, subchannelFilter, dealerFilter].forEach(sel => { 
-            if (sel) {
-                if (sel.type === 'text') sel.value = '';
-                else sel.value = 'ALL'; 
-            }
-        });
-        if (territoryFilter) territoryFilter.selectedIndex = -1;
-        if (storeFilter) storeFilter.selectedIndex = -1; 
-        if (storeSearch) storeSearch.value = ''; 
-        Object.values(flagFiltersCheckboxes).forEach(input => { if(input) input.checked = false; });
-        
-        if(showMapViewFilter) showMapViewFilter.checked = false;
-        if(focusEliteFilter) focusEliteFilter.checked = false;
-        if(focusConnectivityFilter) focusConnectivityFilter.checked = false;
-        if(focusRepSkillFilter) focusRepSkillFilter.checked = false;
-        if(focusVpmrFilter) focusVpmrFilter.checked = false;
-
-        if (rawData.length > 0) {
-            updateFilterOptions();
-        } else {
-            if (storeFilter) { storeFilter.innerHTML = '<option value="ALL">-- Load File First --</option>'; storeFilter.disabled = true; }
-            if (storeSearch) storeSearch.disabled = true;
-            if (storeSelectAll) storeSelectAll.disabled = true;
-            if (storeDeselectAll) storeDeselectAll.disabled = true;
-        }
-        
-        if (statusDiv) {
-            if (rawData.length > 0) {
-                statusDiv.textContent = 'Session filters reset. Click "Apply Filters" to see results, or reload file to use defaults.';
-            } else {
-                statusDiv.textContent = 'No file selected. Load a file to use filters.';
-            }
-        }
-        if (isFromModal) {
-             applyFilters(true); 
-        }
-    };
-
-    if (applyFiltersButtonModal) {
-        applyFiltersButtonModal.addEventListener('click', () => applyFilters(true)); 
-    }
-    if (resetFiltersButtonModal) {
-        resetFiltersButtonModal.addEventListener('click', () => handleResetFiltersClick(true)); 
-    }
-    if (saveDefaultFiltersBtn) {
-        saveDefaultFiltersBtn.addEventListener('click', saveDefaultFilters);
-    }
-    if (clearDefaultFiltersBtn) {
-        clearDefaultFiltersBtn.addEventListener('click', clearDefaultFilters);
-    }
-
-
-    const updateSummary = (data) => {
-        const totalCount = data.length;
-        const fieldsToClearText = [revenueWithDFValue, qtdRevenueTargetValue, qtdGapValue, quarterlyRevenueTargetValue, percentQuarterlyStoreTargetValue, revARValue, unitsWithDFValue, unitTargetValue, unitAchievementValue, visitCountValue, trainingCountValue, retailModeConnectivityValue, repSkillAchValue, vPmrAchValue, postTrainingScoreValue, eliteValue, percentQuarterlyTerritoryTargetValue, territoryRevPercentValue, districtRevPercentValue, regionRevPercentValue];
-        fieldsToClearText.forEach(el => { if (el) el.textContent = 'N/A'; });
-        [percentQuarterlyTerritoryTargetP, territoryRevPercentP, districtRevPercentP, regionRevPercentP].forEach(p => { if(p) p.style.display = 'none';});
-        if (totalCount === 0) return;
-        const sumRevenue = data.reduce((sum, row) => sum + parseNumber(safeGet(row, 'Revenue w/DF', 0)), 0);
-        const sumQtdTarget = data.reduce((sum, row) => sum + parseNumber(safeGet(row, 'QTD Revenue Target', 0)), 0);
-        const sumQuarterlyTarget = data.reduce((sum, row) => sum + parseNumber(safeGet(row, 'Quarterly Revenue Target', 0)), 0);
-        const sumUnits = data.reduce((sum, row) => sum + parseNumber(safeGet(row, 'Unit w/ DF', 0)), 0);
-        const sumUnitTarget = data.reduce((sum, row) => sum + parseNumber(safeGet(row, 'Unit Target', 0)), 0);
-        const sumVisits = data.reduce((sum, row) => sum + parseNumber(safeGet(row, 'Visit count', 0)), 0);
-        const sumTrainings = data.reduce((sum, row) => sum + parseNumber(safeGet(row, 'Trainings', 0)), 0);
-        let sumConnectivity = 0, countConnectivity = 0; let sumRepSkill = 0, countRepSkill = 0; let sumPmr = 0, countPmr = 0;
-        let sumPostTraining = 0, countPostTraining = 0; let sumElite = 0, countElite = 0; 
-        data.forEach(row => {
-            let valStr; const subChannel = safeGet(row, 'SUB_CHANNEL', null); 
-            valStr = safeGet(row, 'Retail Mode Connectivity', null); if (isValidForAverage(valStr)) { sumConnectivity += parsePercent(valStr); countConnectivity++; }
-            valStr = safeGet(row, 'Rep Skill Ach', null); if (isValidForAverage(valStr)) { sumRepSkill += parsePercent(valStr); countRepSkill++; }
-            valStr = safeGet(row, '(V)PMR Ach', null); if (isValidForAverage(valStr)) { sumPmr += parsePercent(valStr); countPmr++; }
-            valStr = safeGet(row, 'Post Training Score', null); 
-            if (isValidForAverage(valStr)) { 
-                const numericScore = parseNumber(valStr); 
-                if (numericScore !== 0) { sumPostTraining += numericScore; countPostTraining++; }
-            }
-            if (subChannel !== "Verizon COR") { valStr = safeGet(row, 'Elite', null); if (isValidForAverage(valStr)) { sumElite += parsePercent(valStr); countElite++; } }
-        });
-        const calculatedRevAR = sumQtdTarget === 0 ? NaN : sumRevenue / sumQtdTarget;
-        const avgConnectivity = countConnectivity > 0 ? sumConnectivity / countConnectivity : NaN; const avgRepSkill = countRepSkill > 0 ? sumRepSkill / countRepSkill : NaN;
-        const avgPmr = countPmr > 0 ? sumPmr / countPmr : NaN; const avgPostTraining = countPostTraining > 0 ? sumPostTraining / countPostTraining : NaN;
-        const avgElite = countElite > 0 ? sumElite / countElite : NaN; 
-        const overallPercentStoreTarget = sumQuarterlyTarget !== 0 ? sumRevenue / sumQuarterlyTarget : NaN; const overallUnitAchievement = sumUnitTarget !== 0 ? sumUnits / sumUnitTarget : NaN;
-        if (revenueWithDFValue) { revenueWithDFValue.textContent = formatCurrency(sumRevenue); revenueWithDFValue.title = `Sum of 'Revenue w/DF' for ${totalCount} filtered stores`; }
-        if (qtdRevenueTargetValue) { qtdRevenueTargetValue.textContent = formatCurrency(sumQtdTarget); qtdRevenueTargetValue.title = `Sum of 'QTD Revenue Target' for ${totalCount} filtered stores`; }
-        if (qtdGapValue) { qtdGapValue.textContent = formatCurrency(sumRevenue - sumQtdTarget); qtdGapValue.title = `Calculated Gap (Total Revenue - QTD Target) for ${totalCount} filtered stores`; }
-        if (quarterlyRevenueTargetValue) { quarterlyRevenueTargetValue.textContent = formatCurrency(sumQuarterlyTarget); quarterlyRevenueTargetValue.title = `Sum of 'Quarterly Revenue Target' for ${totalCount} filtered stores`; }
-        if (unitsWithDFValue) { unitsWithDFValue.textContent = formatNumber(sumUnits); unitsWithDFValue.title = `Sum of 'Unit w/ DF' for ${totalCount} filtered stores`; }
-        if (unitTargetValue) { unitTargetValue.textContent = formatNumber(sumUnitTarget); unitTargetValue.title = `Sum of 'Unit Target' for ${totalCount} filtered stores`; }
-        if (visitCountValue) { visitCountValue.textContent = formatNumber(sumVisits); visitCountValue.title = `Sum of 'Visit count' for ${totalCount} filtered stores`; }
-        if (trainingCountValue) { trainingCountValue.textContent = formatNumber(sumTrainings); trainingCountValue.title = `Sum of 'Trainings' for ${totalCount} filtered stores`; }
-        if (revARValue) { revARValue.textContent = formatPercent(calculatedRevAR); revARValue.title = "Rev AR% for selected stores with data"; }
-        if (percentQuarterlyStoreTargetValue) { percentQuarterlyStoreTargetValue.textContent = formatPercent(overallPercentStoreTarget); percentQuarterlyStoreTargetValue.title = `Overall % Quarterly Target (Total Revenue / Total Quarterly Target)`; }
-        if (unitAchievementValue) { unitAchievementValue.textContent = formatPercent(overallUnitAchievement); unitAchievementValue.title = `Overall Unit Achievement % (Total Units / Total Unit Target)`; }
-        if (retailModeConnectivityValue) { retailModeConnectivityValue.textContent = formatPercent(avgConnectivity); retailModeConnectivityValue.title = `Average 'Retail Mode Connectivity' across ${countConnectivity} stores with data`; }
-        if (repSkillAchValue) { repSkillAchValue.textContent = formatPercent(avgRepSkill); repSkillAchValue.title = `Average 'Rep Skill Ach' across ${countRepSkill} stores with data`; }
-        if (vPmrAchValue) { vPmrAchValue.textContent = formatPercent(avgPmr); vPmrAchValue.title = `Average '(V)PMR Ach' across ${countPmr} stores with data`; }
-        if (postTrainingScoreValue) { postTrainingScoreValue.textContent = isNaN(avgPostTraining) ? 'N/A' : avgPostTraining.toFixed(1); postTrainingScoreValue.title = `Average 'Post Training Score' across ${countPostTraining} stores with data (excluding 0s)`; }
-        if (eliteValue) { eliteValue.textContent = formatPercent(avgElite); eliteValue.title = `Average 'Elite' score % across ${countElite} stores with data (excluding Verizon COR sub-channel)`;}
-        updateContextualSummary(data);
-    };
-    const updateContextualSummary = (data) => {
-        [percentQuarterlyTerritoryTargetP, territoryRevPercentP, districtRevPercentP, regionRevPercentP].forEach(p => {if (p) p.style.display = 'none'});
-        if (data.length === 0) return;
-        const singleRegion = regionFilter?.value !== 'ALL'; const singleDistrict = districtFilter?.value !== 'ALL'; const singleTerritory = territoryFilter && territoryFilter.selectedOptions.length === 1;
-        const calculateAverageExcludeBlanks = (column) => { let sum = 0, count = 0; data.forEach(row => { const valStr = safeGet(row, column, null); if (isValidForAverage(valStr)) { sum += parsePercent(valStr); count++; } }); return count > 0 ? sum / count : NaN; };
-        const avgPercentTerritoryTarget = calculateAverageExcludeBlanks('%Quarterly Territory Rev Target'); const avgTerritoryRevPercent = calculateAverageExcludeBlanks('Territory Rev%');
-        const avgDistrictRevPercent = calculateAverageExcludeBlanks('District Rev%'); const avgRegionRevPercent = calculateAverageExcludeBlanks('Region Rev%');
-        if (percentQuarterlyTerritoryTargetValue) percentQuarterlyTerritoryTargetValue.textContent = formatPercent(avgPercentTerritoryTarget); if (percentQuarterlyTerritoryTargetP && !isNaN(avgPercentTerritoryTarget)) percentQuarterlyTerritoryTargetP.style.display = 'block';
-        if (singleTerritory || singleDistrict || singleRegion) { if (territoryRevPercentValue) territoryRevPercentValue.textContent = formatPercent(avgTerritoryRevPercent); if (territoryRevPercentP && !isNaN(avgTerritoryRevPercent)) territoryRevPercentP.style.display = 'block'; }
-        if (singleDistrict || singleRegion) { if (districtRevPercentValue) districtRevPercentValue.textContent = formatPercent(avgDistrictRevPercent); if (districtRevPercentP && !isNaN(avgDistrictRevPercent)) districtRevPercentP.style.display = 'block'; }
-        if (singleRegion) { if (regionRevPercentValue) regionRevPercentValue.textContent = formatPercent(avgRegionRevPercent); if (regionRevPercentP && !isNaN(avgRegionRevPercent)) regionRevPercentP.style.display = 'block'; }
-    };
-    const updateCharts = (data) => {
-        if (mainChartInstance) { mainChartInstance.destroy(); mainChartInstance = null; }
-        if (!mainChartCanvas || (data.length === 0 && rawData.length === 0) ) { if (mainChartCanvas && mainChartInstance) { mainChartInstance = new Chart(mainChartCanvas, {type: 'bar', data: {labels:[], datasets:[]}}); mainChartInstance.destroy(); mainChartInstance = null;} return; }
-        const chartThemeColors = getChartThemeColors(); 
-        const sortedData = [...data].sort((a, b) => parseNumber(safeGet(b, 'Revenue w/DF', 0)) - parseNumber(safeGet(a, 'Revenue w/DF', 0)));
-        const chartData = sortedData.slice(0, TOP_N_CHART);
-        const labels = chartData.map(row => safeGet(row, 'Store', 'Unknown Store'));
-        const revenueDataSet = chartData.map(row => parseNumber(safeGet(row, 'Revenue w/DF', 0)));
-        const targetDataSet = chartData.map(row => parseNumber(safeGet(row, 'QTD Revenue Target', 0)));
-        const backgroundColors = chartData.map((_, index) => revenueDataSet[index] >= targetDataSet[index] ? 'rgba(75, 192, 192, 0.6)' : 'rgba(255, 99, 132, 0.6)'); 
-        const borderColors = chartData.map((_, index) => revenueDataSet[index] >= targetDataSet[index] ? 'rgba(75, 192, 192, 1)' : 'rgba(255, 99, 132, 1)');
-        mainChartInstance = new Chart(mainChartCanvas, {
-            type: 'bar', data: { labels: labels, datasets: [ { label: 'Total Revenue (incl. DF)', data: revenueDataSet, backgroundColor: backgroundColors, borderColor: borderColors, borderWidth: 1 }, { label: 'QTD Revenue Target', data: targetDataSet, type: 'line', borderColor: 'rgba(255, 206, 86, 1)', backgroundColor: 'rgba(255, 206, 86, 0.2)', fill: false, tension: 0.1, borderWidth: 2, pointRadius: 3, pointHoverRadius: 5 } ] },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: chartThemeColors.tickColor, callback: value => formatCurrency(value) }, grid: { color: chartThemeColors.gridColor } }, x: { ticks: { color: chartThemeColors.tickColor }, grid: { display: false } } }, plugins: { legend: { labels: { color: chartThemeColors.legendColor } }, tooltip: { callbacks: { label: function(context) { let label = context.dataset.label || ''; if (label) label += ': '; if (context.parsed.y !== null) { label += formatCurrency(context.parsed.y); if (context.dataset.type !== 'line' && chartData[context.dataIndex]) { const storeData = chartData[context.dataIndex]; const percentQtrTarget = parsePercent(safeGet(storeData, '% Quarterly Revenue Target', 0)); if (!isNaN(percentQtrTarget)) { label += ` (${formatPercent(percentQtrTarget)} of Qtr Target)`; } } } return label; } } } }, onClick: (_, elements) => { if (elements.length > 0) { const index = elements[0].index; const storeName = labels[index]; const storeData = filteredData.find(row => safeGet(row, 'Store', null) === storeName); if (storeData) { showStoreDetails(storeData); highlightTableRow(storeName); } } } }
-        });
-    };
-    const updateAttachRateTable = (data) => {
-        if (!attachRateTableBody || !attachRateTableFooter || !attachRateTable) return;
-        attachRateTableBody.innerHTML = ''; attachRateTableFooter.innerHTML = '';
-        const dataForTable = data.filter(row => ATTACH_RATE_COLUMNS.every(colKey => isValidNumericForFocus(safeGet(row, colKey, null))));
-        const tableHead = attachRateTable.querySelector('thead');
-        if (!tableHead) { console.error("Attach rate table head not found!"); return; }
-        let headerRow = tableHead.querySelector('tr');
-        if (!headerRow) { headerRow = tableHead.insertRow(); }
-        headerRow.innerHTML = ''; 
-        if (dataForTable.length === 0) {
-            if (attachTableStatus) attachTableStatus.textContent = 'No stores with complete & valid attach rate data based on current filters.';
+        if (connectivityData.length === 0 || mainTableData.length === 0) {
+            if (statusDiv) statusDiv.textContent = 'No data available for the Unified Connectivity Report based on current filters.';
             return;
         }
-        const uniqueTerritories = new Set(dataForTable.map(row => safeGet(row, 'Q2 Territory', 'N/A_TERRITORY')));
-        const showTerritoryColumn = uniqueTerritories.size > 1;
-        const baseHeaderConfig = [
-            { label: 'Store', sortKey: 'Store', title: 'Store Name' },
-            { label: 'Tablet', sortKey: 'Tablet Attach Rate', title: 'Tablet Attach Rate' },
-            { label: 'PC', sortKey: 'PC Attach Rate', title: 'PC Attach Rate' },
-            { label: 'NC', sortKey: 'NC Attach Rate', title: 'NC = Tablet + PC Attach Rate' },
-            { label: 'TWS', sortKey: 'TWS Attach Rate', title: 'True Wireless Stereo (Buds) Attach Rate' },
-            { label: 'WW', sortKey: 'WW Attach Rate', title: 'Wearable Watch Attach Rate' },
-            { label: 'ME', sortKey: 'ME Attach Rate', title: 'ME = TWS + WW Attach Rate' },
-            { label: 'NCME', sortKey: 'NCME Attach Rate', title: 'NCME = Total Attach Rate' }
-        ];
-        let actualTableHeaders = [...baseHeaderConfig];
-        if (showTerritoryColumn) {
-            actualTableHeaders.splice(1, 0, { label: 'Territory', sortKey: 'Q2 Territory', title: 'Q2 Territory' });
-        }
-        actualTableHeaders.forEach(headerInfo => {
+
+        // Get unique device names and add headers
+        const deviceNames = [...new Set(connectivityData.map(row => safeGet(row, 'Device Name', null)).filter(Boolean))].sort();
+        deviceNames.forEach(deviceName => {
             const th = document.createElement('th');
-            th.textContent = headerInfo.label; th.dataset.sort = headerInfo.sortKey; th.title = headerInfo.title;
-            th.classList.add('sortable'); th.innerHTML += ' <span class="sort-arrow"></span>';
-            headerRow.appendChild(th);
+            th.textContent = deviceName;
+            tableHeadRow.appendChild(th);
         });
-        const sortedData = [...dataForTable].sort((a, b) => {
-            let valA = safeGet(a, currentSort.column, null); let valB = safeGet(b, currentSort.column, null);
-            if (valA === null && valB === null) return 0; if (valA === null) return currentSort.ascending ? -1 : 1;
-            if (valB === null) return currentSort.ascending ? 1 : -1;
-            const isAttachRateKey = ATTACH_RATE_COLUMNS.includes(currentSort.column);
-            const isStoreOrTerritoryKey = currentSort.column === 'Store' || currentSort.column === 'Q2 Territory';
-            let numA, numB;
-            if(isAttachRateKey) { numA = parsePercent(valA); numB = parsePercent(valB); } 
-            else if (!isStoreOrTerritoryKey) { numA = parseNumber(valA); numB = parseNumber(valB); } 
-            else { valA = String(valA).toLowerCase(); valB = String(valB).toLowerCase(); return currentSort.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA); }
-            if (typeof numA === 'number' && typeof numB === 'number' && !isNaN(numA) && !isNaN(numB)) { return currentSort.ascending ? numA - numB : numB - numA; }
-            valA = String(valA).toLowerCase(); valB = String(valB).toLowerCase();
-            return currentSort.ascending ? valA.localeCompare(valB) : valB.localeCompare(valA);
+
+        // Map main store data by ID for quick lookup
+        const mainStoreDataMap = new Map();
+        mainTableData.forEach(row => {
+            const storeId = safeGet(row, 'STORE ID', null);
+            if (storeId) {
+                mainStoreDataMap.set(String(storeId), safeGet(row, 'Store', 'N/A'));
+            }
         });
-        const averages = {};
-        ATTACH_RATE_COLUMNS.forEach(key => {
-            let sum = 0, count = 0;
-            dataForTable.forEach(row => { const valStr = safeGet(row, key, null); if (isValidNumericForFocus(valStr)) { sum += parsePercent(valStr); count++; } });
-            averages[key] = count > 0 ? sum / count : NaN;
-        });
-        sortedData.forEach(row => {
-            const tr = attachRateTableBody.insertRow(); const storeName = safeGet(row, 'Store', 'N/A');
-            tr.dataset.storeName = storeName; tr.onclick = () => { showStoreDetails(row); highlightTableRow(storeName); };
-            actualTableHeaders.forEach(headerInfo => {
-                const td = tr.insertCell(); let cellValue; let rawValueForMetric = safeGet(row, headerInfo.sortKey, null);
-                if (headerInfo.sortKey === 'Store') { cellValue = storeName; } 
-                else if (headerInfo.sortKey === 'Q2 Territory') { cellValue = safeGet(row, 'Q2 Territory', 'N/A'); } 
-                else { 
-                    const numericValue = parsePercent(rawValueForMetric); cellValue = isNaN(numericValue) ? 'N/A' : formatPercent(numericValue); td.style.textAlign = "right";
-                    td.classList.remove('highlight-green', 'highlight-red', 'highlight-yellow'); 
-                    if (!isNaN(averages[headerInfo.sortKey]) && typeof numericValue === 'number' && !isNaN(numericValue)) {
-                        const avg = averages[headerInfo.sortKey]; const lowerBound = avg * (1 - AVERAGE_THRESHOLD_PERCENT); const upperBound = avg * (1 + AVERAGE_THRESHOLD_PERCENT);
-                        if (numericValue > upperBound) td.classList.add('highlight-green');
-                        else if (numericValue < lowerBound) td.classList.add('highlight-red');
-                        else td.classList.add('highlight-yellow');
+
+        // Group connectivity data by Samsung Store ID
+        const storesConnectivityData = connectivityData.reduce((acc, row) => {
+            const storeId = safeGet(row, 'Samsung Store ID', null);
+            if (storeId) {
+                if (!acc[String(storeId)]) acc[String(storeId)] = [];
+                acc[String(storeId)].push(row);
+            }
+            return acc;
+        }, {});
+
+        let renderedRowCount = 0;
+        // Render table rows for stores in the main filtered data
+        mainTableData.forEach(mainRow => {
+            const mainStoreId = String(safeGet(mainRow, 'STORE ID', null));
+            const storeName = safeGet(mainRow, 'Store', 'N/A');
+            const devices = storesConnectivityData[mainStoreId] || [];
+
+            // Only render a row if there is connectivity data for this store
+            if (devices.length > 0) {
+                const tr = tableBody.insertRow();
+                tr.insertCell().textContent = storeName;
+                tr.dataset.storeName = storeName;
+                tr.onclick = () => { showStoreDetails(mainRow); highlightTableRow(storeName); };
+
+                // Create a map for quick device lookup in the current store's data
+                const deviceDataMap = new Map();
+                devices.forEach(deviceRow => {
+                    const deviceName = safeGet(deviceRow, 'Device Name', null);
+                    if (deviceName) {
+                        deviceDataMap.set(deviceName, {
+                            expected: parseNumber(safeGet(deviceRow, '#Expected', 0)),
+                            online: parseNumber(safeGet(deviceRow, '#Online', 0))
+                        });
                     }
-                }
-                td.textContent = cellValue; td.title = cellValue; 
-            });
+                });
+
+                // Populate cells for each device column
+                deviceNames.forEach(deviceName => {
+                    const td = tr.insertCell();
+                    const deviceStats = deviceDataMap.get(deviceName);
+                    if (deviceStats) {
+                        const expected = deviceStats.expected;
+                        const online = deviceStats.online;
+                        td.textContent = `${online}/${expected}`;
+                        const ratio = expected > 0 ? online / expected : 0;
+                        if (ratio >= 1) {
+                            td.classList.add('highlight-green');
+                        } else {
+                            td.classList.add('highlight-red');
+                        }
+                    } else {
+                        td.textContent = 'N/A';
+                    }
+                });
+                renderedRowCount++;
+            }
         });
-        if (dataForTable.length > 0) {
-            const footerRowNew = attachRateTableFooter.insertRow();
-            actualTableHeaders.forEach((headerInfo, index) => {
-                const td = footerRowNew.insertCell();
-                 if (index === 0) { td.textContent = 'Filtered Avg*'; td.style.fontWeight = "bold"; td.title = 'Average calculated only using stores with complete and valid attach rate data'; } 
-                 else if (showTerritoryColumn && index === 1 && headerInfo.sortKey === 'Q2 Territory') { td.textContent = ''; } 
-                 else if (ATTACH_RATE_COLUMNS.includes(headerInfo.sortKey)) {
-                    const avgValue = averages[headerInfo.sortKey]; td.textContent = formatPercent(avgValue);
-                    let validCount = dataForTable.filter(r => isValidNumericForFocus(safeGet(r, headerInfo.sortKey, null))).length;
-                    td.title = `Average ${headerInfo.label}: ${formatPercent(avgValue)} (from ${validCount} stores)`; td.style.textAlign = "right";
-                }
-            });
+
+        if (statusDiv) {
+            if (renderedRowCount > 0) {
+                statusDiv.textContent = `Displaying connectivity data for ${renderedRowCount} stores.`;
+            } else {
+                 statusDiv.textContent = 'No connectivity data available for the selected stores.';
+            }
         }
-        if (attachTableStatus) attachTableStatus.textContent = `Showing ${attachRateTableBody.rows.length} stores with complete attach rate data. Click row for details. Click headers to sort.`;
-        updateSortArrows();
     };
 
     const updateFocusTableSortArrows = (tableElement) => {
@@ -1486,7 +1243,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('eliteOpportunitiesTableBody'), 
                 document.getElementById('connectivityOpportunitiesTableBody'), 
                 document.getElementById('repSkillOpportunitiesTableBody'), 
-                document.getElementById('vpmrOpportunitiesTableBody') 
+                document.getElementById('vpmrOpportunitiesTableBody') ,
+                document.getElementById('connectivityReportTable')?.querySelector('tbody') // Also check the new table
             ];
             for (const tableBody of tablesToSearch) {
                 if (tableBody) { 
@@ -1536,6 +1294,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tableElementId === 'top5Table' || tableElementId === 'bottom5Table') parentSection = document.getElementById('topBottomSection');
             else if (tableElementId.includes('OpportunitiesTable')) parentSection = document.getElementById(tableElementId)?.closest('.focus-point-card');
             else if (tableElementId === 'attachRateTable') parentSection = document.getElementById('attachRateTableContainer');
+            else if (tableElementId === 'connectivityReportTable') parentSection = document.getElementById('unifiedConnectivityReportSection');
             if (!tableElement || (parentSection && parentSection.style.display === 'none') ) return '';
             const tableBody = tableElement.querySelector('tbody');
             if (!tableBody || tableBody.children.length === 0) return '';
@@ -1555,6 +1314,7 @@ document.addEventListener('DOMContentLoaded', () => {
             html += generateTableHTMLFromDOM('bottom5Table', 'Bottom 5 (Opportunities by QTD Gap)');
         }
         html += generateTableHTMLFromDOM('attachRateTable', 'Attach Rates');
+        html += generateTableHTMLFromDOM('connectivityReportTable', 'Unified Connectivity Report');
         const focusSections = [
             { id: 'eliteOpportunitiesTable', title: 'Elite Opportunities (>1% <100%)', sectionId: 'eliteOpportunitiesSection' },
             { id: 'connectivityOpportunitiesTable', title: 'Connectivity Opportunities (<100%)', sectionId: 'connectivityOpportunitiesSection' },
@@ -1621,6 +1381,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(focusConnectivityFilter?.checked) additionalToolsSummary.push("Connectivity Opps");
         if(focusRepSkillFilter?.checked) additionalToolsSummary.push("Rep Skill Opps");
         if(focusVpmrFilter?.checked) additionalToolsSummary.push("VPMR Opps");
+        if(showConnectivityReportFilter?.checked) additionalToolsSummary.push("Connectivity Report");
         if(additionalToolsSummary.length > 0) summary.push(`Tools: ${additionalToolsSummary.join(', ')}`);
         return summary.length > 0 ? summary.join('; ') : 'None';
     };
