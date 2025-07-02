@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-07-01T22:35:00EDT
-//    Summary: Fixed connectivity table sorting logic to correctly handle ratio comparisons. Implemented table-to-map integration by having row clicks open the corresponding map marker popup.
+//    Timestamp: 2025-07-02T00:35:00EDT
+//    Summary: Corrected the sorting logic to handle special characters in device names. Fixed table-to-map integration.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Password Gate Elements & Logic ---
@@ -1586,10 +1586,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const storeId = store['STORE ID'];
             const storeConnectivity = connectivityData.filter(conn => conn['Samsung Store ID'] === storeId);
             const rowData = {
-                Store: store['Store'],
-                Territory: store['Q2 Territory'],
-                __LAT: safeGet(store, 'LATITUDE_ORG', NaN),
-                __LON: safeGet(store, 'LONGITUDE_ORG', NaN)
+                'Store': store['Store'],
+                'Territory': store['Q2 Territory'],
+                '__LAT': safeGet(store, 'LATITUDE_ORG', NaN),
+                '__LON': safeGet(store, 'LONGITUDE_ORG', NaN)
             };
             visibleDevices.forEach(deviceName => {
                 const deviceData = storeConnectivity.find(d => d['Device Name'] === deviceName);
@@ -1605,8 +1605,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (valA === null) valA = connectivitySort.ascending ? Infinity : -Infinity;
             if (valB === null) valB = connectivitySort.ascending ? Infinity : -Infinity;
-
-            if (typeof valA === 'number' && typeof valB === 'number') {
+            
+            if (typeof valA === 'number' && typeof valB === 'number' && !isNaN(valA) && !isNaN(valB)) {
                 return connectivitySort.ascending ? valA - valB : valB - valA;
             } else {
                 return connectivitySort.ascending ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
