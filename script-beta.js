@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-07-01T20:36:00EDT
-//    Summary: Corrected the renderConnectivityTable function to properly populate the table body with store and device data.
+//    Timestamp: 2025-07-01T20:55:00EDT
+//    Summary: Corrected the renderConnectivityTable function to properly populate the table body. Added extensive console logging for troubleshooting.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Password Gate Elements & Logic ---
@@ -597,10 +597,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 connectivityData = XLSX.utils.sheet_to_json(connectivityWorksheet, { defval: null });
                 if (connectivityData && connectivityData.length > 0) {
                     if (showConnectivityReportFilter) showConnectivityReportFilter.disabled = false;
+                    console.log("Successfully loaded Connectivity Report data:", connectivityData);
                 } else {
                     connectivityData = null; // Set to null if sheet is empty
                     if (showConnectivityReportFilter) showConnectivityReportFilter.disabled = true;
-                    console.warn(`Sheet "${connectivitySheetName}" was found but is empty.`);
+                    console.warn(`Sheet "${connectivitySheetName}" was found but is empty or could not be parsed.`);
                 }
             } else {
                 connectivityData = null;
@@ -999,9 +1000,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const unifiedConnectivityReportSection = document.getElementById('unifiedConnectivityReportSection');
                 if (showConnectivityReportFilter?.checked && connectivityData) {
                     renderConnectivityTable(filteredData);
-                    unifiedConnectivityReportSection.style.display = 'block';
+                    if (unifiedConnectivityReportSection) unifiedConnectivityReportSection.style.display = 'block';
                 } else {
-                    unifiedConnectivityReportSection.style.display = 'none';
+                    if (unifiedConnectivityReportSection) unifiedConnectivityReportSection.style.display = 'none';
                 }
 
                 updateFocusPointSections(filteredData);
@@ -1511,37 +1512,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderConnectivityTable = (mainTableData) => {
         const table = document.getElementById('connectivityReportTable');
-        if (!table || !connectivityData) return;
+        const statusP = document.querySelector('#unifiedConnectivityReportSection .focus-point-status');
+        console.log("Attempting to render connectivity table...");
+
+        if (!table || !connectivityData) {
+            console.error("Connectivity table or data is missing. Bailing out.", { table, connectivityData });
+            if(statusP) statusP.textContent = "Report data is not available.";
+            return;
+        }
 
         const thead = table.querySelector('thead');
         const tbody = table.querySelector('tbody');
+        if (!thead || !tbody) {
+            console.error("Table head or body not found for connectivity report.");
+            if(statusP) statusP.textContent = "Table structure is corrupted.";
+            return;
+        }
+
         thead.innerHTML = '';
         tbody.innerHTML = '';
 
-        // Get unique device names for headers
-        const deviceNames = [...new Set(connectivityData.map(item => item['Device Name']))];
+        const deviceNames = [...new Set(connectivityData.map(item => item['Device Name']))].sort();
+        console.log("Device names for headers:", deviceNames);
+        
         const headerRow = thead.insertRow();
-        headerRow.insertCell().textContent = 'Store';
+        const storeHeader = document.createElement('th');
+        storeHeader.textContent = 'Store';
+        headerRow.appendChild(storeHeader);
+
         deviceNames.forEach(name => {
             const th = document.createElement('th');
             th.textContent = name;
             headerRow.appendChild(th);
         });
 
+        let storesRenderedCount = 0;
         mainTableData.forEach(storeData => {
             const storeId = storeData['STORE ID'];
             const storeConnectivityData = connectivityData.filter(conn => conn['Samsung Store ID'] === storeId);
 
             if (storeConnectivityData.length > 0) {
+                storesRenderedCount++;
                 const row = tbody.insertRow();
-                row.insertCell().textContent = storeData['Store'];
+                const storeCell = row.insertCell();
+                storeCell.textContent = storeData['Store'];
 
                 deviceNames.forEach(deviceName => {
                     const cell = row.insertCell();
                     const deviceData = storeConnectivityData.find(d => d['Device Name'] === deviceName);
                     if (deviceData) {
-                        const online = deviceData['#Online'];
-                        const expected = deviceData['#Expected'];
+                        const online = deviceData['#Online'] || 0;
+                        const expected = deviceData['#Expected'] || 0;
                         cell.textContent = `${online} / ${expected}`;
                         if (online >= expected) {
                             cell.classList.add('highlight-green');
@@ -1554,7 +1575,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         });
+        
+        console.log(`Rendered ${storesRenderedCount} stores in the connectivity table.`);
+        if (statusP) {
+            if (storesRenderedCount === 0) {
+                statusP.textContent = "No connectivity data found for the stores in the current filter.";
+            } else {
+                statusP.textContent = `Displaying connectivity data for ${storesRenderedCount} stores.`;
+            }
+        }
     };
+
 
     const handleSort = (event) => {
          const headerCell = event.target.closest('th'); if (!headerCell?.classList.contains('sortable')) return;
