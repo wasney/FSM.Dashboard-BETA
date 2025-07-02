@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-07-01T20:55:00EDT
-//    Summary: Corrected the renderConnectivityTable function to properly populate the table body. Added extensive console logging for troubleshooting.
+//    Timestamp: 2025-07-01T21:10:00EDT
+//    Summary: Corrected XLSX parsing for the connectivity report by adding a range option to skip the first row. Added more detailed logging for troubleshooting.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Password Gate Elements & Logic ---
@@ -580,7 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const headers = Object.keys(jsonData[0]);
                 const missingHeaders = REQUIRED_HEADERS.filter(h => !headers.includes(h));
                 if (missingHeaders.length > 0) {
-                    console.warn(`Warning: Missing expected columns: ${missingHeaders.join(', ')}.`);
+                    console.warn(`Warning: Missing expected columns in main sheet: ${missingHeaders.join(', ')}.`);
                 }
             } else {
                 throw new Error("Excel sheet appears to be empty.");
@@ -594,10 +594,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const showConnectivityReportFilter = document.getElementById('showConnectivityReportFilter');
             if (workbook.SheetNames.includes(connectivitySheetName)) {
                 const connectivityWorksheet = workbook.Sheets[connectivitySheetName];
-                connectivityData = XLSX.utils.sheet_to_json(connectivityWorksheet, { defval: null });
+                // *** FIX: Use range: 1 to skip the first row which might be empty or a title row ***
+                connectivityData = XLSX.utils.sheet_to_json(connectivityWorksheet, { defval: null, range: 1 });
+                
                 if (connectivityData && connectivityData.length > 0) {
                     if (showConnectivityReportFilter) showConnectivityReportFilter.disabled = false;
-                    console.log("Successfully loaded Connectivity Report data:", connectivityData);
+                    console.log("Successfully loaded Connectivity Report data.", { count: connectivityData.length });
+                    // *** LOGGING: Log the keys of the first data object to verify headers ***
+                    console.log("Keys found in first connectivity data row:", Object.keys(connectivityData[0]));
                 } else {
                     connectivityData = null; // Set to null if sheet is empty
                     if (showConnectivityReportFilter) showConnectivityReportFilter.disabled = true;
@@ -1541,14 +1545,17 @@ document.addEventListener('DOMContentLoaded', () => {
         headerRow.appendChild(storeHeader);
 
         deviceNames.forEach(name => {
-            const th = document.createElement('th');
-            th.textContent = name;
-            headerRow.appendChild(th);
+            if(name) { // Only add a header if the device name is valid
+                const th = document.createElement('th');
+                th.textContent = name;
+                headerRow.appendChild(th);
+            }
         });
 
         let storesRenderedCount = 0;
         mainTableData.forEach(storeData => {
             const storeId = storeData['STORE ID'];
+            // Find all connectivity data rows for the current store ID
             const storeConnectivityData = connectivityData.filter(conn => conn['Samsung Store ID'] === storeId);
 
             if (storeConnectivityData.length > 0) {
@@ -1558,19 +1565,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 storeCell.textContent = storeData['Store'];
 
                 deviceNames.forEach(deviceName => {
-                    const cell = row.insertCell();
-                    const deviceData = storeConnectivityData.find(d => d['Device Name'] === deviceName);
-                    if (deviceData) {
-                        const online = deviceData['#Online'] || 0;
-                        const expected = deviceData['#Expected'] || 0;
-                        cell.textContent = `${online} / ${expected}`;
-                        if (online >= expected) {
-                            cell.classList.add('highlight-green');
+                    if(deviceName){ // Only process valid device names
+                        const cell = row.insertCell();
+                        const deviceData = storeConnectivityData.find(d => d['Device Name'] === deviceName);
+                        if (deviceData) {
+                            const online = deviceData['#Online'] || 0;
+                            const expected = deviceData['#Expected'] || 0;
+                            cell.textContent = `${online} / ${expected}`;
+                            if (online >= expected) {
+                                cell.classList.add('highlight-green');
+                            } else {
+                                cell.classList.add('highlight-red');
+                            }
                         } else {
-                            cell.classList.add('highlight-red');
+                            cell.textContent = 'N/A';
                         }
-                    } else {
-                        cell.textContent = 'N/A';
                     }
                 });
             }
