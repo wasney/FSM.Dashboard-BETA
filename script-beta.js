@@ -207,6 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Global State ---
     let rawData = [];
     let filteredData = [];
+    let connectivityData = null;
     let mainChartInstance = null;
     let mapInstance = null; 
     let mapMarkersLayer = null;
@@ -565,36 +566,66 @@ document.addEventListener('DOMContentLoaded', () => {
         const file = event.target.files[0];
         if (!file) { if (statusDiv) statusDiv.textContent = 'No file selected.'; return; }
         if (statusDiv) statusDiv.textContent = 'Reading file...';
-        showLoading(true, false); 
-        if (resultsArea) resultsArea.style.display = 'none'; 
-        resetUI(); 
+        showLoading(true, false);
+        if (resultsArea) resultsArea.style.display = 'none';
+        resetUI();
         try {
-            const data = await file.arrayBuffer(); const workbook = XLSX.read(data); const firstSheetName = workbook.SheetNames[0]; const worksheet = workbook.Sheets[firstSheetName];
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data);
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: null });
-            if (jsonData.length > 0) { const headers = Object.keys(jsonData[0]); const missingHeaders = REQUIRED_HEADERS.filter(h => !headers.includes(h)); if (missingHeaders.length > 0) { console.warn(`Warning: Missing expected columns: ${missingHeaders.join(', ')}.`); }
-            } else { throw new Error("Excel sheet appears to be empty."); }
-            
-            rawData = jsonData; 
+
+            if (jsonData.length > 0) {
+                const headers = Object.keys(jsonData[0]);
+                const missingHeaders = REQUIRED_HEADERS.filter(h => !headers.includes(h));
+                if (missingHeaders.length > 0) {
+                    console.warn(`Warning: Missing expected columns: ${missingHeaders.join(', ')}.`);
+                }
+            } else {
+                throw new Error("Excel sheet appears to be empty.");
+            }
+
+            rawData = jsonData;
             allPossibleStores = [...new Set(rawData.map(r => safeGet(r, 'Store', null)).filter(s => s && String(s).trim() !== ''))].sort().map(s => ({ value: s, text: s }));
-            
-            populateFilters(rawData); 
+
+            // Read the second sheet for connectivity data
+            const connectivitySheetName = "Unified Connectivity Report";
+            if (workbook.SheetNames.includes(connectivitySheetName)) {
+                const connectivityWorksheet = workbook.Sheets[connectivitySheetName];
+                connectivityData = XLSX.utils.sheet_to_json(connectivityWorksheet, { defval: null });
+                if (connectivityData && connectivityData.length > 0) {
+                    const showConnectivityReportFilter = document.getElementById('showConnectivityReportFilter');
+                    if (showConnectivityReportFilter) showConnectivityReportFilter.disabled = false;
+                }
+            } else {
+                connectivityData = null;
+                console.warn(`Sheet "${connectivitySheetName}" not found in the workbook.`);
+            }
+
+            populateFilters(rawData);
             const mainFilterBtn = document.getElementById('openFilterModalBtn');
             if (mainFilterBtn) mainFilterBtn.disabled = false;
-            
-            if (loadDefaultFilters()) { 
+
+            if (loadDefaultFilters()) {
                 if (statusDiv) statusDiv.textContent += ` Loaded ${rawData.length} rows. Default filters applied.`;
-                applyFilters(true); // Apply loaded defaults and close modal if open
+                applyFilters(true);
             } else {
                 if (statusDiv) statusDiv.textContent = `Loaded ${rawData.length} rows. Filters opened automatically.`;
-                setTimeout(() => { openFilterModal(); }, 100); 
+                setTimeout(() => { openFilterModal(); }, 100);
             }
 
         } catch (error) {
-            console.error('Error processing file:', error); if (statusDiv) statusDiv.textContent = `Error: ${error.message}`;
-            rawData = []; allPossibleStores = []; filteredData = []; resetUI();
-        } finally { 
-            showLoading(false, false); 
-            if (excelFileInput) excelFileInput.value = ''; 
+            console.error('Error processing file:', error);
+            if (statusDiv) statusDiv.textContent = `Error: ${error.message}`;
+            rawData = [];
+            allPossibleStores = [];
+            filteredData = [];
+            connectivityData = null;
+            resetUI();
+        } finally {
+            showLoading(false, false);
+            if (excelFileInput) excelFileInput.value = '';
         }
     };
 
@@ -958,6 +989,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (mapViewContainer) mapViewContainer.style.display = 'none';
                     if (mapInstance && mapMarkersLayer?.clearLayers) mapMarkersLayer.clearLayers();
                 }
+
+                const showConnectivityReportFilter = document.getElementById('showConnectivityReportFilter');
+                const unifiedConnectivityReportSection = document.getElementById('unifiedConnectivityReportSection');
+                if (showConnectivityReportFilter.checked && connectivityData) {
+                    renderConnectivityTable(filteredData);
+                    unifiedConnectivityReportSection.style.display = 'block';
+                } else {
+                    unifiedConnectivityReportSection.style.display = 'none';
+                }
                 
                 updateFocusPointSections(filteredData);
                 updateShareOptions(); 
@@ -992,6 +1032,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
                 if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
                 if (mapViewContainer) mapViewContainer.style.display = 'none';
+                if (document.getElementById('unifiedConnectivityReportSection')) document.getElementById('unifiedConnectivityReportSection').style.display = 'none';
             } finally { 
                 showLoading(false, true); 
                 const mainFilterBtn = document.getElementById('openFilterModalBtn');
@@ -1016,6 +1057,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if(focusConnectivityFilter) { focusConnectivityFilter.checked = false; focusConnectivityFilter.disabled = true; }
         if(focusRepSkillFilter) { focusRepSkillFilter.checked = false; focusRepSkillFilter.disabled = true; }
         if(focusVpmrFilter) { focusVpmrFilter.checked = false; focusVpmrFilter.disabled = true; }
+        if(document.getElementById('showConnectivityReportFilter')) { document.getElementById('showConnectivityReportFilter').checked = false; document.getElementById('showConnectivityReportFilter').disabled = true; }
+
 
          if (applyFiltersButtonModal) applyFiltersButtonModal.disabled = true;
          if (resetFiltersButtonModal) resetFiltersButtonModal.disabled = true; 
@@ -1065,11 +1108,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (repSkillOpportunitiesSection) repSkillOpportunitiesSection.style.display = 'none';
         if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none';
         if (emailShareSection) emailShareSection.style.display = 'none';
+        const unifiedConnectivityReportSection = document.getElementById('unifiedConnectivityReportSection');
+        if (unifiedConnectivityReportSection) {
+            unifiedConnectivityReportSection.style.display = 'none';
+            const tableBody = unifiedConnectivityReportSection.querySelector('tbody');
+            if (tableBody) tableBody.innerHTML = '';
+        }
 
          if(statusDiv) statusDiv.textContent = 'No file selected.';
          allPossibleStores = []; 
          rawData = []; 
          filteredData = [];
+         connectivityData = null;
          updateShareOptions(); 
          const mainFilterBtn = document.getElementById('openFilterModalBtn');
          if (mainFilterBtn) mainFilterBtn.disabled = true;
@@ -1094,6 +1144,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if(focusConnectivityFilter) focusConnectivityFilter.checked = false;
         if(focusRepSkillFilter) focusRepSkillFilter.checked = false;
         if(focusVpmrFilter) focusVpmrFilter.checked = false;
+        if(document.getElementById('showConnectivityReportFilter')) document.getElementById('showConnectivityReportFilter').checked = false;
+
 
         if (rawData.length > 0) {
             updateFilterOptions();
@@ -1447,6 +1499,52 @@ document.addEventListener('DOMContentLoaded', () => {
             populateFocusPointTable('vpmrOpportunitiesTable', vpmrOpportunitiesSection, vpmrOpps, '(V)PMR Ach', '(V)PMR Ach %');
         } else { if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none'; }
     };
+    const renderConnectivityTable = (mainTableData) => {
+        const table = document.getElementById('connectivityReportTable');
+        if (!table || !connectivityData) return;
+
+        const thead = table.querySelector('thead');
+        const tbody = table.querySelector('tbody');
+        thead.innerHTML = '';
+        tbody.innerHTML = '';
+
+        // Get unique device names for headers
+        const deviceNames = [...new Set(connectivityData.map(item => item['Device Name']))];
+        const headerRow = thead.insertRow();
+        headerRow.insertCell().textContent = 'Store';
+        deviceNames.forEach(name => {
+            const th = document.createElement('th');
+            th.textContent = name;
+            headerRow.appendChild(th);
+        });
+
+        mainTableData.forEach(storeData => {
+            const storeId = storeData['STORE ID'];
+            const storeConnectivityData = connectivityData.filter(conn => conn['Samsung Store ID'] === storeId);
+
+            if (storeConnectivityData.length > 0) {
+                const row = tbody.insertRow();
+                row.insertCell().textContent = storeData['Store'];
+
+                deviceNames.forEach(deviceName => {
+                    const cell = row.insertCell();
+                    const deviceData = storeConnectivityData.find(d => d['Device Name'] === deviceName);
+                    if (deviceData) {
+                        const online = deviceData['#Online'];
+                        const expected = deviceData['#Expected'];
+                        cell.textContent = `${online} / ${expected}`;
+                        if (online >= expected) {
+                            cell.style.backgroundColor = 'rgba(40, 167, 69, 0.15)'; // Green
+                        } else {
+                            cell.style.backgroundColor = 'rgba(220, 53, 69, 0.1)'; // Red
+                        }
+                    } else {
+                        cell.textContent = 'N/A';
+                    }
+                });
+            }
+        });
+    };
 
     const handleSort = (event) => { 
          const headerCell = event.target.closest('th'); if (!headerCell?.classList.contains('sortable')) return;
@@ -1536,6 +1634,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tableElementId === 'top5Table' || tableElementId === 'bottom5Table') parentSection = document.getElementById('topBottomSection');
             else if (tableElementId.includes('OpportunitiesTable')) parentSection = document.getElementById(tableElementId)?.closest('.focus-point-card');
             else if (tableElementId === 'attachRateTable') parentSection = document.getElementById('attachRateTableContainer');
+            else if (tableElementId === 'connectivityReportTable') parentSection = document.getElementById('unifiedConnectivityReportSection');
+
             if (!tableElement || (parentSection && parentSection.style.display === 'none') ) return '';
             const tableBody = tableElement.querySelector('tbody');
             if (!tableBody || tableBody.children.length === 0) return '';
@@ -1555,6 +1655,7 @@ document.addEventListener('DOMContentLoaded', () => {
             html += generateTableHTMLFromDOM('bottom5Table', 'Bottom 5 (Opportunities by QTD Gap)');
         }
         html += generateTableHTMLFromDOM('attachRateTable', 'Attach Rates');
+        html += generateTableHTMLFromDOM('connectivityReportTable', 'Unified Connectivity Report');
         const focusSections = [
             { id: 'eliteOpportunitiesTable', title: 'Elite Opportunities (>1% <100%)', sectionId: 'eliteOpportunitiesSection' },
             { id: 'connectivityOpportunitiesTable', title: 'Connectivity Opportunities (<100%)', sectionId: 'connectivityOpportunitiesSection' },
@@ -1621,6 +1722,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(focusConnectivityFilter?.checked) additionalToolsSummary.push("Connectivity Opps");
         if(focusRepSkillFilter?.checked) additionalToolsSummary.push("Rep Skill Opps");
         if(focusVpmrFilter?.checked) additionalToolsSummary.push("VPMR Opps");
+        if(document.getElementById('showConnectivityReportFilter')?.checked) additionalToolsSummary.push("Unified Connectivity Report");
         if(additionalToolsSummary.length > 0) summary.push(`Tools: ${additionalToolsSummary.join(', ')}`);
         return summary.length > 0 ? summary.join('; ') : 'None';
     };
