@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-07-01T22:18:00EDT
-//    Summary: Implemented all requested features for the Unified Connectivity Report, including Territory column, dynamic column hiding, device filtering, column sorting, a summary footer, and enhanced visuals.
+//    Timestamp: 2025-07-01T22:35:00EDT
+//    Summary: Fixed connectivity table sorting logic to correctly handle ratio comparisons. Implemented table-to-map integration by having row clicks open the corresponding map marker popup.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Password Gate Elements & Logic ---
@@ -536,7 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const qtdGapVal = calculateQtdGap(row);
             const formattedQtdGap = isNaN(qtdGapVal) || qtdGapVal === Infinity ? 'N/A' : formatCurrency(qtdGapVal);
             const popupContent = `<strong>${storeName}</strong><br>Revenue: ${revenue}<br>QTD Gap: ${formattedQtdGap}`;
-            const marker = L.marker([lat, lon]);
+            const marker = L.marker([lat, lon], {title: storeName});
             marker.bindPopup(popupContent);
             marker.on('click', () => { showStoreDetails(row); highlightTableRow(storeName); });
             mapMarkersLayer.addLayer(marker);
@@ -1534,6 +1534,11 @@ document.addEventListener('DOMContentLoaded', () => {
             label.appendChild(document.createTextNode(` ${name}`));
             connectivityDeviceFilterContainer.appendChild(label);
         });
+
+        // Add event listener to re-render table when filters change
+        connectivityDeviceFilterContainer.addEventListener('change', () => {
+             renderConnectivityTable(filteredData);
+        });
     };
 
     const renderConnectivityTable = (mainTableData) => {
@@ -1582,7 +1587,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const storeConnectivity = connectivityData.filter(conn => conn['Samsung Store ID'] === storeId);
             const rowData = {
                 Store: store['Store'],
-                Territory: store['Q2 Territory']
+                Territory: store['Q2 Territory'],
+                __LAT: safeGet(store, 'LATITUDE_ORG', NaN),
+                __LON: safeGet(store, 'LONGITUDE_ORG', NaN)
             };
             visibleDevices.forEach(deviceName => {
                 const deviceData = storeConnectivity.find(d => d['Device Name'] === deviceName);
@@ -1593,11 +1600,11 @@ document.addEventListener('DOMContentLoaded', () => {
             let valA = a[connectivitySort.column];
             let valB = b[connectivitySort.column];
             
-            if (typeof valA === 'object' && valA !== null) valA = valA.online / valA.expected;
-            if (typeof valB === 'object' && valB !== null) valB = valB.online / valB.expected;
+            if (typeof valA === 'object' && valA !== null) valA = (valA.expected > 0) ? (valA.online / valA.expected) : -1;
+            if (typeof valB === 'object' && valB !== null) valB = (valB.expected > 0) ? (valB.online / valB.expected) : -1;
 
-            if (isNaN(valA) || valA === null) valA = connectivitySort.ascending ? Infinity : -Infinity;
-            if (isNaN(valB) || valB === null) valB = connectivitySort.ascending ? Infinity : -Infinity;
+            if (valA === null) valA = connectivitySort.ascending ? Infinity : -Infinity;
+            if (valB === null) valB = connectivitySort.ascending ? Infinity : -Infinity;
 
             if (typeof valA === 'number' && typeof valB === 'number') {
                 return connectivitySort.ascending ? valA - valB : valB - valA;
@@ -1609,7 +1616,22 @@ document.addEventListener('DOMContentLoaded', () => {
         // Populate Body
         tableData.forEach(rowData => {
             const tr = tbody.insertRow();
-            tr.onclick = () => { const mainRowData = rawData.find(r => r.Store === rowData.Store); if(mainRowData) { showStoreDetails(mainRowData); highlightTableRow(rowData.Store); }};
+            tr.dataset.storeName = rowData.Store; // For highlighting
+            tr.onclick = () => { 
+                const mainRowData = rawData.find(r => r.Store === rowData.Store); 
+                if(mainRowData) { 
+                    showStoreDetails(mainRowData); 
+                    highlightTableRow(rowData.Store);
+                    if (mapInstance && showMapViewFilter.checked && mapMarkersLayer) {
+                         mapMarkersLayer.eachLayer(marker => {
+                             if(marker.options.title === rowData.Store){
+                                mapInstance.setView(marker.getLatLng(), 15);
+                                marker.openPopup();
+                             }
+                         });
+                    }
+                }
+            };
             headers.forEach(header => {
                 const cell = tr.insertCell();
                 const cellData = rowData[header.key];
@@ -1617,6 +1639,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     cell.textContent = cellData;
                 } else if(cellData) {
                     cell.textContent = `${cellData.online} / ${cellData.expected}`;
+                    cell.style.textAlign = 'center';
                     if (cellData.online >= cellData.expected) {
                         cell.classList.add('highlight-green');
                         cell.style.fontWeight = 'bold';
@@ -1625,6 +1648,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 } else {
                     cell.textContent = 'N/A';
+                    cell.style.textAlign = 'center';
                 }
             });
         });
@@ -1655,6 +1679,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (totalData) {
                 cell.textContent = `${totalData.online} / ${totalData.expected}`;
                 cell.style.fontWeight = 'bold';
+                cell.style.textAlign = 'center';
             }
         });
         
@@ -1697,7 +1722,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let mapsLinkHtml = `<p style="color: #aaa; font-style: italic;">(Map coordinates not available)</p>`;
         if (!isNaN(latitude) && !isNaN(longitude) && latitude !== 0 && longitude !==0) { const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`; mapsLinkHtml = `<p><a href="${mapsUrl}" target="_blank" title="Open in Google Maps">View on Google Maps</a></p>`; }
         let flagSummaryHtml = FLAG_HEADERS.map(flag => { const flagValue = safeGet(storeData, flag, 'NO'); const isTrue = (flagValue === true || String(flagValue).toUpperCase() === 'YES' || String(flagValue) === 'Y' || flagValue === 1 || String(flagValue) === '1'); return `<span title="${flag.replace(/_/g, ' ')}" data-flag="${isTrue}">${flag.replace(/_/g, ' ')} ${isTrue ? '✔' : '✘'}</span>`; }).join(' | ');
-        storeDetailsContent.innerHTML = ` <p><strong>Store:</strong> ${safeGet(storeData, 'Store')}</p> <p><strong>Address:</strong> ${addressString}</p> ${mapsLinkHtml} <hr> <p><strong>IDs:</strong> Store: ${safeGet(storeData, 'STORE ID')} | Org: ${safeGet(storeData, 'ORG_STORE_ID')} | CV: ${safeGet(storeData, 'CV_STORE_ID')} | CinglePoint: ${safeGet(storeData, 'CINGLEPOINT_ID')}</p> <p><strong>Type:</strong> ${safeGet(storeData, 'STORE_TYPE_NAME')} | Nat Tier: ${safeGet(storeData, 'National_Tier')} | Merch Lvl: ${safeGet(storeData, 'Merchandising_Level')} | Comb Tier: ${safeGet(storeData, 'Combined_Tier')}</p> <hr> <p><strong>Hierarchy:</strong> ${safeGet(storeData, 'REGION')} > ${safeGet(storeData, 'DISTRICT')} > ${safeGet(storeData, 'Q2 Territory')}</p> <p><strong>FSM:</strong> ${safeGet(storeData, 'FSM NAME')}</p> <p><strong>Channel:</strong> ${safeGet(storeData, 'CHANNEL')} / ${safeGet(storeData, 'SUB_CHANNEL')}</p> <p><strong>Dealer:</strong> ${safeGet(storeData, 'DEALER_NAME')}</p> <hr> <p><strong>Visits:</strong> ${formatNumber(parseNumber(safeGet(storeData, 'Visit count', 0)))} | <strong>Trainings:</strong> ${formatNumber(parseNumber(safeGet(storeData, 'Trainings', 0)))}</p> <p><strong>Connectivity:</strong> ${formatPercent(parsePercent(safeGet(storeData, 'Retail Mode Connectivity', 0)))}</p> <hr> <p><strong>Flags:</strong> ${flagSummaryHtml}</p> `;
+        storeDetailsContent.innerHTML = ` <p><strong>Store:</strong> ${safeGet(storeData, 'Store')}</p> <p><strong>Address:</strong> ${addressString}</p> ${mapsLinkHtml} <hr> <p><strong>IDs:</strong> Store: ${safeGet(storeData, 'STORE ID')} | Org: ${safeGet(storeData, 'ORG_STORE_ID')} | CV: ${safeGet(storeData, 'CV_STORE_ID')} | CinglePoint: ${safeGet(storeData, 'CINGLEPOINT_ID')}</p> <p><strong>Type:</strong> ${safeGet(storeData, 'STORE_TYPE_NAME')} | Nat Tier: ${safeGet(storeData, 'National_Tier')} | Merch Lvl: ${safeGet(storeData, 'Merchandising_Level')} | Comb Tier: ${safeGet(storeData, 'Combined_Tier')}</p> <hr> <p><strong>Hierarchy:</strong> ${safeGet(storeData, 'REGION')} > ${safeGet(storeData, 'DISTRICT')} > ${safeGet(storeData, 'Q2 Territory')}</p> <p><strong>FSM:</strong> ${safeGet(storeData, 'FSM NAME')}</p> <p><strong>Channel:</strong> ${safeGet(storeData, 'CHANNEL')} / ${safeGet(storeData, 'SUB_CHANNEL')}</p> <p><strong>Dealer:</strong> ${safeGet(storeData, 'DEALER_NAME')}</p> <hr> <p><strong>Visits:</strong> ${formatNumber(parseNumber(safeGet(row, 'Visit count', 0)))} | <strong>Trainings:</strong> ${formatNumber(parseNumber(safeGet(row, 'Trainings', 0)))}</p> <p><strong>Connectivity:</strong> ${formatPercent(parsePercent(safeGet(storeData, 'Retail Mode Connectivity', 0)))}</p> <hr> <p><strong>Flags:</strong> ${flagSummaryHtml}</p> `;
         storeDetailsSection.style.display = 'block'; closeStoreDetailsButton.style.display = 'inline-block';
     };
     const hideStoreDetails = () => {
@@ -1720,7 +1745,15 @@ document.addEventListener('DOMContentLoaded', () => {
             ];
             for (const tableBody of tablesToSearch) {
                 if (tableBody) {
-                    try { const rowToHighlight = tableBody.querySelector(`tr[data-store-name="${CSS.escape(storeName)}"]`); if (rowToHighlight) { rowToHighlight.classList.add('selected-row'); selectedStoreRow = rowToHighlight; break; }
+                    try {
+                        // Remove from all rows first
+                        tableBody.querySelectorAll('.selected-row').forEach(r => r.classList.remove('selected-row'));
+                        // Add to the current one
+                        const rowToHighlight = tableBody.querySelector(`tr[data-store-name="${CSS.escape(storeName)}"]`);
+                        if (rowToHighlight) {
+                            rowToHighlight.classList.add('selected-row');
+                            selectedStoreRow = rowToHighlight;
+                        }
                     } catch (e) { console.error("Error selecting table row:", e, "StoreName:", storeName); }
                 }
             }
@@ -1897,12 +1930,6 @@ document.addEventListener('DOMContentLoaded', () => {
         applyFilters();
     });
     
-    if (connectivityDeviceFilterContainer) {
-        connectivityDeviceFilterContainer.addEventListener('change', () => {
-            renderConnectivityTable(filteredData);
-        });
-    }
-
     const connectivityTable = document.getElementById('connectivityReportTable');
     if (connectivityTable) {
         const thead = connectivityTable.querySelector('thead');
