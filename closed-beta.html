@@ -10,7 +10,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <link rel="stylesheet" href="style-beta.css">
-    <meta name="theme-color" content="#2c2c2c"> 
+    <meta name="theme-color" content="#2c2c2c">
 </head>
 <body>
     <button id="themeToggleBtn" class="theme-toggle-button" title="Toggle theme">☀️</button>
@@ -36,7 +36,7 @@
                         <li><em>Focus Point Tables:</em> Helps identify opportunity stores for Elite, Connectivity, Rep Skill, and VPMR metrics. (Now sortable!)</li>
                     </ul>
                 </li>
-                <li><strong>Attach Rate Table Enhancements:</strong> 
+                <li><strong>Attach Rate Table Enhancements:</strong>
                     <ul>
                         <li>The "Territory" column is now dynamically displayed only when relevant (i.e., when multiple territories are included in the filter).</li>
                         <li>Improved handling of "N/A" or blank values for clearer data presentation.</li>
@@ -84,7 +84,7 @@
 
         <div id="filterArea" class="card desktop-filters" style="display: none;">
             </div>
-        
+
         <div id="filterModal" class="filter-modal-overlay" style="display: none;">
             <div class="filter-modal-content">
                 <div class="filter-modal-header">
@@ -120,7 +120,7 @@
                             <label for="fsmFilter">FSM Name:</label>
                             <select id="fsmFilter" disabled><option value="ALL">-- Load File First --</option></select>
                         </div>
-            
+
                         <div class="filter-group">
                             <label for="channelFilter">Channel:</label>
                             <select id="channelFilter" disabled><option value="ALL">-- Load File First --</option></select>
@@ -133,7 +133,7 @@
                             <label for="dealerFilter">Dealer Name:</label>
                             <select id="dealerFilter" disabled><option value="ALL">-- Load File First --</option></select>
                         </div>
-            
+
                          <div class="filter-group filter-group-store">
                             <label for="storeFilter">Store:</label>
                              <input type="text" id="storeSearch" placeholder="Search stores..." disabled>
@@ -146,7 +146,7 @@
                                  <option value="ALL">-- Load File First --</option>
                             </select>
                         </div>
-            
+
                         <div class="filter-group-flags">
                              <label class="flags-label">Store Attributes:</label>
                              <div class="flag-toggles">
@@ -158,7 +158,7 @@
                                 <label><input type="checkbox" id="evRouteFilter" value="EV ROUTE" disabled> EV Route</label>
                              </div>
                         </div>
-            
+
                         <div class="filter-group-flags"> <label class="flags-label">Additional Tools:</label>
                             <div class="flag-toggles">
                                <label><input type="checkbox" id="showMapViewFilter" disabled> Geographic Store View</label>
@@ -286,6 +286,8 @@
                 <div class="table-header">
                     <h2>Unified Connectivity Report</h2>
                 </div>
+                <div id="connectivityDeviceFilterContainer" class="flag-toggles" style="margin-bottom: 1rem;">
+                    </div>
                 <div class="table-wrapper">
                     <table id="connectivityReportTable">
                         <thead>
@@ -294,10 +296,12 @@
                             </tr>
                         </thead>
                         <tbody></tbody>
+                        <tfoot></tfoot>
                     </table>
                 </div>
                 <p class="focus-point-status"></p>
             </div>
+
 
             <div class="table-container card" id="attachRateTableContainer">
                  <div class="table-header">
@@ -371,8 +375,8 @@
             <div id="shareSection" class="card share-container">
                 <h3>Share / Export Report</h3>
                 <button id="printReportButton" class="share-button primary-share-button" title="Generate a printable PDF report of the current view">Print / Save as PDF</button>
-                
-                <div id="emailShareSection" style="margin-top: 1rem; display: none;"> 
+
+                <div id="emailShareSection" style="margin-top: 1rem; display: none;">
                     <h4 style="margin-bottom: 0.5rem;">Quick Share Summary via Email</h4>
                     <div id="emailShareControls" class="share-controls">
                         <label for="emailRecipient">Recipient Email:</label>
