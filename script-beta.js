@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-07-01T21:10:00EDT
-//    Summary: Corrected XLSX parsing for the connectivity report by adding a range option to skip the first row. Added more detailed logging for troubleshooting.
+//    Timestamp: 2025-07-01T22:18:00EDT
+//    Summary: Implemented all requested features for the Unified Connectivity Report, including Territory column, dynamic column hiding, device filtering, column sorting, a summary footer, and enhanced visuals.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Password Gate Elements & Logic ---
@@ -203,6 +203,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const mapViewContainer = document.getElementById('mapViewContainer');
     const mapStatus = document.getElementById('mapStatus');
+    const connectivityDeviceFilterContainer = document.getElementById('connectivityDeviceFilterContainer');
+
 
     // --- Global State ---
     let rawData = [];
@@ -214,6 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let storeOptions = [];
     let allPossibleStores = [];
     let currentSort = { column: 'Store', ascending: true };
+    let connectivitySort = { column: 'Store', ascending: true };
     let selectedStoreRow = null;
 
     // --- "What's New" Modal Logic ---
@@ -594,14 +597,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const showConnectivityReportFilter = document.getElementById('showConnectivityReportFilter');
             if (workbook.SheetNames.includes(connectivitySheetName)) {
                 const connectivityWorksheet = workbook.Sheets[connectivitySheetName];
-                // *** FIX: Use range: 1 to skip the first row which might be empty or a title row ***
                 connectivityData = XLSX.utils.sheet_to_json(connectivityWorksheet, { defval: null, range: 1 });
                 
                 if (connectivityData && connectivityData.length > 0) {
                     if (showConnectivityReportFilter) showConnectivityReportFilter.disabled = false;
                     console.log("Successfully loaded Connectivity Report data.", { count: connectivityData.length });
-                    // *** LOGGING: Log the keys of the first data object to verify headers ***
                     console.log("Keys found in first connectivity data row:", Object.keys(connectivityData[0]));
+                    populateDeviceFilter();
                 } else {
                     connectivityData = null; // Set to null if sheet is empty
                     if (showConnectivityReportFilter) showConnectivityReportFilter.disabled = true;
@@ -1069,6 +1071,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(focusVpmrFilter) { focusVpmrFilter.checked = false; focusVpmrFilter.disabled = true; }
         const showConnectivityReportFilter = document.getElementById('showConnectivityReportFilter');
         if (showConnectivityReportFilter) { showConnectivityReportFilter.checked = false; showConnectivityReportFilter.disabled = true; }
+        if(connectivityDeviceFilterContainer) connectivityDeviceFilterContainer.innerHTML = '';
 
 
          if (applyFiltersButtonModal) applyFiltersButtonModal.disabled = true;
@@ -1125,6 +1128,8 @@ document.addEventListener('DOMContentLoaded', () => {
             unifiedConnectivityReportSection.style.display = 'none';
             const tableBody = unifiedConnectivityReportSection.querySelector('tbody');
             if (tableBody) tableBody.innerHTML = '';
+            if (connectivityDeviceFilterContainer) connectivityDeviceFilterContainer.innerHTML = '';
+
         }
         connectivityData = null;
 
@@ -1513,88 +1518,164 @@ document.addEventListener('DOMContentLoaded', () => {
             populateFocusPointTable('vpmrOpportunitiesTable', vpmrOpportunitiesSection, vpmrOpps, '(V)PMR Ach', '(V)PMR Ach %');
         } else { if (vpmrOpportunitiesSection) vpmrOpportunitiesSection.style.display = 'none'; }
     };
+    
+    const populateDeviceFilter = () => {
+        if (!connectivityDeviceFilterContainer || !connectivityData) return;
+        connectivityDeviceFilterContainer.innerHTML = '';
+        const deviceNames = [...new Set(connectivityData.map(item => item['Device Name']))].filter(Boolean).sort();
+        
+        deviceNames.forEach(name => {
+            const label = document.createElement('label');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = name;
+            checkbox.checked = true;
+            label.appendChild(checkbox);
+            label.appendChild(document.createTextNode(` ${name}`));
+            connectivityDeviceFilterContainer.appendChild(label);
+        });
+    };
 
     const renderConnectivityTable = (mainTableData) => {
         const table = document.getElementById('connectivityReportTable');
         const statusP = document.querySelector('#unifiedConnectivityReportSection .focus-point-status');
-        console.log("Attempting to render connectivity table...");
-
         if (!table || !connectivityData) {
-            console.error("Connectivity table or data is missing. Bailing out.", { table, connectivityData });
-            if(statusP) statusP.textContent = "Report data is not available.";
+            if (statusP) statusP.textContent = "Report data is not available.";
             return;
         }
 
         const thead = table.querySelector('thead');
         const tbody = table.querySelector('tbody');
-        if (!thead || !tbody) {
-            console.error("Table head or body not found for connectivity report.");
-            if(statusP) statusP.textContent = "Table structure is corrupted.";
-            return;
-        }
-
+        const tfoot = table.querySelector('tfoot');
         thead.innerHTML = '';
         tbody.innerHTML = '';
+        tfoot.innerHTML = '';
 
-        const deviceNames = [...new Set(connectivityData.map(item => item['Device Name']))].sort();
-        console.log("Device names for headers:", deviceNames);
+        const allDeviceNames = [...new Set(connectivityData.map(item => item['Device Name']))].filter(Boolean).sort();
+        const checkedDevices = connectivityDeviceFilterContainer ? Array.from(connectivityDeviceFilterContainer.querySelectorAll('input:checked')).map(cb => cb.value) : allDeviceNames;
         
+        // Dynamic Column Hiding
+        const visibleDevices = allDeviceNames.filter(deviceName => {
+            if (!checkedDevices.includes(deviceName)) return false;
+            const hasData = mainTableData.some(storeData => {
+                const storeId = storeData['STORE ID'];
+                return connectivityData.some(conn => conn['Samsung Store ID'] === storeId && conn['Device Name'] === deviceName);
+            });
+            return hasData;
+        });
+
+        // Setup Headers
         const headerRow = thead.insertRow();
-        const storeHeader = document.createElement('th');
-        storeHeader.textContent = 'Store';
-        headerRow.appendChild(storeHeader);
-
-        deviceNames.forEach(name => {
-            if(name) { // Only add a header if the device name is valid
-                const th = document.createElement('th');
-                th.textContent = name;
-                headerRow.appendChild(th);
-            }
+        const headers = [{key: 'Store', label: 'Store'}, {key: 'Territory', label: 'Territory'}, ...visibleDevices.map(d => ({key: d, label: d}))];
+        headers.forEach(header => {
+            const th = document.createElement('th');
+            th.textContent = header.label;
+            th.dataset.sort = header.key;
+            th.classList.add('sortable');
+            th.innerHTML += ' <span class="sort-arrow"></span>';
+            headerRow.appendChild(th);
         });
 
-        let storesRenderedCount = 0;
-        mainTableData.forEach(storeData => {
-            const storeId = storeData['STORE ID'];
-            // Find all connectivity data rows for the current store ID
-            const storeConnectivityData = connectivityData.filter(conn => conn['Samsung Store ID'] === storeId);
+        // Combine and Sort Data
+        const tableData = mainTableData.map(store => {
+            const storeId = store['STORE ID'];
+            const storeConnectivity = connectivityData.filter(conn => conn['Samsung Store ID'] === storeId);
+            const rowData = {
+                Store: store['Store'],
+                Territory: store['Q2 Territory']
+            };
+            visibleDevices.forEach(deviceName => {
+                const deviceData = storeConnectivity.find(d => d['Device Name'] === deviceName);
+                rowData[deviceName] = deviceData ? {online: deviceData['#Online'] || 0, expected: deviceData['#Expected'] || 0} : null;
+            });
+            return rowData;
+        }).sort((a, b) => {
+            let valA = a[connectivitySort.column];
+            let valB = b[connectivitySort.column];
+            
+            if (typeof valA === 'object' && valA !== null) valA = valA.online / valA.expected;
+            if (typeof valB === 'object' && valB !== null) valB = valB.online / valB.expected;
 
-            if (storeConnectivityData.length > 0) {
-                storesRenderedCount++;
-                const row = tbody.insertRow();
-                const storeCell = row.insertCell();
-                storeCell.textContent = storeData['Store'];
+            if (isNaN(valA) || valA === null) valA = connectivitySort.ascending ? Infinity : -Infinity;
+            if (isNaN(valB) || valB === null) valB = connectivitySort.ascending ? Infinity : -Infinity;
 
-                deviceNames.forEach(deviceName => {
-                    if(deviceName){ // Only process valid device names
-                        const cell = row.insertCell();
-                        const deviceData = storeConnectivityData.find(d => d['Device Name'] === deviceName);
-                        if (deviceData) {
-                            const online = deviceData['#Online'] || 0;
-                            const expected = deviceData['#Expected'] || 0;
-                            cell.textContent = `${online} / ${expected}`;
-                            if (online >= expected) {
-                                cell.classList.add('highlight-green');
-                            } else {
-                                cell.classList.add('highlight-red');
-                            }
-                        } else {
-                            cell.textContent = 'N/A';
-                        }
-                    }
-                });
+            if (typeof valA === 'number' && typeof valB === 'number') {
+                return connectivitySort.ascending ? valA - valB : valB - valA;
+            } else {
+                return connectivitySort.ascending ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
             }
         });
         
-        console.log(`Rendered ${storesRenderedCount} stores in the connectivity table.`);
-        if (statusP) {
-            if (storesRenderedCount === 0) {
-                statusP.textContent = "No connectivity data found for the stores in the current filter.";
-            } else {
-                statusP.textContent = `Displaying connectivity data for ${storesRenderedCount} stores.`;
+        // Populate Body
+        tableData.forEach(rowData => {
+            const tr = tbody.insertRow();
+            tr.onclick = () => { const mainRowData = rawData.find(r => r.Store === rowData.Store); if(mainRowData) { showStoreDetails(mainRowData); highlightTableRow(rowData.Store); }};
+            headers.forEach(header => {
+                const cell = tr.insertCell();
+                const cellData = rowData[header.key];
+                if(header.key === 'Store' || header.key === 'Territory') {
+                    cell.textContent = cellData;
+                } else if(cellData) {
+                    cell.textContent = `${cellData.online} / ${cellData.expected}`;
+                    if (cellData.online >= cellData.expected) {
+                        cell.classList.add('highlight-green');
+                        cell.style.fontWeight = 'bold';
+                    } else {
+                        cell.classList.add('highlight-red');
+                    }
+                } else {
+                    cell.textContent = 'N/A';
+                }
+            });
+        });
+
+        // Populate Footer
+        const footerRow = tfoot.insertRow();
+        const footerTotals = { Store: 'Totals', Territory: '' };
+        visibleDevices.forEach(deviceName => {
+            footerTotals[deviceName] = { online: 0, expected: 0 };
+        });
+
+        tableData.forEach(rowData => {
+            visibleDevices.forEach(deviceName => {
+                const deviceData = rowData[deviceName];
+                if (deviceData) {
+                    footerTotals[deviceName].online += deviceData.online;
+                    footerTotals[deviceName].expected += deviceData.expected;
+                }
+            });
+        });
+
+        headers.forEach(header => {
+            const cell = footerRow.insertCell();
+            const totalData = footerTotals[header.key];
+            if (typeof totalData === 'string') {
+                cell.textContent = totalData;
+                cell.style.fontWeight = 'bold';
+            } else if (totalData) {
+                cell.textContent = `${totalData.online} / ${totalData.expected}`;
+                cell.style.fontWeight = 'bold';
+            }
+        });
+        
+        updateConnectivitySortArrows();
+        if (statusP) statusP.textContent = `Displaying connectivity for ${tableData.length} stores.`;
+    };
+
+    const updateConnectivitySortArrows = () => {
+        const table = document.getElementById('connectivityReportTable');
+        if (!table) return;
+        table.querySelectorAll('thead th.sortable .sort-arrow').forEach(arrow => {
+            arrow.className = 'sort-arrow';
+        });
+        const currentHeader = table.querySelector(`thead th[data-sort="${CSS.escape(connectivitySort.column)}"]`);
+        if (currentHeader) {
+            const arrowSpan = currentHeader.querySelector('.sort-arrow');
+            if (arrowSpan) {
+                arrowSpan.classList.add(connectivitySort.ascending ? 'asc' : 'desc');
             }
         }
     };
-
 
     const handleSort = (event) => {
          const headerCell = event.target.closest('th'); if (!headerCell?.classList.contains('sortable')) return;
@@ -1634,7 +1715,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('eliteOpportunitiesTableBody'),
                 document.getElementById('connectivityOpportunitiesTableBody'),
                 document.getElementById('repSkillOpportunitiesTableBody'),
-                document.getElementById('vpmrOpportunitiesTableBody')
+                document.getElementById('vpmrOpportunitiesTableBody'),
+                document.getElementById('connectivityReportTable')?.querySelector('tbody')
             ];
             for (const tableBody of tablesToSearch) {
                 if (tableBody) {
@@ -1814,6 +1896,33 @@ document.addEventListener('DOMContentLoaded', () => {
         updateFilterOptions();
         applyFilters();
     });
+    
+    if (connectivityDeviceFilterContainer) {
+        connectivityDeviceFilterContainer.addEventListener('change', () => {
+            renderConnectivityTable(filteredData);
+        });
+    }
+
+    const connectivityTable = document.getElementById('connectivityReportTable');
+    if (connectivityTable) {
+        const thead = connectivityTable.querySelector('thead');
+        if (thead) {
+            thead.addEventListener('click', (event) => {
+                const headerCell = event.target.closest('th');
+                if (!headerCell?.classList.contains('sortable')) return;
+                const sortKey = headerCell.dataset.sort;
+                if (!sortKey) return;
+                
+                if (connectivitySort.column === sortKey) {
+                    connectivitySort.ascending = !connectivitySort.ascending;
+                } else {
+                    connectivitySort.column = sortKey;
+                    connectivitySort.ascending = true;
+                }
+                renderConnectivityTable(filteredData);
+            });
+        }
+    }
 
 
     // --- Initial Setup ---
