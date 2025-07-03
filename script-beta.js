@@ -1600,7 +1600,6 @@ document.addEventListener('DOMContentLoaded', () => {
             let valA = a[connectivitySort.column];
             let valB = b[connectivitySort.column];
             
-            // Handle sorting for device columns by ratio
             if (typeof valA === 'object' && valA !== null) valA = (valA.expected > 0) ? (valA.online / valA.expected) : -1;
             if (typeof valB === 'object' && valB !== null) valB = (valB.expected > 0) ? (valB.online / valB.expected) : -1;
 
