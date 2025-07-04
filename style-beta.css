@@ -1,6 +1,6 @@
 /*
-    Timestamp: 2025-07-03T20:10:00EDT
-    Summary: Added styles for the new Unified Connectivity Report, including the device filter container and sortable headers.
+    Timestamp: 2025-07-04T19:42:00EDT
+    Summary: Removed awesome-marker styles and added new, self-contained CSS for custom DivIcon markers. Added marker-costco outline style.
 */
 
 :root {
@@ -483,7 +483,7 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
 .chart-container { height: 350px; max-width: 95%; background-color: var(--card-bg); }
 #mainChartCanvas, #secondaryChartCanvas { width: 100% !important; height: 100% !important; }
 
-/* --- Map Container --- */
+/* --- Map Container & Custom Markers --- */
 #mapViewContainer { max-width: 95%; }
 #mapid { height: 450px; width: 100%; border-radius: 0.25rem; border: 1px solid var(--border-color); }
 .map-status-message { text-align: center; color: var(--text-color-muted); margin-top: 0.5rem; }
@@ -494,7 +494,19 @@ body.light-theme #storeDetailsContent span[data-flag="true"] { color: #218838; }
 .leaflet-popup-tip { background: var(--leaflet-popup-bg); }
 .leaflet-container a.leaflet-popup-close-button { color: var(--text-color-muted) !important; }
 .leaflet-tooltip { background-color: var(--leaflet-tooltip-bg); color: var(--leaflet-tooltip-text); border: 1px solid var(--leaflet-popup-border); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-
+/* Custom CSS Marker */
+.custom-div-icon {
+    border-radius: 50%;
+    text-align: center;
+    line-height: 22px;
+    font-weight: bold;
+    color: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+    border: 2px solid white;
+}
+.marker-costco {
+    box-shadow: 0 0 0 2px #0073e6; /* Blue outline */
+}
 
 /* --- Table Container & Table --- */
 .table-container { max-width: 95%; }
