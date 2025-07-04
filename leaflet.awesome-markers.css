@@ -1,0 +1,74 @@
+/*
+  Leaflet.AwesomeMarkers, a plugin that adds colorful iconic markers for Leaflet, based on the Font Awesome icons
+  (c) 2012-2013, Lennard Voogdt
+
+  http://lvoogdt.github.com/Leaflet.AwesomeMarkers
+*/
+
+.awesome-marker {
+    background: url('images/markers-soft.png') no-repeat 0 0;
+    width: 35px;
+    height: 45px;
+    position:absolute;
+    left:0;
+    top:0;
+    display: block;
+    text-align: center;
+}
+
+.awesome-marker-shadow {
+    background: url('images/markers-shadow.png') no-repeat 0 0;
+    width: 36px;
+    height: 16px;
+}
+
+.awesome-marker i {
+    color: #fff;
+    margin-top: 10px;
+    display: inline-block;
+    font-size: 14px;
+}
+
+/* Colors */
+.awesome-marker-icon-red {
+    background-position: 0 0;
+}
+.awesome-marker-icon-darkred {
+    background-position: -36px 0;
+}
+.awesome-marker-icon-orange {
+    background-position: -72px 0;
+}
+.awesome-marker-icon-green {
+    background-position: -108px 0;
+}
+.awesome-marker-icon-darkgreen {
+    background-position: -144px 0;
+}
+.awesome-marker-icon-blue {
+    background-position: -180px 0;
+}
+.awesome-marker-icon-darkblue {
+    background-position: -216px 0;
+}
+.awesome-marker-icon-purple {
+    background-position: -252px 0;
+}
+.awesome-marker-icon-darkpurple {
+    background-position: -288px 0;
+}
+.awesome-marker-icon-cadetblue {
+    background-position: -324px 0;
+}
+.awesome-marker-icon-white {
+    background-position: 0 -46px;
+}
+.awesome-marker-icon-gray {
+    background-position: -36px -46px;
+}
+.awesome-marker-icon-lightgray {
+    background-position: -72px -46px;
+}
+.awesome-marker-icon-black {
+    background-position: -108px -46px;
+}
