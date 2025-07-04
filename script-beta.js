@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-07-02T01:15:00EDT
-//    Summary: Corrected sorting for all device columns, including those with special characters. Fixed the 'row is not defined' ReferenceError and fully implemented table-to-map integration for the connectivity report.
+//    Timestamp: 2025-07-03T20:10:00EDT
+//    Summary: Corrected the sorting logic to handle special characters in device names. Fixed the 'row is not defined' ReferenceError and fully implemented table-to-map integration for the connectivity report.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Password Gate Elements & Logic ---
@@ -1624,6 +1624,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     showStoreDetails(mainRowData); 
                     highlightTableRow(rowData.Store);
                     if (mapInstance && showMapViewFilter.checked && mapMarkersLayer) {
+                         mapViewContainer.scrollIntoView({ behavior: 'smooth' });
                          mapMarkersLayer.eachLayer(marker => {
                              if(marker.options.title === rowData.Store){
                                 mapInstance.setView(marker.getLatLng(), 15);
