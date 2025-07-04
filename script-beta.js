@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-07-03T20:10:00EDT
-//    Summary: Corrected the sorting logic to handle special characters in device names. Fixed the 'row is not defined' ReferenceError and fully implemented table-to-map integration for the connectivity report.
+//    Timestamp: 2025-07-01T22:18:00EDT
+//    Summary: Implemented all requested features for the Unified Connectivity Report, including Territory column, dynamic column hiding, device filtering, column sorting, a summary footer, and enhanced visuals.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Password Gate Elements & Logic ---
