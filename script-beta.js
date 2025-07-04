@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-07-01T22:18:00EDT
-//    Summary: Implemented all requested features for the Unified Connectivity Report, including Territory column, dynamic column hiding, device filtering, column sorting, a summary footer, and enhanced visuals.
+//    Timestamp: 2025-07-03T20:25:00EDT
+//    Summary: Implemented color-coded map markers based on SUB_CHANNEL, with letters, outlines, and a fallback color.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Password Gate Elements & Logic ---
@@ -466,6 +466,24 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Map Functions ---
+    const getMarkerOptions = (subChannel) => {
+        const settings = {
+            'Verizon Dealer':           { markerColor: 'red', icon: 'D', prefix: 'fa' },
+            'T-Mobile COR':             { markerColor: 'pink', icon: 'C', prefix: 'fa' },
+            'AT&T Dealer':              { markerColor: 'blue', icon: 'D', prefix: 'fa' },
+            'AT&T COR':                 { markerColor: 'blue', icon: 'C', prefix: 'fa' },
+            'Best Buy':                 { markerColor: 'darkblue', icon: 'B', prefix: 'fa' },
+            'Costco':                   { markerColor: 'red', icon: 'C', prefix: 'fa', extraClasses: 'marker-costco' },
+            'Metro By T-Mobile Dealer': { markerColor: 'purple', icon: 'M', prefix: 'fa' },
+            'Sams':                     { markerColor: 'blue', icon: 'S', prefix: 'fa' },
+            'T-Mobile Dealer':          { markerColor: 'pink', icon: 'D', prefix: 'fa' },
+            'Verizon COR':              { markerColor: 'red', icon: 'C', prefix: 'fa' },
+            'Walmart':                  { markerColor: 'yellow', icon: 'W', prefix: 'fa' },
+            'Xfinity Mobile':           { markerColor: 'purple', icon: 'X', prefix: 'fa' }
+        };
+        return settings[subChannel] || { markerColor: 'black', prefix: 'fa', icon: '' };
+    };
+
     const initMapView = () => {
         if (typeof L === 'undefined' || !L || typeof L.map !== 'function') {
             console.error("Leaflet library (L) or L.map is not available. Map cannot be initialized.");
@@ -532,11 +550,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const lat = parseNumber(safeGet(row, 'LATITUDE_ORG', NaN));
             const lon = parseNumber(safeGet(row, 'LONGITUDE_ORG', NaN));
             const storeName = safeGet(row, 'Store', 'Unknown Store');
+            const subChannel = safeGet(row, 'SUB_CHANNEL', '');
+            const markerOptions = getMarkerOptions(subChannel);
+
             const revenue = formatCurrency(parseNumber(safeGet(row, 'Revenue w/DF', NaN)));
             const qtdGapVal = calculateQtdGap(row);
             const formattedQtdGap = isNaN(qtdGapVal) || qtdGapVal === Infinity ? 'N/A' : formatCurrency(qtdGapVal);
             const popupContent = `<strong>${storeName}</strong><br>Revenue: ${revenue}<br>QTD Gap: ${formattedQtdGap}`;
-            const marker = L.marker([lat, lon], {title: storeName});
+
+            const marker = L.marker([lat, lon], {
+                icon: L.AwesomeMarkers.icon(markerOptions),
+                title: storeName
+            });
             marker.bindPopup(popupContent);
             marker.on('click', () => { showStoreDetails(row); highlightTableRow(storeName); });
             mapMarkersLayer.addLayer(marker);
