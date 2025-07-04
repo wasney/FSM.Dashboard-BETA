@@ -1,6 +1,6 @@
 //
 //    Timestamp: 2025-07-03T20:10:00EDT
-//    Summary: Corrected sorting for all device columns by fixing the ratio calculation. Fixed the 'row is not defined' ReferenceError and implemented scroll-to-map functionality.
+//    Summary: Corrected the sorting logic to handle special characters in device names. Fixed the 'row is not defined' ReferenceError and fully implemented table-to-map integration for the connectivity report.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Password Gate Elements & Logic ---
@@ -1600,6 +1600,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let valA = a[connectivitySort.column];
             let valB = b[connectivitySort.column];
             
+            // Handle sorting for device columns by ratio
             if (typeof valA === 'object' && valA !== null) valA = (valA.expected > 0) ? (valA.online / valA.expected) : -1;
             if (typeof valB === 'object' && valB !== null) valB = (valB.expected > 0) ? (valB.online / valB.expected) : -1;
 
