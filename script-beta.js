@@ -1,6 +1,6 @@
 //
-//    Timestamp: 2025-07-03T19:50:00EDT
-//    Summary: Corrected the sorting logic to handle special characters in device names. Fixed the 'row is not defined' ReferenceError and fully implemented table-to-map integration for the connectivity report. Added scrollIntoView for map interaction.
+//    Timestamp: 2025-07-03T20:10:00EDT
+//    Summary: Corrected sorting for all device columns by fixing the ratio calculation. Fixed the 'row is not defined' ReferenceError and implemented scroll-to-map functionality.
 //
 document.addEventListener('DOMContentLoaded', () => {
     // --- Password Gate Elements & Logic ---
